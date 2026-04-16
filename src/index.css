@@ -17,8 +17,17 @@
 }
 
 @layer base {
+  html {
+    @apply bg-[#f8f9fb] min-h-screen relative;
+  }
+
   body {
-    @apply bg-surface text-on-surface font-sans antialiased;
+    @apply bg-transparent text-on-surface font-sans antialiased min-h-screen relative overflow-x-hidden;
+  }
+
+  /* Root management */
+  #root {
+    @apply min-h-screen bg-transparent relative;
   }
 }
 
