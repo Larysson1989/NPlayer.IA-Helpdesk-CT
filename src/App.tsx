@@ -17,7 +17,7 @@ export function BackgroundMascot() {
       <img 
         src="https://media.licdn.com/dms/image/v2/C4D22AQGesYbMte2pNw/feedshare-shrink_800/feedshare-shrink_800/0/1639700725961?e=2147483647&v=beta&t=tCZRnF3IND35XxVwTUZMb6fGuH5aGfVLmlxrJCTBHdA" 
         alt=""
-        className="w-full h-full object-cover opacity-10 transition-opacity duration-1000 grayscale-[0.2]"
+        className="w-full h-full object-cover opacity-25 transition-opacity duration-1000 grayscale-[0.2]"
         referrerPolicy="no-referrer"
       />
     </div>
@@ -189,8 +189,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-
