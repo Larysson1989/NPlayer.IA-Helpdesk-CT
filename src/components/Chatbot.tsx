@@ -101,7 +101,7 @@ Lembre-se: O objetivo é ser um apoio próximo e humano para o captador brilhar 
     setLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error('Chave de API não configurada.');
 
       const ai = new GoogleGenAI({ apiKey });
