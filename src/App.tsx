@@ -6,6 +6,8 @@
 import React, { useState } from 'react';
 import { Login } from './components/Login';
 import { UserModals } from './components/UserModals';
+import { UnderConstruction } from './components/UnderConstruction';
+import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { motion } from 'motion/react';
 
@@ -37,12 +39,14 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChatQuery, setActiveChatQuery] = useState<string | null>(null);
+  const [activeProfilePage, setActiveProfilePage] = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleLogout = () => {
     setUser(null);
     setSearchQuery('');
     setActiveChatQuery(null);
+    setActiveProfilePage(null);
   };
 
   const openChat = (query: string) => {
@@ -66,6 +70,16 @@ export default function App() {
   };
 
   if (!user) return <Login onLogin={setUser} />;
+
+  // ── Tela UnderConstruction ──
+  if (activeProfilePage !== null) {
+    return (
+      <UnderConstruction
+        page={activeProfilePage}
+        onBack={() => setActiveProfilePage(null)}
+      />
+    );
+  }
 
   // ── Tela de Chat ──
   if (activeChatQuery !== null) {
@@ -93,6 +107,10 @@ export default function App() {
         user={user}
         onUpdateUser={setUser}
         onLogout={handleLogout}
+        onNavigate={(page) => {
+          setIsProfileModalOpen(false);
+          setActiveProfilePage(page);
+        }}
       />
 
       {/* HEADER */}
