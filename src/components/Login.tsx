@@ -13,6 +13,12 @@ interface LoginProps {
   onLogin: (user: User) => void;
 }
 
+// Usuários autorizados — migrar para backend com senhas hashadas futuramente
+const USERS = [
+  { email: 'gabriel.lara@hpp.org.br', password: '1234',  name: 'Gabriel Lara' },
+  { email: 'admin@lary.ia.br',         password: 'admin', name: 'Admin'         },
+];
+
 export function Login({ onLogin }: LoginProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
@@ -28,13 +34,13 @@ export function Login({ onLogin }: LoginProps) {
     setLoading(true);
     setError('');
 
-    // Mock authentication/registration
     setTimeout(() => {
       if (isRegistering) {
         onLogin({ email, name, matricula, telefone });
       } else {
-        if (email === 'gabriel.lara@hpp.org.br' && password === '1234') {
-          onLogin({ email, name: 'Gabriel Lara' });
+        const found = USERS.find(u => u.email === email && u.password === password);
+        if (found) {
+          onLogin({ email: found.email, name: found.name });
         } else {
           setError('E-mail ou senha incorretos.');
         }
@@ -156,13 +162,19 @@ export function Login({ onLogin }: LoginProps) {
             disabled={loading}
             className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? 'Criar Conta' : 'Entrar no Portal')}
+            {loading 
+              ? <Loader2 className="animate-spin" size={20} /> 
+              : (isRegistering ? 'Criar Conta' : 'Entrar no Portal')
+            }
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <button 
-            onClick={() => setIsRegistering(!isRegistering)}
+            onClick={() => {
+              setIsRegistering(!isRegistering);
+              setError('');
+            }}
             className="text-xs font-bold text-primary hover:underline"
           >
             {isRegistering ? 'Já tenho uma conta' : 'Não tem conta? Cadastre-se'}
