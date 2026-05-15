@@ -1,3 +1,5 @@
+export const HPP_KNOWLEDGE = `
+
 === SOBRE A CT — CAPTAÇÃO TELEFÔNICA ===
 - Missão: "Salvando vidas através do telefone."
 - Foco principal: Pessoas Físicas (PF). Persona: faixa etária entre 40 e 60 anos.
@@ -106,7 +108,7 @@ ESTRUTURA DO SCRIPT DE FECHAMENTO (ordem obrigatória):
 6. Companhia de Energia | 7. UC | 8. Vencimento | 9. Endereço completo | 10. Contatos
 
 VOCALIZAÇÃO OBRIGATÓRIA:
-- CPF: doador fala 2 dígitos → captador vocaliza o CPF completo no checklist.
+- CPF: doador fala 2 dígitos, captador vocaliza o CPF completo no checklist.
 - Parcelas: vocalizar quantidade E tipo (pontual ou continuada/indeterminada).
 
 === MÓDULO 5 — REGRAS POR COMPANHIA DE ENERGIA ===
@@ -143,59 +145,91 @@ ERROS CRÍTICOS QUE GERAM RETORNO:
 
 === DIRECIONAMENTOS OPERACIONAIS CT ===
 
---- MÓDULO 1: FLUXO PIPEFY — GESTÃO DE INDICAÇÕES ---
+FLUXO PIPEFY — INDICAÇÕES:
 
-CONTATOS ATIVOS:
-- Distribuição igualitária entre as equipes via Pipefy.
+Contatos Ativos:
+- Distribuição igualitária entre equipes via Pipefy.
 - Ao fechar a doação: obrigatório registrar histórico no Bell.
-- Prazo: captador tem até 7 dias da data da indicação para enviar parecer por e-mail à supervisão.
-- Descumprimento do prazo → redistribuição do contato para outro captador.
+- Prazo: até 7 dias da indicação para enviar parecer por e-mail à supervisão.
+- Descumprimento → redistribuição do contato.
 
-CONTATOS PASSIVOS:
-- Sorteados igualitariamente entre os times após fechamento do mês.
-- Elegibilidade: colaborador deve ter 0% de absenteísmo no mês da doação.
-- Não são contabilizados para o ranking da operação.
+Contatos Passivos:
+- Sorteados igualitariamente após fechamento do mês.
+- Elegibilidade: 0% de absenteísmo no mês da doação.
+- Não contabilizados para o ranking da operação.
 
---- MÓDULO 2: REGRAS E PROTOCOLOS DE ATESTADOS ---
+REGRAS E PROTOCOLOS DE ATESTADOS:
 
-AVISO PRÉVIO (obrigatório):
-- Avisar a gestão imediata no início do atestado ou declaração para permitir remanejamento da operação.
+Aviso Prévio: Avisar gestão imediata no início do atestado para remanejamento da operação.
 
-PRAZOS DE ENTREGA (protocolo presencial — Medicina do Trabalho):
-- Atestado padrão: entrega presencial pelo próprio colaborador até o 1º dia útil após o fim do atestado.
-- Atestado com duração superior a 7 dias: entrega até o 8º dia após a data de início.
+Prazos de Entrega (presencial — Medicina do Trabalho):
+- Atestado padrão: até o 1º dia útil após o fim do atestado.
+- Atestado superior a 7 dias: até o 8º dia após a data de início.
 
-EXCEÇÕES — ENTREGA POR TERCEIROS:
-- Permitida somente em casos de: internamento, cirurgia ou dificuldade de locomoção.
+Exceções — Entrega por Terceiros:
+- Permitida somente em: internamento, cirurgia ou dificuldade de locomoção.
 - Colaborador deve comunicar a Medicina e formalizar a autorização.
 
-AUDITORIA MÉDICA:
+Auditoria Médica:
 - Todos os documentos passam por investigação administrativa.
 - Colaborador tem obrigação de comparecer à Medicina do Trabalho se convocado.
 
-HORÁRIOS DA MEDICINA DO TRABALHO:
+Horários da Medicina do Trabalho:
 - Segunda a sexta-feira: 7h às 10h | 12h às 15h | 19h às 20h30.
 
---- MÓDULO 3: POLÍTICA DE MOMENTOS PRESENCIAIS (2026) ---
+MOMENTOS PRESENCIAIS (2026):
+- Encontros presenciais programados a partir de 2026.
+- Objetivo: desenvolvimento técnico, alinhamento e gestão de resultados.
+- Presença OBRIGATÓRIA — parte integral da estratégia de desenvolvimento.
+- Gestão comunicará previamente datas e orientações logísticas.
 
-- A partir de 2026, a operação adota encontros presenciais programados.
-- Objetivo: desenvolvimento técnico, alinhamento, troca de experiências e gestão de resultados.
-- Presença OBRIGATÓRIA — é parte integral da estratégia de desenvolvimento da equipe.
-- A gestão comunicará previamente as datas e orientações logísticas.
-
---- MÓDULO 4: GESTÃO DO BANCO DE HORAS ---
-
-CICLO DE FECHAMENTO:
-- Meta: zerar os saldos mensalmente.
-- Fechamento do ponto: todo dia 16 de cada mês (rigorosamente).
-
-REGRAS PARA HORAS EXTRAS (Art. 59 CLT):
+GESTÃO DO BANCO DE HORAS:
+- Fechamento do ponto: todo dia 16 de cada mês.
 - Máximo de 2 horas excedentes por dia.
-- Toda hora extra exige alinhamento prévio das atividades a serem executadas.
+- Toda hora extra exige alinhamento prévio das atividades.
+- Acompanhar saldo via Sisqual online (responsabilidade do colaborador).
+- Saldo negativo no dia 16 → desconto na folha do mês seguinte.
 
-ACOMPANHAMENTO E DESCONTOS:
-- Responsabilidade do colaborador: acompanhar o saldo via Sisqual online.
-- Saldo negativo no dia 16 → horas descontadas na folha de pagamento do mês seguinte.
+=== SCRIPTS DE DISCURSO — LACTÁRIO ===
+
+CONTEXTO DO LACTÁRIO:
+- 58% das crianças internadas no HPP estão na primeira infância (até 6 anos).
+- O Lactário prepara cerca de 600 mamadeiras por dia.
+- Atende crianças que precisam de fórmulas especiais e suplementos de alto custo.
+- Cada refeição é parte do tratamento — nutrição e saúde caminham juntas.
+
+HISTÓRIA DE IMPACTO — GABRIELLY:
+- Paciente com fibrose cística, em tratamento desde o primeiro ano de vida.
+- Precisou de cirurgia nas primeiras 48 horas de vida.
+- Pacientes desnutridos têm quadros pulmonares mais agravados.
+
+SCRIPT COMPLETO — DISCURSO LACTÁRIO:
+"Alô, tudo bem? Eu sou a [NOME] do Hospital Pequeno Príncipe, com quem eu falo?
+[NOME DO DOADOR], você já teve que alimentar um bebê doente?
+É um momento que aperta o coração, né?
+Eles não sabem dizer onde dói, mas o corpo todo pede cuidado.
+Aqui no hospital, 58% das crianças internadas ainda estão na primeira infância — até os 6 anos.
+Mais da metade dos nossos pacientes ainda são bebês.
+É por isso que o Lactário é um dos lugares mais importantes do hospital.
+É lá que a gente prepara cerca de 600 mamadeiras todos os dias —
+onde começa a recuperação, a nutrição, a força pra lutar.
+Cada mamadeira não é só leite. É vida e tratamento!
+Você já imaginou uma criança que, além de enfrentar uma doença grave, não pode comer qualquer alimento?
+Aqui muitas delas precisam de fórmulas especiais e suplementos de alto custo todos os dias.
+Cada refeição é parte do tratamento — feita na medida certa, na hora exata.
+Deixa eu te contar sobre a Gabrielly — trata fibrose cística conosco desde o primeiro ano de vida.
+Precisou de cirurgia nas primeiras 48 horas. A nutrição adequada é fundamental para sua evolução.
+Por isso, hoje eu tô aqui pra te fazer esse convite especial:
+Você pode ajudar com uma doação mensal de 3 formas simples —
+pela fatura de energia, pelo débito em conta ou pelo cartão de crédito.
+Qual dessas formas fica melhor pra você?"
+
+PONTOS-CHAVE DO DISCURSO LACTÁRIO:
+- Abertura empática antes de qualquer dado.
+- Dado institucional: 58% primeira infância, 600 mamadeiras/dia.
+- Humanização: história real da Gabrielly.
+- Fechamento com as 3 formas + pergunta de escolha (não de decisão).
+- NÃO perguntar "se" quer ajudar — perguntar QUAL forma é melhor.
 
 === VALORES DA EQUIPE CT ===
 1. SOMOS UM TIME
@@ -214,93 +248,18 @@ ACOMPANHAMENTO E DESCONTOS:
 
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
-AMBIENTE:
-- Local iluminado, arejado e confortável conforme NR17.
-- Longe de TV ou locais com fluxo constante de pessoas.
+Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
 
-DISTRAÇÕES A EVITAR:
-- Domésticas: louça, faxina, animais, crianças durante expediente.
-- Eletrônicas: redes sociais, TV, internet pessoal.
-- Interrupções de familiares ou colegas de casa.
+Distrações a evitar: domésticas (louça, faxina, animais, crianças), eletrônicas (redes sociais, TV),
+interrupções de familiares ou colegas de casa.
 
-HORÁRIOS E PAUSAS:
-- Respeitar entrada, saída e pausas obrigatórias: modelo 10-20-10.
-- Participar da ginástica laboral (link enviado no grupo).
+Horários e Pausas: Respeitar entrada, saída e pausas obrigatórias modelo 10-20-10. Participar da ginástica laboral.
 
-SAÚDE:
-- Hidratação e alimentação saudável protegem a voz — principal ferramenta do captador.
+Saúde: Hidratação e alimentação saudável protegem a voz — principal ferramenta do captador.
 
-EQUIPAMENTOS:
-- Cuidar conforme NR17. Internet e energia são responsabilidade do colaborador em home office.
+Equipamentos: Cuidar conforme NR17. Internet e energia são responsabilidade do colaborador em home office.
 
-REUNIÕES:
-- Câmera ligada, vestimenta adequada, pontualidade e participação ativa.
+Reuniões: Câmera ligada, vestimenta adequada, pontualidade e participação ativa.
 
-RESPEITO E PROFISSIONALISMO:
-- Comunicação clara, educada e assertiva mesmo à distância.
-- Respeitar tempo, limites e opiniões de colegas e gestores.
-
-  === SCRIPTS DE DISCURSO — LACTÁRIO ===
-
-CONTEXTO DO LACTÁRIO:
-- 58% das crianças internadas no HPP estão na primeira infância (até 6 anos).
-- O Lactário prepara cerca de 600 mamadeiras por dia.
-- Atende crianças que precisam de fórmulas especiais e suplementos de alto custo.
-- Cada refeição é parte do tratamento — nutrição e saúde caminham juntas.
-
-HISTÓRIA DE IMPACTO — GABRIELLY:
-- Paciente com fibrose cística, em tratamento desde o primeiro ano de vida.
-- Precisou de cirurgia nas primeiras 48 horas de vida.
-- A nutrição adequada é fundamental para sua evolução: pacientes desnutridos têm quadros
-  pulmonares mais agravados.
-- Exemplifica por que o Lactário é essencial para a sobrevivência e recuperação.
-
-SCRIPT COMPLETO — DISCURSO LACTÁRIO:
-
-"Alô, tudo bem? Eu sou a [NOME] do Hospital Pequeno Príncipe, com quem eu falo?
-
-[NOME DO DOADOR], você já teve que alimentar um bebê doente?
-É um momento que aperta o coração, né?
-Eles não sabem dizer onde dói, mas o corpo todo pede cuidado.
-
-Aqui no hospital, 58% das crianças internadas ainda estão na primeira infância —
-ou seja, até os 6 anos de idade. Mais da metade dos nossos pacientes ainda são bebês.
-
-É por isso que o Lactário é um dos lugares mais importantes do hospital.
-É lá que a gente prepara cerca de 600 mamadeiras todos os dias —
-onde começa a recuperação, a nutrição, a força pra lutar.
-
-Cada mamadeira não é só leite. É vida e tratamento!
-
-Você já imaginou uma criança que, além de enfrentar uma doença grave,
-não pode comer qualquer alimento?
-Aqui no Hospital Pequeno Príncipe, muitas delas precisam de fórmulas especiais
-e suplementos de alto custo, todos os dias, pra conseguirem se manter vivas e ganhar peso.
-Cada refeição é parte do tratamento — feita na medida certa, na hora exata.
-É um cuidado silencioso, mas essencial.
-
-E esse trabalho só é possível porque pessoas como você nos ajudam a manter tudo isso funcionando.
-
-Deixa eu te contar uma história que mostra o impacto real desse apoio...
-
-A Gabrielly trata fibrose cística conosco desde o seu primeiro ano.
-Precisou fazer cirurgia nas primeiras 48 horas de vida,
-e a nutrição adequada é fundamental para a evolução do seu tratamento —
-para que, além da condição clínica, ela não sofra também de desnutrição,
-já que pacientes desnutridos têm quadros pulmonares mais agravados.
-
-Por isso, hoje eu tô aqui pra te fazer esse convite especial:
-
-Você pode ajudar a nutrir a esperança de muitas crianças com uma doação mensal
-de 3 formas bem simples:
-pode ser pela fatura de energia, pelo débito em conta
-ou, se preferir, pelo cartão de crédito.
-
-Qual dessas formas fica melhor pra você?"
-
-PONTOS-CHAVE DO DISCURSO LACTÁRIO (para monitoria):
-- Abertura empática: conexão emocional antes de qualquer dado.
-- Dado institucional: 58% primeira infância, 600 mamadeiras/dia.
-- Humanização: história real da Gabrielly (fibrose cística).
-- Fechamento com oferta das 3 formas de pagamento + pergunta de escolha (não de decisão).
-- NÃO perguntar "se" quer ajudar — perguntar QUAL forma é melhor.
+Respeito e Profissionalismo: Comunicação clara, educada e assertiva mesmo à distância.
+`;
