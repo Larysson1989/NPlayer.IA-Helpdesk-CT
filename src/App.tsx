@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import Chatbot from './components/Chatbot';
+import React, { useState } from 'react';
 import { Login } from './components/Login';
 import { UserModals } from './components/UserModals';
-import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import ChatView from './components/ChatView';
+import { motion } from 'motion/react';
 
 const AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsja2GmlJ7z64XhGwI_WRtSwLQ1cA8yB2IW_SxUGC6xqrXSNnd-tjPNwXd-yFuW16id4il3bF0eTU5CTbxIhUStSPK0G5iNPPFwpfo1UM1AMKUoznN9IjvQqOPHLyLb099WSpiqb_qwqR5eQCh5dlmkkAEnCT1uH3RwRus2scZ8deMJcrPfN-ABL3mSAL6_EiQdL3quKIwfpWChNxAEQQrTQfc_jJEEV_GjJN4dzgfdHxxBs2i8834KMIg3F9grlI_ov603xAceHM';
 
@@ -33,50 +32,23 @@ interface User {
   avatar?: string;
 }
 
-interface Message {
-  role: 'user' | 'bot';
-  text: string;
-  time: string;
-}
-
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const greetingSet = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Dark mode
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
-
-  // Mensagem inicial do bot
-  useEffect(() => {
-    if (user && !greetingSet.current) {
-      greetingSet.current = true;
-      setMessages([{
-        role: 'bot',
-        text: `Olá **${user.name}**! Tudo bem? Que bom ter você por aqui. 👑\n\nComo posso apoiar o seu trabalho hoje?`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }]);
-    }
-  }, [user]);
+  const [activeChatQuery, setActiveChatQuery] = useState<string | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleLogout = () => {
     setUser(null);
     setSearchQuery('');
-    setMessages([]);
-    greetingSet.current = false;
+    setActiveChatQuery(null);
   };
 
-  const handleSendQuery = (query: string) => {
+  const openChat = (query: string) => {
     if (!query.trim()) return;
-    setSearchQuery(query);
-    setIsChatOpen(true);
+    setActiveChatQuery(query);
   };
 
   const handleTextareaInput = () => {
@@ -90,16 +62,30 @@ export default function App() {
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendQuery(searchQuery);
+      openChat(searchQuery);
     }
   };
 
-  if (!user) {
-    return <Login onLogin={setUser} />;
+  if (!user) return <Login onLogin={setUser} />;
+
+  // ── Tela de Chat ──
+  if (activeChatQuery !== null) {
+    return (
+      <ChatView
+        user={user}
+        initialQuery={activeChatQuery}
+        onBack={() => {
+          setActiveChatQuery(null);
+          setSearchQuery('');
+        }}
+        isDark={isDark}
+      />
+    );
   }
 
   const firstName = user.name.split(' ')[0];
 
+  // ── Tela Principal ──
   return (
     <div className={isDark ? 'dark' : ''}>
       <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
@@ -112,7 +98,7 @@ export default function App() {
           onLogout={handleLogout}
         />
 
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-10 sticky top-0">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -125,22 +111,15 @@ export default function App() {
               "Inteligência que transforma cada ligação"
             </p>
           </div>
-
           <div className="flex items-center gap-4">
-            {/* Toggle dark mode */}
             <button
               onClick={() => setIsDark(!isDark)}
               className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
               aria-label="Alternar tema"
             >
-              <span className="material-icons-round text-[20px]">
-                {isDark ? 'light_mode' : 'dark_mode'}
-              </span>
+              <span className="material-icons-round text-[20px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
             </button>
-
             <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
-
-            {/* Perfil */}
             <button
               onClick={() => setIsProfileModalOpen(true)}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -158,11 +137,10 @@ export default function App() {
           </div>
         </header>
 
-        {/* ── MAIN ── */}
+        {/* MAIN */}
         <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white dark:bg-slate-950">
           <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
-            {/* Saudação */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -195,7 +173,7 @@ export default function App() {
                   className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-2xl py-5 pl-7 pr-16 focus:ring-2 focus:ring-primary shadow-sm text-lg text-slate-800 dark:text-slate-100 resize-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none"
                 />
                 <button
-                  onClick={() => handleSendQuery(searchQuery)}
+                  onClick={() => openChat(searchQuery)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white p-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
                   aria-label="Enviar pergunta"
                 >
@@ -218,7 +196,7 @@ export default function App() {
               {FAQ_CARDS.map((card) => (
                 <button
                   key={card.title}
-                  onClick={() => handleSendQuery(card.title)}
+                  onClick={() => openChat(card.title)}
                   className="p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 hover:border-primary dark:hover:border-primary hover:shadow-xl transition-all text-left flex items-start gap-4 group"
                 >
                   <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-blue-400 rounded-xl shrink-0">
@@ -238,54 +216,6 @@ export default function App() {
 
           </div>
         </main>
-
-        {/* ── CHAT FLUTUANTE ── */}
-        <AnimatePresence>
-          {isChatOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="fixed bottom-28 right-8 w-[350px] sm:w-[450px] h-[650px] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col z-50"
-            >
-              <div className="bg-primary p-4 flex justify-between items-center text-white shrink-0">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={AVATAR}
-                    alt="Príncipe"
-                    className="w-8 h-8 rounded-full border-2 border-white/20 object-cover"
-                  />
-                  <span className="font-bold">Príncipe</span>
-                </div>
-                <button
-                  onClick={() => setIsChatOpen(false)}
-                  className="hover:bg-white/10 p-1 rounded-lg transition-colors"
-                  aria-label="Fechar chat"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <Chatbot
-                  isEmbedded={true}
-                  user={user}
-                  messages={messages}
-                  setMessages={setMessages}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Botão flutuante */}
-        <button
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-yellow-400 text-slate-900 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50"
-          aria-label="Abrir assistente"
-        >
-          <span className="material-icons-round">support_agent</span>
-        </button>
-
       </div>
     </div>
   );
