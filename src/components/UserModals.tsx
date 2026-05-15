@@ -27,10 +27,7 @@ type FullscreenPage = 'edit' | 'password' | 'support' | 'improvements' | null;
 const DEFAULT_AVATAR =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDgdPkiT-wRtOnLWfj51Eko2A8FvPaNGJ9YfKsvfQJI7gKPON-2yvOWFMWgtFmRhEmichfWU3XbAz48qYC0PRqR9_chfQQZ2BbtesGE0Jy7gcgL_Ubv7TuyzPmPQkJg1-suxATPUgyhbrS6jrCV5ctYinBi9YlSQ0J9TMWcR2MOT0ZS54pLxrEOvLR2YzOMy1drxABvrpXtyhhg-aKC6gOd-u74J0RYJcOABpiFEDbcYv2RBPqwT57Mhqjm4adWnR1Li0ygdAc73X4';
 
-const PAGE_META: Record<
-  NonNullable<FullscreenPage>,
-  { title: string; description: string; icon: React.ReactNode }
-> = {
+const PAGE_META: Record<NonNullable<FullscreenPage>, { title: string; description: string; icon: React.ReactNode }> = {
   edit: {
     title: 'Meu Perfil',
     description: 'Edição de dados cadastrais, foto de perfil, matrícula e telefone.',
@@ -81,8 +78,6 @@ const fullscreenVariants = {
   },
 };
 
-// ── Fullscreen "Em Construção" ─────────────────────────────────────────────
-
 function FullscreenUnderConstruction({
   page,
   onBack,
@@ -115,23 +110,15 @@ function FullscreenUnderConstruction({
 
       {/* Corpo */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-8">
-
         {/* Ícone animado */}
         <div className="relative">
           <motion.div
             animate={{ rotate: [0, -8, 8, -8, 0] }}
-            transition={{
-              duration: 2.4,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              repeatDelay: 1.5,
-            }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
             className="w-28 h-28 rounded-[36px] bg-primary/5 flex items-center justify-center text-primary"
           >
             {meta.icon}
           </motion.div>
-
-          {/* Badge */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -144,10 +131,8 @@ function FullscreenUnderConstruction({
 
         {/* Textos */}
         <div className="space-y-3 max-w-xs">
-          <h2 className="text-2xl font-headline font-bold text-primary">{meta.title}</h2>
-          <p className="text-sm text-slate-500 font-medium leading-relaxed">
-            {meta.description}
-          </p>
+          <h2 className="text-2xl font-bold text-primary">{meta.title}</h2>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">{meta.description}</p>
         </div>
 
         {/* Card informativo */}
@@ -173,9 +158,7 @@ function FullscreenUnderConstruction({
       {/* Footer */}
       <div className="px-6 py-4 border-t border-slate-50 flex justify-between items-center shrink-0">
         <div className="flex gap-1" aria-hidden="true">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="w-1 h-1 rounded-full bg-primary/20" />
-          ))}
+          {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-primary/20" />)}
         </div>
         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
           Hospital Pequeno Príncipe • 2026
@@ -185,28 +168,19 @@ function FullscreenUnderConstruction({
   );
 }
 
-// ── Componente principal ───────────────────────────────────────────────────
-
-export function UserModals({
-  isOpen,
-  onClose,
-  user,
-  onUpdateUser,
-  onLogout,
-}: UserModalsProps) {
+export function UserModals({ isOpen, onClose, user, onUpdateUser, onLogout }: UserModalsProps) {
   const [activePage, setActivePage] = useState<FullscreenPage>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Trava scroll do body
   useEffect(() => {
-    document.body.style.overflow = isOpen || activePage !== null ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    const locked = isOpen || activePage !== null;
+    document.body.style.overflow = locked ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen, activePage]);
 
-  // Tecla Escape
+  // Escape
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -250,15 +224,13 @@ export function UserModals({
 
   const completion = (() => {
     const fields = ['name', 'email', 'matricula', 'telefone', 'avatar'];
-    const filled = fields.filter(
-      f => !!(user as Record<string, unknown>)[f]
-    ).length;
+    const filled = fields.filter(f => !!(user as Record<string, unknown>)[f]).length;
     return Math.round((filled / fields.length) * 100);
   })();
 
   return (
     <>
-      {/* ── Fullscreen pages ── */}
+      {/* Fullscreen pages */}
       <AnimatePresence>
         {activePage && (
           <FullscreenUnderConstruction
@@ -268,11 +240,10 @@ export function UserModals({
         )}
       </AnimatePresence>
 
-      {/* ── Drawer ── */}
+      {/* Drawer */}
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -282,7 +253,6 @@ export function UserModals({
               aria-hidden="true"
             />
 
-            {/* Drawer lateral direito */}
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -296,23 +266,18 @@ export function UserModals({
             >
               {/* Header */}
               <div className="px-6 py-5 flex justify-between items-center bg-white border-b border-slate-50 sticky top-0 z-20 shrink-0">
-                <h2 className="text-base font-bold text-primary tracking-tight">
-                  Meu Perfil
-                </h2>
+                <h2 className="text-base font-bold text-primary tracking-tight">Meu Perfil</h2>
                 <button
                   onClick={onClose}
                   aria-label="Fechar"
                   className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors group"
                 >
-                  <X
-                    size={18}
-                    className="text-slate-400 group-hover:rotate-90 transition-transform duration-300"
-                  />
+                  <X size={18} className="text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
                 </button>
               </div>
 
-              {/* Conteúdo */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
                 <div className="p-6 space-y-6">
 
                   {/* Avatar + info */}
@@ -325,7 +290,6 @@ export function UserModals({
                           className="w-full h-full object-cover"
                         />
                       </div>
-
                       <div className="absolute -bottom-1 -right-1 flex gap-1.5">
                         <button
                           onClick={() => fileInputRef.current?.click()}
@@ -344,7 +308,6 @@ export function UserModals({
                           </button>
                         )}
                       </div>
-
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -353,11 +316,8 @@ export function UserModals({
                         accept="image/*"
                       />
                     </div>
-
                     <div className="text-center">
-                      <h3 className="text-xl font-headline font-bold text-primary tracking-tight">
-                        {user.name}
-                      </h3>
+                      <h3 className="text-xl font-bold text-primary tracking-tight">{user.name}</h3>
                       <p className="text-sm text-slate-500 font-medium flex items-center justify-center gap-1.5 mt-0.5">
                         <Mail size={12} className="text-slate-300" aria-hidden="true" />
                         {user.email}
@@ -368,16 +328,8 @@ export function UserModals({
                   {/* Progresso */}
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Progresso do Perfil
-                      </span>
-                      <span
-                        className={`text-xs font-bold ${
-                          completion === 100 ? 'text-green-500' : 'text-primary'
-                        }`}
-                      >
-                        {completion}%
-                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Progresso do Perfil</span>
+                      <span className={`text-xs font-bold ${completion === 100 ? 'text-green-500' : 'text-primary'}`}>{completion}%</span>
                     </div>
                     <div
                       className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden"
@@ -390,9 +342,7 @@ export function UserModals({
                         initial={{ width: 0 }}
                         animate={{ width: `${completion}%` }}
                         transition={{ delay: 0.3, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                        className={`h-full ${
-                          completion === 100 ? 'bg-green-500' : 'bg-primary'
-                        }`}
+                        className={`h-full ${completion === 100 ? 'bg-green-500' : 'bg-primary'}`}
                       />
                     </div>
                     {completion < 100 && (
@@ -402,10 +352,9 @@ export function UserModals({
                     )}
                   </div>
 
-                  {/* Menu de navegação */}
+                  {/* Menu */}
                   <nav className="space-y-2" aria-label="Menu do perfil">
 
-                    {/* Meu Perfil */}
                     <button
                       onClick={() => setActivePage('edit')}
                       className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-primary/20 hover:bg-primary/[0.02] rounded-2xl transition-all group"
@@ -416,19 +365,12 @@ export function UserModals({
                         </div>
                         <div className="text-left">
                           <span className="block text-sm font-bold text-primary">Meu Perfil</span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Nome, telefone e matrícula
-                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">Nome, telefone e matrícula</span>
                         </div>
                       </div>
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-300 group-hover:translate-x-1 transition-transform"
-                        aria-hidden="true"
-                      />
+                      <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                     </button>
 
-                    {/* Segurança & Senha */}
                     <button
                       onClick={() => setActivePage('password')}
                       className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-primary/20 hover:bg-primary/[0.02] rounded-2xl transition-all group"
@@ -438,22 +380,13 @@ export function UserModals({
                           <Lock size={18} />
                         </div>
                         <div className="text-left">
-                          <span className="block text-sm font-bold text-primary">
-                            Segurança & Senha
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Gerencie sua segurança
-                          </span>
+                          <span className="block text-sm font-bold text-primary">Segurança & Senha</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Gerencie sua segurança</span>
                         </div>
                       </div>
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-300 group-hover:translate-x-1 transition-transform"
-                        aria-hidden="true"
-                      />
+                      <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                     </button>
 
-                    {/* Suporte */}
                     <button
                       onClick={() => setActivePage('support')}
                       className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-primary/20 hover:bg-primary/[0.02] rounded-2xl transition-all group"
@@ -464,19 +397,12 @@ export function UserModals({
                         </div>
                         <div className="text-left">
                           <span className="block text-sm font-bold text-primary">Suporte</span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Reporte problemas técnicos
-                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">Reporte problemas técnicos</span>
                         </div>
                       </div>
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-300 group-hover:translate-x-1 transition-transform"
-                        aria-hidden="true"
-                      />
+                      <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                     </button>
 
-                    {/* Melhorias */}
                     <button
                       onClick={() => setActivePage('improvements')}
                       className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-secondary/40 hover:bg-secondary/5 rounded-2xl transition-all group"
@@ -487,24 +413,15 @@ export function UserModals({
                         </div>
                         <div className="text-left">
                           <span className="block text-sm font-bold text-primary">Melhorias</span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Sugira novas funcionalidades
-                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">Sugira novas funcionalidades</span>
                         </div>
                       </div>
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-300 group-hover:translate-x-1 transition-transform"
-                        aria-hidden="true"
-                      />
+                      <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
                     </button>
 
-                    {/* Logout */}
                     <div className="pt-1">
                       <button
-                        onClick={() => {
-                          if (window.confirm('Deseja realmente sair?')) onLogout();
-                        }}
+                        onClick={() => { if (window.confirm('Deseja realmente sair?')) onLogout(); }}
                         className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-red-100 hover:bg-red-50 rounded-2xl transition-all group"
                       >
                         <div className="flex items-center gap-3">
@@ -512,4 +429,31 @@ export function UserModals({
                             <LogOut size={18} />
                           </div>
                           <div className="text-left">
-                            <span className="block text-sm font-bold text-red-500 group-hover:text-red-600
+                            <span className="block text-sm font-bold text-red-500 group-hover:text-red-600">Sair</span>
+                            <span className="text-[10px] text-red-300/80 font-medium">Encerrar sessão com segurança</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-red-200 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+
+                  </nav>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3 bg-slate-50/60 border-t border-slate-50 flex justify-between items-center shrink-0">
+                <div className="flex gap-1" aria-hidden="true">
+                  {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-primary/20" />)}
+                </div>
+                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+                  Hospital Pequeno Príncipe • 2026
+                </span>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
