@@ -239,3 +239,68 @@ REUNIÕES:
 RESPEITO E PROFISSIONALISMO:
 - Comunicação clara, educada e assertiva mesmo à distância.
 - Respeitar tempo, limites e opiniões de colegas e gestores.
+
+  === SCRIPTS DE DISCURSO — LACTÁRIO ===
+
+CONTEXTO DO LACTÁRIO:
+- 58% das crianças internadas no HPP estão na primeira infância (até 6 anos).
+- O Lactário prepara cerca de 600 mamadeiras por dia.
+- Atende crianças que precisam de fórmulas especiais e suplementos de alto custo.
+- Cada refeição é parte do tratamento — nutrição e saúde caminham juntas.
+
+HISTÓRIA DE IMPACTO — GABRIELLY:
+- Paciente com fibrose cística, em tratamento desde o primeiro ano de vida.
+- Precisou de cirurgia nas primeiras 48 horas de vida.
+- A nutrição adequada é fundamental para sua evolução: pacientes desnutridos têm quadros
+  pulmonares mais agravados.
+- Exemplifica por que o Lactário é essencial para a sobrevivência e recuperação.
+
+SCRIPT COMPLETO — DISCURSO LACTÁRIO:
+
+"Alô, tudo bem? Eu sou a [NOME] do Hospital Pequeno Príncipe, com quem eu falo?
+
+[NOME DO DOADOR], você já teve que alimentar um bebê doente?
+É um momento que aperta o coração, né?
+Eles não sabem dizer onde dói, mas o corpo todo pede cuidado.
+
+Aqui no hospital, 58% das crianças internadas ainda estão na primeira infância —
+ou seja, até os 6 anos de idade. Mais da metade dos nossos pacientes ainda são bebês.
+
+É por isso que o Lactário é um dos lugares mais importantes do hospital.
+É lá que a gente prepara cerca de 600 mamadeiras todos os dias —
+onde começa a recuperação, a nutrição, a força pra lutar.
+
+Cada mamadeira não é só leite. É vida e tratamento!
+
+Você já imaginou uma criança que, além de enfrentar uma doença grave,
+não pode comer qualquer alimento?
+Aqui no Hospital Pequeno Príncipe, muitas delas precisam de fórmulas especiais
+e suplementos de alto custo, todos os dias, pra conseguirem se manter vivas e ganhar peso.
+Cada refeição é parte do tratamento — feita na medida certa, na hora exata.
+É um cuidado silencioso, mas essencial.
+
+E esse trabalho só é possível porque pessoas como você nos ajudam a manter tudo isso funcionando.
+
+Deixa eu te contar uma história que mostra o impacto real desse apoio...
+
+A Gabrielly trata fibrose cística conosco desde o seu primeiro ano.
+Precisou fazer cirurgia nas primeiras 48 horas de vida,
+e a nutrição adequada é fundamental para a evolução do seu tratamento —
+para que, além da condição clínica, ela não sofra também de desnutrição,
+já que pacientes desnutridos têm quadros pulmonares mais agravados.
+
+Por isso, hoje eu tô aqui pra te fazer esse convite especial:
+
+Você pode ajudar a nutrir a esperança de muitas crianças com uma doação mensal
+de 3 formas bem simples:
+pode ser pela fatura de energia, pelo débito em conta
+ou, se preferir, pelo cartão de crédito.
+
+Qual dessas formas fica melhor pra você?"
+
+PONTOS-CHAVE DO DISCURSO LACTÁRIO (para monitoria):
+- Abertura empática: conexão emocional antes de qualquer dado.
+- Dado institucional: 58% primeira infância, 600 mamadeiras/dia.
+- Humanização: história real da Gabrielly (fibrose cística).
+- Fechamento com oferta das 3 formas de pagamento + pergunta de escolha (não de decisão).
+- NÃO perguntar "se" quer ajudar — perguntar QUAL forma é melhor.
