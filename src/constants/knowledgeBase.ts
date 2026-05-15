@@ -379,6 +379,118 @@ REGRA LGPD MAIS IMPORTANTE NA LIGAÇÃO:
   ANTES de solicitar ou confirmar qualquer dado pessoal do doador.
 - Sem esse aviso, toda a captação está em não conformidade legal.
 
+=== REGRAS DE DOAÇÕES CT ===
+
+MÓDULO 1 — DIRETRIZES GERAIS E TIPOLOGIA DE DOADORES:
+
+FOCO DA OPERAÇÃO:
+- Captação de novos doadores — Pessoa Física, primeira vez na base.
+- Validação obrigatória no sistema antes de qualquer lançamento (impedir duplicidade de doações ativas).
+- Toda doação exige gravação com checklist via Weon (exceções: LP e Multicanal).
+- Recursos captados são de uso livre — NÃO atrelar a setores específicos.
+- Regra de Renovação: CT atua APENAS no receptivo para doadores inativos há mais de 6 meses.
+  Ativo de renovação é exclusivo do RDI.
+
+MÓDULO 2 — FORMAS DE PAGAMENTO E PARAMETRIZAÇÃO DE PARCELAS:
+
+MODALIDADES ACEITAS:
+- Cias de Energia: Copel, Cocel, Celesc.
+- Débito Automático: BB, Bradesco, Itaú, Santander, Sicredi.
+- Cartão de Crédito: Amex, Diners, Elo, Mastercard, Visa.
+- PIX CT (doe@hpp.org.br — Sicredi): exclusivo e obrigatório para primeira oferta de doações pontuais.
+
+ESTRUTURA DE PARCELAS:
+- Continuada: igual ou superior a 12 meses.
+- Pontual: inferior a 12 meses.
+- Conversão de pontual para outra modalidade: somente permitida após pagamento da última parcela vigente.
+
+MÓDULO 3 — LANÇAMENTO, MULTICANAL E ELEGIBILIDADE DE METAS:
+
+CADASTRO E PRAZO:
+- Cadastro obrigatoriamente em nome do titular.
+- Informações de terceiros pagadores: constar apenas no Histórico Bell.
+- SLA de Lançamento: lançar no mês vigente da gravação.
+  Lançamentos fora do mês contam apenas para o bloco — NÃO para a meta do captador.
+
+FLUXO MULTICANAL (WHATSAPP):
+- Válido estritamente para Copel e Débito Automático.
+- Exige texto padrão de aceite enviado pelo doador + dados, com print anexado no Bell.
+- Dispensa checklist de voz.
+
+INELEGIBILIDADE — NÃO BATE META SE:
+1. Reativação > 2 vezes na mesma conta sem nunca ter compensado o pagamento.
+2. Indução de cancelamento de doação de outro bloco para migração para o CT.
+3. Quebrar a Regra de 6 Meses: tentar reativar ou alterar forma de pagamento com menos
+   de 6 meses do último pagamento compensado ou lançado.
+   EXCEÇÃO: alteração de dados por cancelamento de cartão ou conta bancária.
+
+MÓDULO 4 — LIMITAÇÕES, INAPTIDÃO E CONFORMIDADE LGPD:
+
+TETO DE CAPTAÇÃO CT:
+- Limite máximo: R$ 4.999,99.
+- Valores iguais ou superiores a R$ 5.000,00 → repassar IMEDIATAMENTE para o setor PEP.
+
+INAPTIDÃO:
+- Suspeita de incapacidade de decisão (doença citada, dependência de terceiros para negociar):
+  1. Finalizar a chamada de forma educada.
+  2. NÃO lançar no sistema.
+  3. Notificar imediatamente a supervisão.
+
+LGPD — REGRA DE OURO:
+- Aviso de gravação MANDATÓRIO antes de vocalizar qualquer dado cadastral.
+
+QUALIDADE DE DADOS:
+- Validação de CPF: mínimo 2 números falados pelo doador.
+- Dados desatualizados: atualização ou exclusão obrigatória.
+
+MÓDULO 5 — HISTÓRICO BELL E AUTORIZAÇÃO DE TERCEIROS:
+
+PADRONIZAÇÃO DO RELATO NO BELL:
+- Titular: breve relato humanizado + telefone falado.
+- Terceiros/PJ: nome do doador/sócio + vínculo com titular/empresa + breve relato + telefone falado.
+
+REGRA DE TERCEIROS — ENERGIA:
+- Exige checklist gravado com o TITULAR concordando com o débito + confirmação de CPF (mín. 2 dígitos).
+- Seguido do checklist completo com o doador.
+
+EMANCIPAÇÃO / PROCURAÇÃO:
+- Conclusão somente após envio do comprovante documental via Multicanal e anexo no Bell.
+
+MÓDULO 6 — PREVENÇÃO DE INCONSISTÊNCIAS E CASOS SENSÍVEIS:
+
+CARGO POLÍTICO:
+- PROIBIDA captação de Vereadores de Curitiba e Deputados (Estaduais/Federais) do Paraná.
+- Repassar para setor específico: Rodrigo Bonfim.
+- Demais localidades: notificar a supervisão.
+
+FRAUDES OPERACIONAIS — SEGURAR CHAMADA:
+- Não encerrar a chamada sistemicamente após o fim da conversa por mais de 60 segundos
+  resultará em notificação e medidas cabíveis.
+
+RISCOS DE IMAGEM — PROIBIDO:
+- Inventar dados do HPP.
+- Emitir opiniões pessoais sobre a instituição.
+- Falar com menores de idade.
+- Usar palavras de baixo calão.
+
+MÓDULO 7 — ARGUMENTAÇÃO INSTITUCIONAL (DISCURSOS):
+
+PP NORTE:
+- Venda baseada no "sonho para o futuro".
+- PROIBIDO prometer destinação específica (ex: "comprar um tijolo", "vai para a obra").
+
+VALORES E CUSTOS:
+- Na ausência de tabelas oficiais: usar EXCLUSIVAMENTE estimativas ("aproximadamente", "cerca de").
+- Prestação de contas deve espelhar o site oficial do HPP.
+
+REDE MAIS AMIGOS:
+- Elegibilidade:
+  R$ 40,00+ indeterminado ou mín. 12 parcelas → 1 acesso.
+  R$ 60,00+ indeterminado ou mín. 12 parcelas → 2 acessos.
+- Entrega: e-mail em 30 a 60 dias após a doação.
+- NÃO é vitalício — vinculado à doação ativa.
+- Se a doação for cancelada, o benefício é encerrado.
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
