@@ -26,10 +26,9 @@ interface ChatViewProps {
   user: User;
   initialQuery: string;
   onBack: () => void;
-  isDark: boolean;
 }
 
-export default function ChatView({ user, initialQuery, onBack, isDark }: ChatViewProps) {
+export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -139,13 +138,13 @@ ${HPP_KNOWLEDGE}`;
   const firstName = user.name.split(' ')[0];
 
   return (
-    <div className={`${isDark ? 'dark' : ''} flex flex-col h-screen bg-white dark:bg-slate-950`}>
+    <div className="flex flex-col h-screen bg-white">
 
       {/* ── HEADER ── */}
-      <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 px-6 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+      <header className="h-16 border-b border-slate-200 flex items-center gap-4 px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
         <button
           onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-500 dark:text-slate-400"
+          className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
           aria-label="Voltar"
         >
           <ArrowLeft size={20} />
@@ -153,7 +152,7 @@ ${HPP_KNOWLEDGE}`;
         <div className="flex items-center gap-3">
           <img src={AVATAR} alt="Príncipe" className="w-9 h-9 rounded-full object-cover border-2 border-primary/20" />
           <div>
-            <p className="font-bold text-sm text-slate-800 dark:text-slate-100 leading-none">Príncipe</p>
+            <p className="font-bold text-sm text-slate-800 leading-none">Príncipe</p>
             <p className="text-xs text-emerald-500 font-medium mt-0.5">Online</p>
           </div>
         </div>
@@ -165,10 +164,10 @@ ${HPP_KNOWLEDGE}`;
       </header>
 
       {/* ── MENSAGENS ── */}
-      <main className="flex-1 overflow-y-auto px-4 py-8 space-y-6 bg-slate-50 dark:bg-slate-950">
+      <main className="flex-1 overflow-y-auto px-4 py-8 bg-slate-50">
         <div className="max-w-3xl mx-auto w-full space-y-6">
 
-          {/* Saudação inicial */}
+          {/* Aguardando primeira resposta */}
           {messages.length === 0 && !loading && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -176,7 +175,7 @@ ${HPP_KNOWLEDGE}`;
               className="text-center py-12"
             >
               <img src={AVATAR} alt="Príncipe" className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-primary/10" />
-              <p className="text-slate-400 dark:text-slate-500 text-sm">Iniciando conversa...</p>
+              <p className="text-slate-400 text-sm">Iniciando conversa...</p>
             </motion.div>
           )}
 
@@ -202,13 +201,13 @@ ${HPP_KNOWLEDGE}`;
 
                 {/* Balão */}
                 <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 px-1">
+                  <p className="text-[11px] font-medium text-slate-400 px-1">
                     {msg.role === 'bot' ? 'Príncipe' : firstName} · {msg.time}
                   </p>
                   <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.role === 'user'
                       ? 'bg-primary text-white rounded-tr-sm'
-                      : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-slate-800 rounded-tl-sm'
+                      : 'bg-white text-slate-800 border border-slate-100 rounded-tl-sm'
                   }`}>
                     {msg.role === 'bot' ? (
                       <ReactMarkdown
@@ -219,7 +218,7 @@ ${HPP_KNOWLEDGE}`;
                           ol: ({ children }) => <ol className="list-decimal pl-4 space-y-1 my-2">{children}</ol>,
                           li: ({ children }) => <li>{children}</li>,
                           code: ({ children }) => (
-                            <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+                            <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
                           ),
                         }}
                       >
@@ -242,10 +241,10 @@ ${HPP_KNOWLEDGE}`;
               className="flex gap-3"
             >
               <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover shrink-0 mt-1" />
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-5 py-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-slate-300 dark:bg-slate-600 rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-2 h-2 bg-slate-300 dark:bg-slate-600 rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-2 h-2 bg-slate-300 dark:bg-slate-600 rounded-full animate-bounce [animation-delay:300ms]" />
+              <div className="bg-white border border-slate-100 px-5 py-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]" />
               </div>
             </motion.div>
           )}
@@ -255,9 +254,9 @@ ${HPP_KNOWLEDGE}`;
       </main>
 
       {/* ── INPUT ── */}
-      <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 shrink-0">
+      <div className="border-t border-slate-200 bg-white px-4 py-4 shrink-0">
         <div className="max-w-3xl mx-auto w-full">
-          <div className="flex items-end gap-3 bg-slate-100 dark:bg-slate-900 rounded-2xl px-4 py-3">
+          <div className="flex items-end gap-3 bg-slate-100 rounded-2xl px-4 py-3">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -267,7 +266,7 @@ ${HPP_KNOWLEDGE}`;
               onKeyDown={handleKeyDown}
               placeholder="Digite sua mensagem... (Enter para enviar)"
               disabled={loading}
-              className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 max-h-40 leading-relaxed disabled:opacity-50"
+              className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 max-h-40 leading-relaxed disabled:opacity-50"
             />
             <button
               onClick={() => sendMessage(input)}
