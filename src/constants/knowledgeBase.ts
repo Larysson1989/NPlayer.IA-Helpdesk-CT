@@ -289,6 +289,96 @@ REGRAS DE OURO DA METODOLOGIA:
 3. O fechamento não é "se" o doador quer ajudar, mas "como" ele vai ajudar.
 4. Objeções surgem na etapa 4 — só contorne após apresentar a proposta completa.
 
+=== LGPD — LEI GERAL DE PROTEÇÃO DE DADOS (ONBOARDING CT) ===
+
+MÓDULO 1 — FUNDAMENTOS E TIPIFICAÇÃO DE DADOS:
+
+O QUE É A LGPD:
+- Lei nº 13.709/2018 — controla a privacidade e o tratamento de dados pessoais no Brasil.
+- Aprovada em 2018. De cumprimento obrigatório por toda a equipe de captação.
+
+DADOS PESSOAIS (identificação padrão):
+- Nome, RG, CPF, gênero, data de nascimento, telefone, endereço residencial,
+  localização via GPS e dados bancários.
+
+DADOS SENSÍVEIS (alto rigor de proteção — passíveis de discriminação):
+- Origem racial ou étnica.
+- Convicções religiosas, filosóficas ou políticas.
+- Dados referentes à saúde ou à vida sexual.
+- ATENÇÃO: nunca coletar, comentar ou registrar dados sensíveis durante a ligação.
+
+MÓDULO 2 — DIREITOS DO TITULAR E ORIGEM DAS INFORMAÇÕES:
+
+DIREITOS DO PROSPECT/DOADOR:
+- Direito à transparência: saber como seus dados são usados.
+- Direito ao consentimento: concordar com a finalidade do uso.
+- Direito a conhecer a origem dos seus dados.
+- A Política de Proteção de Dados está disponível no site da instituição.
+
+FONTES DE OBTENÇÃO DE DADOS (como o HPP obteve o contato):
+
+Mailing:
+- O Hospital possui parceria com empresas que fornecem contatos de público com potencial
+  interesse em doações.
+- Essas fontes são confiáveis, respeitam políticas de privacidade e estão em conformidade com a LGPD.
+
+Indicação:
+- Contatos fornecidos por apoiadores atuais da causa.
+- A pessoa indicadora autorizou o compartilhamento de seu nome na abordagem.
+- Ao abordar, mencionar quem indicou o contato.
+
+MÓDULO 3 — CLASSIFICAÇÃO DE ARMAZENAMENTO E SEGURANÇA DA INFORMAÇÃO:
+
+NÍVEIS DE CLASSIFICAÇÃO:
+- Pública: Pode ser compartilhada interna e externamente.
+- Interna: Restrita exclusivamente ao ambiente interno da instituição.
+- Confidencial: Restrita a ambiente controlado e funcionários com permissão específica de acesso.
+
+SEGURANÇA DA INFORMAÇÃO:
+- Proteção meticulosa das senhas de acesso aos sistemas é obrigatória.
+- Os sistemas abrigam dados sensíveis de doadores — jamais compartilhar credenciais.
+- Todo colaborador é co-responsável direto pela proteção de dados da instituição.
+
+MÓDULO 4 — ARGUMENTAÇÃO LEGAL E TRATATIVA DE OPT-OUT:
+
+CONTORNO DE DÚVIDAS LEGAIS (prospect questiona o uso dos dados):
+- Explicar que, por ser uma instituição filantrópica, a própria LGPD permite o contato
+  com a comunidade com base no LEGÍTIMO INTERESSE da instituição.
+- O objetivo é convidar novos apoiadores para uma causa social — não fins comerciais.
+- Tom: tranquilo, transparente e seguro.
+
+PROCESSO DE EXCLUSÃO — OPT-OUT (prospect não quer ser contatado):
+
+Postura obrigatória:
+- Ser muito empático e compreender o ponto do prospect.
+- Usar o tom de voz para tranquilizá-lo.
+- Reforçar que a instituição preza pela proteção de dados e investe esforços para garanti-los.
+
+Ação investigativa obrigatória:
+- Perguntar se o titular possui algum OUTRO número registrado em seu nome
+  que também deseja excluir.
+
+Sistematização obrigatória:
+- Preencher o link de opt-out (black list) IMEDIATAMENTE após o encerramento da chamada.
+- Não deixar para depois — a efetivação da exclusão deve ocorrer no mesmo momento.
+
+MÓDULO 5 — IMPACTOS LEGAIS E CO-RESPONSABILIDADE:
+
+CONSEQUÊNCIAS DO DESCUMPRIMENTO PARA A INSTITUIÇÃO:
+- Multas altas previstas em lei.
+- Suspensão das atividades que envolvem manipulação de dados.
+
+RESPONSABILIDADE DO COLABORADOR:
+- Todo colaborador é co-responsável direto pela proteção de dados.
+- Senhas de acesso devem ser protegidas com rigor absoluto.
+- Nunca compartilhar credenciais de sistema com terceiros.
+- O descumprimento dos processos de opt-out é uma infração direta à LGPD.
+
+REGRA LGPD MAIS IMPORTANTE NA LIGAÇÃO:
+- O aviso "Esta ligação está sendo gravada" deve ser feito OBRIGATORIAMENTE
+  ANTES de solicitar ou confirmar qualquer dado pessoal do doador.
+- Sem esse aviso, toda a captação está em não conformidade legal.
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
