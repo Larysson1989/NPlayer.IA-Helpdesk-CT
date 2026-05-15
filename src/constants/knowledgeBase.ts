@@ -773,6 +773,101 @@ RESTRIÇÃO DISCIPLINAR GRAVE:
   a vigência de um atestado médico.
 - A omissão desta informação é passível de sanções legais.
 
+=== NORMAS E PROTOCOLOS DE ATESTADOS — SESMT ===
+
+MÓDULO 1 — PROTOCOLOS DE ENTREGA E PRAZOS RIGOROSOS:
+
+AVISO IMEDIATO (OBRIGATÓRIO):
+- Avisar o gestor NO INÍCIO do atestado ou declaração para viabilizar remanejamento do quadro.
+- Não avisar = falta não justificada até a entrega do documento.
+
+PROTOCOLO PADRÃO DE ENTREGA:
+- Entrega presencial, feita pelo PRÓPRIO colaborador.
+- Local: Medicina do Trabalho.
+- Prazo: até o 1º dia útil após o fim do atestado.
+
+ATESTADOS LONGOS (> 7 DIAS):
+- Entrega obrigatória até o 8º dia após a DATA DE INÍCIO do afastamento.
+- Prazo inegociável — impacta o eSocial e o fechamento de folha.
+
+ACIDENTE DE TRABALHO:
+- Entrega impreterivelmente até o 1º dia útil seguinte ao fato.
+
+HORÁRIO DE ATENDIMENTO DA MEDICINA DO TRABALHO:
+- Segunda a sexta-feira:
+  07h às 10h | 12h às 15h | 19h às 20h30
+
+MÓDULO 2 — CRITÉRIOS DE VALIDADE DO DOCUMENTO:
+
+INFORMAÇÕES OBRIGATÓRIAS NO ATESTADO:
+- Identificação legível do local de atendimento.
+- Identificação do paciente.
+- CRM ou CRO do profissional.
+- Assinatura do profissional.
+- Período de afastamento claramente indicado.
+- Documentos ilegíveis ou incompletos: troca imediata obrigatória sob pena de não abono.
+
+EXAMES:
+- Declarações de exames SEM carimbo médico → exigem cópia da solicitação carimbada em anexo.
+
+TERAPIAS (Fisioterapia, Psicologia, etc.):
+- Exigem encaminhamento médico com CRM em anexo.
+- Abona APENAS o tempo equivalente ao período da sessão — não o dia inteiro.
+
+AUTENTICIDADE — DOCUMENTOS FÍSICOS:
+- Aceitos: originais ou cópias autenticadas no ato mediante confronto com o original.
+- NÃO aceitos: cópias simples sem confronto.
+
+MÓDULO 3 — EXCEÇÕES, TERCEIROS E ATESTADOS DIGITAIS:
+
+ENTREGA POR TERCEIROS:
+- Permitida SOMENTE em casos de: internamento, cirurgia ou dificuldade de locomoção.
+- O colaborador deve:
+  1. Autorizar no verso do documento com: nome completo, RG e grau de parentesco.
+  2. Comunicar via WhatsApp à Medicina do Trabalho.
+- O terceiro autorizado deve apresentar documento de identificação no ato da entrega.
+
+ATESTADOS ELETRÔNICOS:
+- Válidos se possuírem QR Code ou código de autenticação verificável.
+- Sem QR Code/código → enviar no WhatsApp da Medicina do Trabalho para validação
+  da assinatura eletrônica (Lei nº 14.063/2020).
+
+MÓDULO 4 — CONFORMIDADE ADMINISTRATIVA E AUDITORIA:
+
+PROIBIÇÃO DE TRABALHO DURANTE ATESTADO:
+- Estritamente proibido trabalhar na vigência do atestado.
+- Passível de punições legais para o COLABORADOR e para o GESTOR responsável.
+- Múltiplos vínculos: proibido trabalhar em outra empresa estando afastado pelo Hospital.
+
+REGISTRO DE PONTO:
+- Obrigatório registrar o ponto imediatamente ANTES e/ou APÓS a vigência do atestado ou declaração.
+
+AUDITORIA E CONVOCAÇÃO:
+- Documentos rasurados serão investigados e podem implicar em penalidades legais.
+- Comparecimento à Medicina do Trabalho quando convocado é OBRIGATÓRIO.
+- Não comparecimento = cancelamento automático do abono dos dias.
+
+MÓDULO 5 — CASOS ESPECÍFICOS:
+
+ACOMPANHAMENTO DE FILHO MENOR:
+- Direito: 1 dia por semestre.
+- Entrega do documento: diretamente no Departamento Pessoal (não na Medicina do Trabalho).
+
+ERRO CRÍTICO — ATESTADO EM NOME PRÓPRIO POR ACOMPANHAMENTO:
+- Apresentar atestado em nome próprio quando o real motivo foi acompanhar familiar:
+  → NÃO gera abono dos dias.
+  → Acarreta penalidades cabíveis ao colaborador.
+
+RESUMO DOS PRAZOS CRÍTICOS:
+┌─────────────────────────────────────────┬──────────────────────────────────────┐
+│ Situação                                │ Prazo de Entrega                     │
+├─────────────────────────────────────────┼──────────────────────────────────────┤
+│ Atestado padrão                         │ 1º dia útil após fim do atestado     │
+│ Atestado longo (> 7 dias)               │ Até o 8º dia após início do afast.   │
+│ Acidente de trabalho                    │ 1º dia útil seguinte ao fato         │
+│ Acompanhamento de filho menor           │ Entregar no Departamento Pessoal     │
+└─────────────────────────────────────────┴──────────────────────────────────────┘
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
