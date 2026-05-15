@@ -246,6 +246,49 @@ PONTOS-CHAVE DO DISCURSO LACTÁRIO:
 - Espírito vencedor, Paixão pelo desafio, Resiliência
 - Inteligência Emocional, Interesse por causas sociais
 
+=== METODOLOGIA MONTANHA RUSSA — ESTRUTURA DE SCRIPT ===
+
+VISÃO GERAL DA METODOLOGIA:
+A "Montanha Russa" é a estrutura persuasiva da ligação de captação. Conduz o doador por 4 etapas
+em sequência lógica: conexão → urgência → solução → ação.
+
+ETAPA 1 — APRESENTAÇÃO (A Conexão):
+Objetivo: Estabelecer confiança nos primeiros segundos da ligação.
+- Atender com encantamento e bom tom de voz.
+- Escutar o prospect de verdade — não apenas aguardar a vez de falar.
+- Fazer perguntas estratégicas para criar relacionamento.
+- Posição na metodologia: início seguro e acolhedor da jornada do doador.
+
+ETAPA 2 — PROBLEMATIZAÇÃO (O Vale / Urgência):
+Objetivo: Conscientizar o prospect sobre a necessidade imediata de apoio.
+- Apresentar um dado real de urgência OU abordar a problemática social existente no Brasil e no Hospital.
+- Criar tensão emocional legítima que exige uma atitude do prospect.
+- Posição na metodologia: a descida da montanha-russa — o momento do "Problema".
+
+ETAPA 3 — DIFERENCIAIS E SOLUÇÃO (O Ápice):
+Objetivo: Mostrar que existe uma saída clara para o problema apresentado.
+- Trazer a solução destacando os diferenciais do Hospital Pequeno Príncipe.
+- Demonstrar claramente como o apoio vai afetar positivamente a vida das crianças atendidas.
+- É o ponto mais alto da conversa — onde a esperança e o valor da instituição são exaltados.
+- Posição na metodologia: o "Ápice" — momento da Solução.
+
+ETAPA 4 — FECHAMENTO (A Ação):
+Objetivo: Converter a emoção e conscientização geradas em uma doação efetiva.
+- Tomar atitude e partir para um fechamento de qualidade — não esperar o doador propor.
+- REGRA DO SILÊNCIO: após a proposta de doação, é OBRIGATÓRIO aguardar o prospect responder
+  antes de qualquer outra intervenção. Quem fala primeiro, perde.
+- Contornar objeções que surgirem para concluir a doação.
+- Posição na metodologia: a "Chegada" — momento de firmar o compromisso.
+
+FLUXO RESUMIDO:
+Apresentação (Conexão) → Problematização (Vale/Urgência) → Diferenciais (Ápice/Solução) → Fechamento (Ação)
+
+REGRAS DE OURO DA METODOLOGIA:
+1. Nunca pular etapas — cada fase prepara emocionalmente para a próxima.
+2. O silêncio após a proposta é uma técnica, não um erro — não quebre antes do prospect falar.
+3. O fechamento não é "se" o doador quer ajudar, mas "como" ele vai ajudar.
+4. Objeções surgem na etapa 4 — só contorne após apresentar a proposta completa.
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
@@ -263,3 +306,5 @@ Reuniões: Câmera ligada, vestimenta adequada, pontualidade e participação at
 
 Respeito e Profissionalismo: Comunicação clara, educada e assertiva mesmo à distância.
 `;
+
+
