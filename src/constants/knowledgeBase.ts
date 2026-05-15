@@ -491,6 +491,83 @@ REDE MAIS AMIGOS:
 - NÃO é vitalício — vinculado à doação ativa.
 - Se a doação for cancelada, o benefício é encerrado.
 
+=== PLATAFORMAS E SISTEMAS OPERACIONAIS CT ===
+
+MÓDULO 1 — SISTEMAS CORE (TELEFONIA E LANÇAMENTO):
+
+Selbetti / Cloudnexcore (Telefonia e Discador):
+- Plataforma oficial de telefonia, discador e gestão de chamadas.
+- Acesso: https://hpp.cloudnexcore.com.br/
+
+Sistema Bell (CRM):
+- CRM central para histórico de doadores, cadastros e lançamentos financeiros.
+- Acesso: http://bell.hpp.br/index.php?l_atalho=*i
+
+MÓDULO 2 — FORMULÁRIOS E SOLICITAÇÕES (ECOSSISTEMA PIPEFY):
+
+Cadastro de Prospect:
+- Inserção padronizada de novos contatos mapeados.
+- Acesso: https://app.pipefy.com/public/form/j39lz4Bz
+
+Geração PIX:
+- Emissão exclusiva de chaves/links para doações pontuais.
+- Acesso: https://app.pipefy.com/public/form/h13BMXiX
+
+Solicitação de Multicanal (WhatsApp):
+- Acionamento para envio de links, formalização de acordos (Copel/Débito) e recebimento de comprovantes.
+- Acesso: https://app.pipefy.com/public/form/jrh7RTCy
+
+Solicitação de Envio de E-mail:
+- Direcionamento formal para envio de e-mails institucionais e de agradecimento.
+- Acesso: https://app.pipefy.com/public/form/QHt46NnE
+
+Lista de Bloqueio de Contatos — Opt-Out (LGPD):
+- Ferramenta OBRIGATÓRIA quando o prospect solicita exclusão de contato.
+- Preencher IMEDIATAMENTE após encerramento da chamada.
+- Acesso: https://app.pipefy.com/public/form/3gwY22f0
+
+MÓDULO 3 — FERRAMENTAS DE VALIDAÇÃO E PAGAMENTO:
+
+Validador de Débito Automático (Sintegra WS):
+- Conferência prévia de agência e conta corrente para evitar retornos bancários.
+- Acesso: https://www.sintegraws.com.br/validacao/dados-bancarios/banco-caixa-economica-federal
+
+Link GETNET (Cartão de Crédito):
+- Interface segura para processamento de doações via cartão.
+- Acesso: https://doarpequenoprincipe.org.br/colaborador
+
+Copel (Fatura Digital — Consulta de UC):
+- Consulta de Unidade Consumidora mediante autorização do doador em linha.
+- Acesso: https://www.copel.com/site/copel-distribuicao/fatura-digital/
+
+MÓDULO 4 — ADMINISTRATIVO, COMUNICAÇÃO E INSTITUCIONAL:
+
+Sisqual (Folha Ponto):
+- Acompanhamento de marcações e saldo de banco de horas.
+- Fechamento rigoroso todo dia 16 de cada mês.
+- Acesso: https://sisqual-wfm-prd.hpp.br/SISQUALPRD/sisqualPaperless/SPWEB/PedidoMarcacoesPage.aspx
+
+E-mail Corporativo:
+- Comunicação interna, envio de pareceres e avisos gerenciais.
+- Acesso: https://mail.cthpp.org.br/#1
+
+Zoom (Reuniões Remotas):
+- Plataforma para reuniões e alinhamentos de equipe.
+- Uso obrigatório com conta logada.
+- Acesso: https://zoom.us/signin#/login
+
+Trilhar / Neolude (Treinamentos):
+- Portal oficial de treinamentos, capacitações e desenvolvimento profissional do HPP.
+- Acesso: https://hpp.neolude.com.br/
+
+Rede Mais Amigos / Uppo (Clube de Benefícios):
+- Acesso ao clube de benefícios para repasse de login aos investidores elegíveis.
+- Acesso: https://app.uppo.com.br/redemaisamigoshpp/login
+
+Site Oficial do HPP:
+- Consulta de Prestação de Contas, notícias institucionais e validação de discursos.
+- Acesso: https://pequenoprincipe.org.br/
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
