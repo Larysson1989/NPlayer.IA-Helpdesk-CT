@@ -73,8 +73,10 @@ ${HPP_KNOWLEDGE}`;
       if (!apiKey) throw new Error('Chave de API não configurada.');
 
       const ai = new GoogleGenAI({ apiKey });
+
+      // ✅ CORRIGIDO: gemini-2.0-flash → gemini-2.5-flash
       const result = await ai.models.generateContentStream({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: text.trim(),
         config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.7 },
       });
