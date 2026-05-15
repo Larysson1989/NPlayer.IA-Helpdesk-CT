@@ -568,6 +568,81 @@ Site Oficial do HPP:
 - Consulta de Prestação de Contas, notícias institucionais e validação de discursos.
 - Acesso: https://pequenoprincipe.org.br/
 
+=== SOFT SKILLS — TOM DE VOZ E GESTÃO DE EMOÇÕES ===
+
+MÓDULO 1 — FUNDAMENTOS DE SOFT SKILLS NA CAPTAÇÃO:
+
+OS 4 PILARES DO ATENDIMENTO TELEFÔNICO:
+1. Escuta Ativa — ouvir de verdade, não apenas aguardar a vez de falar.
+2. Rapport (Conexão) — criar vínculo genuíno com o prospect.
+3. Tom de Voz — principal ferramenta de comunicação na ausência de linguagem corporal.
+4. Gestão de Emoções — controle interno que sustenta os outros três pilares.
+
+MÓDULO 2 — O PODER ESTRATÉGICO DO TOM DE VOZ:
+
+A MECÂNICA DA VOZ:
+- O tom de voz é o reflexo prático da comunicação telefônica.
+- Na ausência de linguagem corporal, a voz carrega 100% da mensagem não-verbal.
+- Uma voz monótona desconecta; uma voz expressiva engaja e convence.
+
+OS 8 ELEMENTOS DA EXECUÇÃO VOCAL:
+1. Clareza e Audibilidade — falar de forma compreensível, sem engolir palavras.
+2. Variação de Tom — evitar monotonia; variar o ritmo e a entonação ao longo da ligação.
+3. Empatia e Cordialidade — transmitir calor humano genuíno.
+4. Adaptação ao Cliente (Espelhamento) — ajustar o ritmo e o tom ao perfil do prospect.
+5. Transmissão de Confiança — voz firme e segura ao apresentar a instituição e a proposta.
+6. Uso de Pausas Estratégicas — silêncio intencional para dar peso às informações e ao fechamento.
+7. Sorriso na Voz — sorrir ao falar muda fisicamente a voz e é percebido pelo prospect.
+8. Expressividade — deixar a emoção da causa transparecer na fala.
+
+CHECKPOINT PRÁTICO — DINÂMICA "MUDA O TOM!":
+- Exercício de simulação com câmeras desligadas.
+- Operadores identificam e alternam emoções conflitantes aplicadas exclusivamente pela voz.
+- Exemplos de pares: Alegria/Pressa, Desânimo/Confiança.
+- Objetivo: treinar consciência e controle vocal em tempo real.
+
+MÓDULO 3 — TRANSMISSÃO DE EMOÇÃO E IMPACTO:
+
+POR QUE A EMOÇÃO IMPORTA NA CAPTAÇÃO:
+- Facilita a compreensão mútua entre captador e prospect.
+- Estabelece conexões pessoais profundas — o doador lembra de como se sentiu, não só do que ouviu.
+- Demonstra profissionalismo genuíno e comprometimento com a causa.
+
+EMOÇÃO E CONVERSÃO:
+- O controle emocional mantém o foco no investidor.
+- Facilita tomadas de decisão racionais que conduzem ao fechamento.
+- Captador emocionalmente desregulado perde o fio da condução da ligação.
+
+MÓDULO 4 — AUTOGESTÃO E REPROGRAMAÇÃO EMOCIONAL:
+
+BLINDAGEM CONTRA A FRUSTRAÇÃO (OS "NÃOS" DIÁRIOS):
+- O "não" faz parte da operação — não é pessoal, é estatístico.
+- Cada ligação é uma nova oportunidade — não carregar o peso da anterior.
+
+TÉCNICAS DE AUTOCONTROLE:
+1. Autoconhecimento emocional — identificar o próprio estado antes de cada ligação.
+2. Consciência Plena — estar presente na ligação sem julgamentos prévios sobre o prospect.
+3. Rede de Apoio Interna — contar com colegas e liderança nos momentos de desgaste.
+4. Autocuidado Constante — respeitar pausas, hidratação e saúde mental.
+
+ANCORAGEM POSITIVA:
+- Uso de afirmações positivas como combustível motivacional antes e durante o turno.
+- Estudo de caso institucional: vídeo "Essa é a Eloisa — Vale a pena lutar pela sua vida."
+  Exemplo real de impacto que reforça o propósito de cada ligação.
+
+CHECKPOINT PRÁTICO — DINÂMICA "A EMOÇÃO QUE EU LEVO PARA A LIGAÇÃO":
+- Duração: 10 a 15 minutos de reflexão e reprogramação mental.
+- Objetivo: o operador escolhe e fixa conscientemente a emoção ideal para reiniciar
+  o ciclo de ligações de forma limpa e positiva — mesmo após negativas sequenciais.
+- Aplicar especialmente após períodos de muitas recusas seguidas.
+
+REGRAS DE OURO — TOM DE VOZ E EMOÇÃO:
+1. Nunca atender com voz cansada, apática ou irritada — o prospect sente imediatamente.
+2. O sorriso na voz não é opcional — é técnica comprovada de conexão.
+3. Pausas estratégicas têm mais poder do que palavras a mais.
+4. Espelhar o ritmo do prospect cria rapport sem que ele perceba.
+5. A emoção da causa (crianças, hospital, impacto real) é o maior diferencial do captador do HPP.
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
