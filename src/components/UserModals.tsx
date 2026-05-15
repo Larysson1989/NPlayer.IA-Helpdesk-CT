@@ -290,7 +290,7 @@ export function UserModals({
 
   return (
     <>
-      {/* ── Fullscreen pages ── */}
+      {/* Fullscreen pages */}
       <AnimatePresence>
         {activePage && (
           <FullscreenUnderConstruction
@@ -300,7 +300,7 @@ export function UserModals({
         )}
       </AnimatePresence>
 
-      {/* ── Drawer ── */}
+      {/* Drawer */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -348,7 +348,11 @@ export function UserModals({
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative group">
                       <div className="w-24 h-24 rounded-[28px] overflow-hidden border-4 border-white shadow-xl bg-slate-100">
-                        <img src={currentAvatar} alt={user.name} className="w-full h-full object-cover" />
+                        <img
+                          src={currentAvatar}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="absolute -bottom-2 -right-2 flex gap-1.5">
                         <button
@@ -375,9 +379,12 @@ export function UserModals({
                       />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-xl font-bold text-primary tracking-tight">{user.name}</h3>
+                      <h3 className="text-xl font-bold text-primary tracking-tight">
+                        {user.name}
+                      </h3>
                       <p className="text-sm text-slate-400 font-medium flex items-center justify-center gap-1.5 mt-0.5">
-                        <Mail size={12} className="text-slate-300" /> {user.email}
+                        <Mail size={12} className="text-slate-300" />
+                        {user.email}
                       </p>
                     </div>
                   </div>
@@ -385,27 +392,57 @@ export function UserModals({
                   {/* Completion bar */}
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Perfil completo</span>
-                      <span className={`text-xs font-bold ${completion === 100 ? 'text-green-500' : 'text-primary'}`}>{completion}%</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Perfil completo
+                      </span>
+                      <span
+                        className={`text-xs font-bold ${
+                          completion === 100 ? 'text-green-500' : 'text-primary'
+                        }`}
+                      >
+                        {completion}%
+                      </span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${completion}%` }}
-                        className={`h-full rounded-full ${completion === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                        className={`h-full rounded-full ${
+                          completion === 100 ? 'bg-green-500' : 'bg-primary'
+                        }`}
                       />
                     </div>
                   </div>
 
-                  {/* Menu */}
+                  {/* Menu items */}
                   <div className="grid gap-2">
                     {(
                       [
-                        { page: 'edit', icon: <User size={18} />, label: 'Dados Cadastrais', sub: 'Nome, telefone e matrícula' },
-                        { page: 'password', icon: <Lock size={18} />, label: 'Segurança & Senha', sub: 'Gerencie sua segurança' },
-                        { page: 'support', icon: <MessageSquare size={18} />, label: 'Central de Suporte', sub: 'Dúvidas ou problemas' },
-                        { page: 'improvements', icon: <Sparkles size={18} />, label: 'Sugestão de Melhorias', sub: 'Compartilhe suas ideias' },
-                      ] as const
+                        {
+                          page: 'edit' as const,
+                          icon: <User size={18} />,
+                          label: 'Dados Cadastrais',
+                          sub: 'Nome, telefone e matrícula',
+                        },
+                        {
+                          page: 'password' as const,
+                          icon: <Lock size={18} />,
+                          label: 'Segurança & Senha',
+                          sub: 'Gerencie sua segurança',
+                        },
+                        {
+                          page: 'support' as const,
+                          icon: <MessageSquare size={18} />,
+                          label: 'Central de Suporte',
+                          sub: 'Dúvidas ou problemas',
+                        },
+                        {
+                          page: 'improvements' as const,
+                          icon: <Sparkles size={18} />,
+                          label: 'Sugestão de Melhorias',
+                          sub: 'Compartilhe suas ideias',
+                        },
+                      ]
                     ).map(({ page, icon, label, sub }) => (
                       <button
                         key={page}
@@ -417,17 +454,26 @@ export function UserModals({
                             {icon}
                           </div>
                           <div className="text-left">
-                            <span className="block text-sm font-bold text-primary">{label}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">{sub}</span>
+                            <span className="block text-sm font-bold text-primary">
+                              {label}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {sub}
+                            </span>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-0.5 transition-transform" />
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:translate-x-0.5 transition-transform"
+                        />
                       </button>
                     ))}
 
                     {/* Logout */}
                     <button
-                      onClick={() => { if (window.confirm('Deseja realmente sair?')) onLogout(); }}
+                      onClick={() => {
+                        if (window.confirm('Deseja realmente sair?')) onLogout();
+                      }}
                       className="flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-red-100 hover:bg-red-50 rounded-2xl transition-all group"
                     >
                       <div className="flex items-center gap-3">
@@ -435,11 +481,18 @@ export function UserModals({
                           <LogOut size={18} />
                         </div>
                         <div className="text-left">
-                          <span className="block text-sm font-bold text-red-600">Encerrar Sessão</span>
-                          <span className="text-[10px] text-red-400/60 font-medium">Sair com segurança</span>
+                          <span className="block text-sm font-bold text-red-600">
+                            Encerrar Sessão
+                          </span>
+                          <span className="text-[10px] text-red-400/60 font-medium">
+                            Sair com segurança
+                          </span>
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-red-200 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight
+                        size={16}
+                        className="text-red-200 group-hover:translate-x-0.5 transition-transform"
+                      />
                     </button>
                   </div>
                 </div>
