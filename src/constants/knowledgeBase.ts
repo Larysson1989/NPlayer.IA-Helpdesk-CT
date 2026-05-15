@@ -643,6 +643,136 @@ REGRAS DE OURO — TOM DE VOZ E EMOÇÃO:
 4. Espelhar o ritmo do prospect cria rapport sem que ele perceba.
 5. A emoção da causa (crianças, hospital, impacto real) é o maior diferencial do captador do HPP.
 
+=== REGRAS OPERACIONAIS E ADMINISTRATIVAS CT ===
+
+PARTE I — OPERAÇÃO E REGRAS DE NEGÓCIO
+
+MÓDULO 1 — DIRETRIZES DE CAPTAÇÃO E ELEGIBILIDADE:
+
+FOCO DA OPERAÇÃO:
+- Primariamente Pessoa Física (PF) — primeira vez na base.
+- Pessoa Jurídica (PJ) permitida: coletar nome do sócio, vínculo e CPF.
+
+VALIDAÇÃO OBRIGATÓRIA PRÉ-LANÇAMENTO:
+- Consultar OBRIGATORIAMENTE no Bell ou Planilha de Conciliação se o doador
+  já possui doação ativa antes de qualquer lançamento.
+
+LIMITES DE VALORES:
+- Mínimo: R$ 15,00 | Máximo: R$ 4.999,99.
+- Valores >= R$ 5.000,00 → direcionar IMEDIATAMENTE ao setor PEP.
+
+REGRA DE 6 MESES E INELEGIBILIDADE:
+- Reativações válidas para meta: mínimo 6 meses desde o último pagamento
+  ou lançamento (caso nunca tenha pago).
+- Reativações antes do prazo ou upgrade de valor → repassar ao RDI.
+
+PROIBIÇÃO DE CANIBALIZAÇÃO:
+- Estritamente proibido induzir cancelamento de doação de outro bloco
+  para captar para o CT.
+
+MÓDULO 2 — FORMAS DE PAGAMENTO E SISTEMATIZAÇÃO:
+
+PARAMETRIZAÇÃO DE PARCELAS:
+- Continuada: a partir de 12 meses.
+- Determinada: de 2 a 11 meses.
+- Pontual: parcela única.
+- PIX: exclusivo para doações pontuais. Obrigatório como ÚLTIMA oferta
+  em caso de recusa das demais opções.
+
+DÉBITO AUTOMÁTICO:
+- Aceito apenas conta corrente de bancos tradicionais: BB, Santander, Itaú, Bradesco, Sicredi.
+- Sicredi: único banco que dispensa liberação no app.
+- 1º vencimento: prazo entre 10 e 45 dias corridos.
+
+CARTÃO DE CRÉDITO:
+- Aceita bancos digitais.
+- Lançamento no Bell apenas até o histórico — efetivação automática via GETNET.
+
+MULTICANAL (WHATSAPP):
+- Uso para Celesc e Débito → exige retorno de ligação para checklist gravado.
+- Uso para envio de comprovantes PIX e emancipações.
+- Obrigatório anexar print do aceite e dados no Bell.
+
+MÓDULO 3 — CONFORMIDADE DE DADOS E LGPD:
+
+REGRAS OBRIGATÓRIAS DE DADOS CADASTRAIS:
+- Aviso de gravação MANDATÓRIO antes de qualquer coleta de dado.
+- Confirmação mínima de 2 dígitos do CPF pelo doador.
+- Cadastro de endereço COMPLETO obrigatório.
+- TAG obrigatória no sistema: Adote um Leito - PF Doador.
+
+BLOQUEIOS:
+- Vereadores de Curitiba e Deputados (Estaduais/Federais) do PR:
+  NÃO concluir no CT → repassar para Rodrigo Bonfim.
+- Inaptidão mental/decisória identificada: NÃO lançar + avisar supervisão imediatamente.
+
+REGRAS DE TERCEIROS E SIGILO:
+- Proibido uso de dados do prospect para fins pessoais.
+- Doações por terceiros (fatura de energia): checklist inicial obrigatório com o titular da conta.
+
+DISCURSO INSTITUCIONAL:
+- Proibido cravar valores exatos de tratamentos/exames → usar "aproximadamente" ou "cerca de".
+- Recursos captados são de uso livre do Hospital — não atrelar a setores ou projetos específicos.
+
+MÓDULO 4 — RITO DO CHECKLIST E RETORNO AO DOADOR:
+
+EXECUÇÃO DO CHECKLIST:
+- Realizado ao final da chamada.
+- Correções de dados DURANTE o checklist não exigem reinício.
+- Reinício obrigatório SOMENTE se o captador esqueceu de perguntar um dado
+  obrigatório antes de iniciar o checklist.
+
+CONTATO PF (RETORNOS):
+- Após o lançamento, a captadora NÃO realiza retornos.
+- Inconsistências tratadas pelo Contato PF após auditoria:
+  CPF não confirmado, falha na autorização de terceiros, ausência de UC, placa solar.
+
+PARTE II — ROTINAS ADMINISTRATIVAS E SAÚDE OCUPACIONAL
+
+MÓDULO 5 — GESTÃO DE JORNADA E PONTO (SISQUAL):
+
+RESPONSABILIDADE DO COLABORADOR:
+- Marcações exatas de entrada, saída e intervalos — alinhadas ao login/logoff do discador.
+- Acesso ao Sisqual é pessoal e intransferível — proibido compartilhar senhas.
+
+AUSÊNCIAS E AJUSTES:
+- Obras, faltas e ausência de batida: justificar via "Portal do Colaborador".
+- Tratamento e validação final: responsabilidade da supervisão.
+
+HORAS EXTRAS:
+- Exigem alinhamento prévio e autorização expressa da liderança.
+- Limite: máximo 2 horas por dia.
+- Devem ser devidamente registradas no ponto.
+
+MÓDULO 6 — PROTOCOLO DE ATESTADOS MÉDICOS:
+
+AVISO IMEDIATO:
+- Comunicar a gestão OBRIGATORIAMENTE no momento do início do afastamento.
+
+PRAZOS CRÍTICOS DE ENTREGA FÍSICA:
+- Padrão: até o 1º dia útil após o fim do atestado.
+- Atestados longos (> 7 dias): entrega estritamente até o 8º dia após o início
+  do afastamento (prazo legal do eSocial).
+- Acidente de trabalho: entrega obrigatória no 1º dia útil seguinte ao ocorrido.
+
+VALIDADE DO DOCUMENTO — REQUISITOS OBRIGATÓRIOS:
+- Legível, sem rasuras.
+- CRM ou CRO do profissional presente.
+- Assinatura do profissional.
+- Identificação do local de atendimento.
+- Período de afastamento claramente indicado.
+
+DECLARAÇÕES ESPECÍFICAS:
+- Exames: válidas somente com carimbo médico acompanhadas do pedido de exame carimbado.
+- Terapias (psicólogos, fisioterapeutas, etc.): exigem encaminhamento médico com CRM em anexo.
+  Abona apenas o período da terapia.
+- Atestados Digitais: aceitos apenas com QR Code ou código de validação legal (Lei nº 14.063/2020).
+
+RESTRIÇÃO DISCIPLINAR GRAVE:
+- Terminantemente PROIBIDO trabalhar em qualquer vínculo empregatício durante
+  a vigência de um atestado médico.
+- A omissão desta informação é passível de sanções legais.
+
 === CÓDIGO DE CONDUTA — HOME OFFICE ===
 
 Ambiente: Local iluminado, arejado e confortável conforme NR17. Longe de TV ou locais com fluxo de pessoas.
