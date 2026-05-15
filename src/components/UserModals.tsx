@@ -329,3 +329,137 @@ export function UserModals({
               {/* Header */}
               <div className="px-6 py-5 flex justify-between items-center bg-white border-b border-slate-50 shrink-0">
                 <h2 className="text-base font-bold text-primary tracking-tight">
+                  Meu Perfil
+                </h2>
+                <button
+                  onClick={onClose}
+                  aria-label="Fechar"
+                  className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors group"
+                >
+                  <X size={18} className="text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-6">
+
+                  {/* Avatar */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative group">
+                      <div className="w-24 h-24 rounded-[28px] overflow-hidden border-4 border-white shadow-xl bg-slate-100">
+                        <img src={currentAvatar} alt={user.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 flex gap-1.5">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-2.5 bg-primary text-white rounded-xl shadow-lg hover:bg-primary/90 transition-all active:scale-95 border-2 border-white"
+                        >
+                          <Camera size={15} />
+                        </button>
+                        {user.avatar && (
+                          <button
+                            onClick={removeAvatar}
+                            className="p-2.5 bg-white text-red-500 rounded-xl shadow-lg hover:bg-red-50 transition-all active:scale-95 border-2 border-white"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/*"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold text-primary tracking-tight">{user.name}</h3>
+                      <p className="text-sm text-slate-400 font-medium flex items-center justify-center gap-1.5 mt-0.5">
+                        <Mail size={12} className="text-slate-300" /> {user.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Completion bar */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Perfil completo</span>
+                      <span className={`text-xs font-bold ${completion === 100 ? 'text-green-500' : 'text-primary'}`}>{completion}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${completion}%` }}
+                        className={`h-full rounded-full ${completion === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Menu */}
+                  <div className="grid gap-2">
+                    {(
+                      [
+                        { page: 'edit', icon: <User size={18} />, label: 'Dados Cadastrais', sub: 'Nome, telefone e matrícula' },
+                        { page: 'password', icon: <Lock size={18} />, label: 'Segurança & Senha', sub: 'Gerencie sua segurança' },
+                        { page: 'support', icon: <MessageSquare size={18} />, label: 'Central de Suporte', sub: 'Dúvidas ou problemas' },
+                        { page: 'improvements', icon: <Sparkles size={18} />, label: 'Sugestão de Melhorias', sub: 'Compartilhe suas ideias' },
+                      ] as const
+                    ).map(({ page, icon, label, sub }) => (
+                      <button
+                        key={page}
+                        onClick={() => setActivePage(page)}
+                        className="flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-primary/20 hover:bg-primary/[0.02] rounded-2xl transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors text-primary">
+                            {icon}
+                          </div>
+                          <div className="text-left">
+                            <span className="block text-sm font-bold text-primary">{label}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{sub}</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    ))}
+
+                    {/* Logout */}
+                    <button
+                      onClick={() => { if (window.confirm('Deseja realmente sair?')) onLogout(); }}
+                      className="flex items-center justify-between p-4 bg-white border border-slate-100 hover:border-red-100 hover:bg-red-50 rounded-2xl transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors">
+                          <LogOut size={18} />
+                        </div>
+                        <div className="text-left">
+                          <span className="block text-sm font-bold text-red-600">Encerrar Sessão</span>
+                          <span className="text-[10px] text-red-400/60 font-medium">Sair com segurança</span>
+                        </div>
+                      </div>
+                      <ChevronRight size={16} className="text-red-200 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex justify-between items-center shrink-0">
+                <div className="flex gap-1" aria-hidden="true">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="w-1 h-1 rounded-full bg-primary/20" />
+                  ))}
+                </div>
+                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+                  Hospital Pequeno Príncipe • 2026
+                </span>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
