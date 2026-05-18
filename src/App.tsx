@@ -4,19 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
 import { AuthPage } from './pages/AuthPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { motion } from 'motion/react';
-
-// ── Supabase inline (mesmo padrão do AuthPage) ───────────────
-const supabase = createClient(
-  'https://uinfkxxfmowkjixcduuy.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbmZreHhmbW93a2ppeGNkdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzc0NjcsImV4cCI6MjA5NDY1MzQ2N30.6fkxUMbliL8WncNHpWhvDejLpN1-ttSCDGDxIYrYeA0'
-);
 
 const AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsja2GmlJ7z64XhGwI_WRtSwLQ1cA8yB2IW_SxUGC6xqrXSNnd-tjPNwXd-yFuW16id4il3bF0eTU5CTbxIhUStSPK0G5iNPPFwpfo1UM1AMKUoznN9IjvQqOPHLyLb099WSpiqb_qwqR5eQCh5dlmkkAEnCT1uH3RwRus2scZ8deMJcrPfN-ABL3mSAL6_EiQdL3quKIwfpWChNxAEQQrTQfc_jJEEV_GjJN4dzgfdHxxBs2i8834KMIg3F9grlI_ov603xAceHM';
 
@@ -33,73 +27,134 @@ const FAQ_CARDS = [
   { icon: 'task_alt',          title: 'Finalização de chamada',        desc: 'Protocolo para encerramento e confirmação.' },
 ];
 
-interface User {
+// ── Tipos ────────────────────────────────────────────────────
+export type UserRole = 'captador' | 'supervisor' | 'administrador';
+
+export interface User {
+  id: string;
   email: string;
   name: string;
+  role: UserRole | null;
+  active: boolean;
   matricula?: string;
   telefone?: string;
   avatar?: string;
 }
 
+type AppState = 'loading' | 'unauthenticated' | 'pending' | 'inactive' | UserRole;
+
+// ── Tela: aguardando liberação ────────────────────────────────
+function PendingPage({ onLogout }: { onLogout: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-8">
+      <div className="text-center space-y-3 max-w-sm">
+        <div className="text-5xl">⏳</div>
+        <h2 className="text-xl font-black text-slate-700 uppercase tracking-tight">
+          Aguardando liberação
+        </h2>
+        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+          Seu cadastro foi recebido. Um administrador irá liberar seu acesso em breve.
+        </p>
+      </div>
+      <button
+        onClick={onLogout}
+        className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        Sair
+      </button>
+    </div>
+  );
+}
+
+// ── Tela: conta desativada ────────────────────────────────────
+function InactivePage({ onLogout }: { onLogout: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-8">
+      <div className="text-center space-y-3 max-w-sm">
+        <div className="text-5xl">🔒</div>
+        <h2 className="text-xl font-black text-red-600 uppercase tracking-tight">
+          Conta desativada
+        </h2>
+        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+          Seu acesso foi suspenso. Entre em contato com o administrador.
+        </p>
+      </div>
+      <button
+        onClick={onLogout}
+        className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        Sair
+      </button>
+    </div>
+  );
+}
+
+// ── Resolve role do usuário logado ────────────────────────────
+async function resolveState(userId: string): Promise<{ state: AppState; profile: Partial<User> }> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('email, name, role, active, matricula, telefone, avatar')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!data)             return { state: 'pending', profile: {} };
+  if (!data.active)      return { state: 'inactive', profile: data };
+  if (!data.role)        return { state: 'pending', profile: data };
+
+  return { state: data.role as UserRole, profile: data };
+}
+
+// ── App principal ─────────────────────────────────────────────
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [appState, setAppState]           = useState<AppState>('loading');
+  const [user, setUser]                   = useState<User | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeChatQuery, setActiveChatQuery] = useState<string | null>(null);
-  const [activeProfilePage, setActiveProfilePage] = useState<ProfilePage | null>(null);
+  const [searchQuery, setSearchQuery]     = useState('');
+  const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
+  const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // ── Restaura sessão ao recarregar ────────────────────────────
+  // ── Inicializa sessão ──────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserProfile(session.user.email ?? '', session.user.user_metadata?.name);
-      } else {
-        setLoadingSession(false);
-      }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) { setAppState('unauthenticated'); return; }
+      await applySession(session.user.id, session.user.email ?? '');
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) setUser(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!session?.user) { setUser(null); setAppState('unauthenticated'); return; }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setAppState('loading');
+        await applySession(session.user.id, session.user.email ?? '');
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Carrega dados extras de user_permissions ─────────────────
-  const loadUserProfile = async (email: string, fallbackName?: string) => {
-    const { data } = await supabase
-      .from('user_permissions')
-      .select('name, matricula, telefone, avatar')
-      .eq('email', email)
-      .maybeSingle();
-
+  const applySession = async (id: string, email: string) => {
+    const { state, profile } = await resolveState(id);
     setUser({
+      id,
       email,
-      name: data?.name ?? fallbackName ?? email.split('@')[0],
-      matricula: data?.matricula ?? undefined,
-      telefone: data?.telefone ?? undefined,
-      avatar: data?.avatar ?? undefined,
+      name:      profile.name      ?? email.split('@')[0],
+      role:      (profile.role as UserRole) ?? null,
+      active:    profile.active    ?? true,
+      matricula: profile.matricula ?? undefined,
+      telefone:  profile.telefone  ?? undefined,
+      avatar:    profile.avatar    ?? undefined,
     });
-    setLoadingSession(false);
+    setAppState(state);
   };
 
-  // ── Callback do AuthPage ─────────────────────────────────────
-  const handleLoginSuccess = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser?.email) {
-      await loadUserProfile(authUser.email, authUser.user_metadata?.name);
-    }
-  };
-
-  // ── Logout ───────────────────────────────────────────────────
+  // ── Logout ─────────────────────────────────────────────────
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSearchQuery('');
     setActiveChatQuery(null);
     setActiveProfilePage(null);
+    setAppState('unauthenticated');
   };
 
   const openChat = (query: string) => {
@@ -109,21 +164,15 @@ export default function App() {
 
   const handleTextareaInput = () => {
     const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-    }
+    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
   };
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      openChat(searchQuery);
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); openChat(searchQuery); }
   };
 
-  // ── Loading inicial ──────────────────────────────────────────
-  if (loadingSession) {
+  // ── Estados globais ─────────────────────────────────────────
+  if (appState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
@@ -134,10 +183,14 @@ export default function App() {
     );
   }
 
-  // ── Sem sessão → login ───────────────────────────────────────
-  if (!user) return <AuthPage onSuccess={handleLoginSuccess} />;
+  if (appState === 'unauthenticated' || !user) {
+    return <AuthPage onSuccess={() => setAppState('loading')} />;
+  }
 
-  // ── UnderConstruction ────────────────────────────────────────
+  if (appState === 'inactive') return <InactivePage onLogout={handleLogout} />;
+  if (appState === 'pending')  return <PendingPage  onLogout={handleLogout} />;
+
+  // ── Sub-páginas (UnderConstruction / Chat) ──────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -147,23 +200,26 @@ export default function App() {
     );
   }
 
-  // ── Chat ─────────────────────────────────────────────────────
   if (activeChatQuery !== null) {
     return (
       <ChatView
         user={user}
         initialQuery={activeChatQuery}
-        onBack={() => {
-          setActiveChatQuery(null);
-          setSearchQuery('');
-        }}
+        onBack={() => { setActiveChatQuery(null); setSearchQuery(''); }}
       />
     );
   }
 
+  // ── Badge de role no header ─────────────────────────────────
+  const roleBadge: Record<UserRole, { label: string; color: string }> = {
+    captador:      { label: 'Captador',      color: 'text-blue-600 bg-blue-50' },
+    supervisor:    { label: 'Supervisor',    color: 'text-purple-600 bg-purple-50' },
+    administrador: { label: 'Administrador', color: 'text-emerald-600 bg-emerald-50' },
+  };
+  const badge = user.role ? roleBadge[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName = user.name.split(' ')[0];
 
-  // ── Tela Principal ───────────────────────────────────────────
+  // ── Tela principal (captador / supervisor / administrador) ───
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
@@ -171,7 +227,7 @@ export default function App() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
-        onUpdateUser={setUser}
+        onUpdateUser={(updated) => setUser(u => u ? { ...u, ...updated } : u)}
         onLogout={handleLogout}
         onNavigate={(page) => {
           setIsProfileModalOpen(false);
@@ -192,6 +248,7 @@ export default function App() {
             "Inteligência que transforma cada ligação"
           </p>
         </div>
+
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsProfileModalOpen(true)}
@@ -199,7 +256,9 @@ export default function App() {
           >
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold">{user.name}</p>
-              <p className="text-xs text-slate-500">Captador Master</p>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${badge.color}`}>
+                {badge.label}
+              </span>
             </div>
             <img
               src={user.avatar || AVATAR}
