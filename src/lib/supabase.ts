@@ -7,8 +7,8 @@ export const supabase = createClient(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,   // ← evita o loop ao mudar de URL
-      storageKey: 'nplayer-auth',  // ← chave fixa independente do domínio
+      detectSessionInUrl: false,
+      storageKey: 'nplayer-auth',
     }
   }
 );
