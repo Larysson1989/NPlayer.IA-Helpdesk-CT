@@ -107,20 +107,34 @@ async function resolveState(userId: string): Promise<{ state: AppState; profile:
 
 // ── App principal ─────────────────────────────────────────────
 export default function App() {
-  const [appState, setAppState]                   = useState<AppState>('loading');
-  const [user, setUser]                           = useState<User | null>(null);
+  const [appState, setAppState]                     = useState<AppState>('loading');
+  const [user, setUser]                             = useState<User | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery]             = useState('');
-  const [activeChatQuery, setActiveChatQuery]     = useState<string | null>(null);
-  const [activeProfilePage, setActiveProfilePage] = useState<ProfilePage | null>(null);
+  const [searchQuery, setSearchQuery]               = useState('');
+  const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
+  const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   // ── Inicializa sessão ──────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) { setAppState('unauthenticated'); return; }
-      await applySession(session.user.id, session.user.email ?? '');
-    });
+    // Segurança: se após 5s ainda estiver loading, vai para login
+    const timeout = setTimeout(() => {
+      setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
+    }, 5000);
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        clearTimeout(timeout);
+        if (!session?.user) {
+          setAppState('unauthenticated');
+          return;
+        }
+        await applySession(session.user.id, session.user.email ?? '');
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        setAppState('unauthenticated');
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) {
@@ -134,22 +148,30 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
+  // ── Aplica sessão do usuário ───────────────────────────────
   const applySession = async (id: string, email: string) => {
-    const { state, profile } = await resolveState(id);
-    setUser({
-      id,
-      email,
-      name:      profile.name      ?? email.split('@')[0],
-      role:      (profile.role as UserRole) ?? null,
-      active:    profile.active    ?? true,
-      matricula: profile.matricula ?? undefined,
-      telefone:  profile.telefone  ?? undefined,
-      avatar:    profile.avatar    ?? undefined,
-    });
-    setAppState(state);
+    try {
+      const { state, profile } = await resolveState(id);
+      setUser({
+        id,
+        email,
+        name:      profile.name      ?? email.split('@')[0],
+        role:      (profile.role as UserRole) ?? null,
+        active:    profile.active    ?? true,
+        matricula: profile.matricula ?? undefined,
+        telefone:  profile.telefone  ?? undefined,
+        avatar:    profile.avatar    ?? undefined,
+      });
+      setAppState(state);
+    } catch {
+      setAppState('unauthenticated');
+    }
   };
 
   // ── Logout ─────────────────────────────────────────────────
