@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
@@ -28,7 +28,6 @@ const FAQ_CARDS = [
   { icon: 'task_alt',          title: 'Finalização de chamada',        desc: 'Protocolo para encerramento e confirmação.' },
 ];
 
-// ── Tipos ─────────────────────────────────────────────────────
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
 
 export interface User {
@@ -44,7 +43,6 @@ export interface User {
 
 type AppState = 'loading' | 'unauthenticated' | 'pending' | 'inactive' | UserRole;
 
-// ── Tela: aguardando liberação ────────────────────────────────
 function PendingPage({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-8">
@@ -67,7 +65,6 @@ function PendingPage({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-// ── Tela: conta desativada ────────────────────────────────────
 function InactivePage({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-8">
@@ -90,7 +87,6 @@ function InactivePage({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-// ── Resolve estado do usuário logado ──────────────────────────
 async function resolveState(userId: string): Promise<{ state: AppState; profile: Partial<User> }> {
   const { data } = await supabase
     .from('profiles')
@@ -105,7 +101,6 @@ async function resolveState(userId: string): Promise<{ state: AppState; profile:
   return { state: data.role as UserRole, profile: data };
 }
 
-// ── App principal ─────────────────────────────────────────────
 export default function App() {
   const [appState, setAppState]                     = useState<AppState>('loading');
   const [user, setUser]                             = useState<User | null>(null);
@@ -115,46 +110,9 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // ── Inicializa sessão ──────────────────────────────────────
-  useEffect(() => {
-    // Segurança: se após 5s ainda estiver loading, vai para login
-    const timeout = setTimeout(() => {
-      setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
-    }, 5000);
+  // Flag para evitar que onAuthStateChange rode antes do getSession terminar
+  const sessionChecked = useRef(false);
 
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
-        clearTimeout(timeout);
-        if (!session?.user) {
-          setAppState('unauthenticated');
-          return;
-        }
-        await applySession(session.user.id, session.user.email ?? '');
-      })
-      .catch(() => {
-        clearTimeout(timeout);
-        setAppState('unauthenticated');
-      });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!session?.user) {
-        setUser(null);
-        setAppState('unauthenticated');
-        return;
-      }
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setAppState('loading');
-        await applySession(session.user.id, session.user.email ?? '');
-      }
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // ── Aplica sessão do usuário ───────────────────────────────
   const applySession = async (id: string, email: string) => {
     try {
       const { state, profile } = await resolveState(id);
@@ -174,7 +132,50 @@ export default function App() {
     }
   };
 
-  // ── Logout ─────────────────────────────────────────────────
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
+    }, 8000);
+
+    // 1) Verifica sessão existente primeiro
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        sessionChecked.current = true;
+        clearTimeout(timeout);
+        if (!session?.user) {
+          setAppState('unauthenticated');
+          return;
+        }
+        await applySession(session.user.id, session.user.email ?? '');
+      })
+      .catch(() => {
+        sessionChecked.current = true;
+        clearTimeout(timeout);
+        setAppState('unauthenticated');
+      });
+
+    // 2) Escuta mudanças após login/logout — só age se getSession já terminou
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Ignora o disparo inicial enquanto getSession ainda está rodando
+      if (!sessionChecked.current && event === 'INITIAL_SESSION') return;
+
+      if (!session?.user) {
+        setUser(null);
+        setAppState('unauthenticated');
+        return;
+      }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setAppState('loading');
+        await applySession(session.user.id, session.user.email ?? '');
+      }
+    });
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -184,7 +185,6 @@ export default function App() {
     setAppState('unauthenticated');
   };
 
-  // ── Chat helpers ───────────────────────────────────────────
   const openChat = (query: string) => {
     if (!query.trim()) return;
     setActiveChatQuery(query);
@@ -199,7 +199,6 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); openChat(searchQuery); }
   };
 
-  // ── Estados globais ────────────────────────────────────────
   if (appState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -218,7 +217,6 @@ export default function App() {
   if (appState === 'inactive') return <InactivePage onLogout={handleLogout} />;
   if (appState === 'pending')  return <PendingPage  onLogout={handleLogout} />;
 
-  // ── Tela exclusiva do Administrador ───────────────────────
   if (appState === 'administrador') {
     return (
       <AdminPage
@@ -228,7 +226,6 @@ export default function App() {
     );
   }
 
-  // ── Sub-páginas (UnderConstruction / Chat) ─────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -248,7 +245,6 @@ export default function App() {
     );
   }
 
-  // ── Badge de role no header ────────────────────────────────
   const roleBadge: Record<UserRole, { label: string; color: string }> = {
     captador:      { label: 'Captador',   color: 'text-blue-600 bg-blue-50' },
     supervisor:    { label: 'Supervisor', color: 'text-purple-600 bg-purple-50' },
@@ -259,7 +255,6 @@ export default function App() {
     : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName = user.name.split(' ')[0];
 
-  // ── Tela principal (captador / supervisor) ─────────────────
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
@@ -275,7 +270,6 @@ export default function App() {
         }}
       />
 
-      {/* HEADER */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
@@ -309,7 +303,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white">
         <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
