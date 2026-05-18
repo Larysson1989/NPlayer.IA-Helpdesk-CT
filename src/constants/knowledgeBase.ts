@@ -666,9 +666,8 @@ REGRA DE 6 MESES E INELEGIBILIDADE:
   ou lançamento (caso nunca tenha pago).
 - Reativações antes do prazo ou upgrade de valor → repassar ao RDI.
 
-PROIBIÇÃO DE CANIBALIZAÇÃO:
-- Estritamente proibido induzir cancelamento de doação de outro bloco
-  para captar para o CT.
+RESPEITO ÀS DEMAIS INICIATIVAS
+- Toda ação de arrecadação do CT deve ocorrer de forma ética e independente, sem interferir nas campanhas, contribuições ou iniciativas de outros blocos.
 
 MÓDULO 2 — FORMAS DE PAGAMENTO E SISTEMATIZAÇÃO:
 
