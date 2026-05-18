@@ -1,13 +1,8 @@
 // src/pages/AuthPage.tsx
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase'; // ✅ instância centralizada
 import { ShieldAlert, X, Eye, EyeOff, Loader2, Headphones, User, Mail, Lock, ArrowRight } from 'lucide-react';
-
-const supabase = createClient(
-  'https://uinfkxxfmowkjixcduuy.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbmZreHhmbW93a2ppeGNkdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzc0NjcsImV4cCI6MjA5NDY1MzQ2N30.6fkxUMbliL8WncNHpWhvDejLpN1-ttSCDGDxIYrYeA0'
-);
 
 const ALLOWED_DOMAINS = ['hpp.org.br'];
 const ALLOWED_EXCEPTIONS = ['admin@lary.ia.br'];
@@ -167,18 +162,17 @@ function BlockedDomainModal({ email, onClose }: { email: string; onClose: () => 
 type AuthMode = 'login' | 'register';
 
 export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [mode, setMode]               = useState<AuthMode>('login');
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
+  const [name, setName]               = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
   const [blockedEmail, setBlockedEmail] = useState<string | null>(null);
-  const [attempts, setAttempts] = useState(0);
+  const [attempts, setAttempts]       = useState(0);
 
   const isBlocked = attempts >= 5;
-
   const clearError = () => setError(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,7 +236,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
       <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col">
         <FloatingLetters />
 
-        {/* Conteúdo central */}
         <div className="flex-1 flex items-center justify-center p-4 z-10 relative">
           <div className="w-full max-w-[490px] space-y-5">
 
@@ -372,7 +365,7 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   </div>
                 </div>
 
-                {/* Campo Senha — minLength removido */}
+                {/* Campo Senha */}
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
                     Senha
