@@ -111,10 +111,10 @@ export default function App() {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Timeout de segurança: se o Supabase não responder em 10s, vai para login
+    // Timeout de segurança: se o Supabase não responder em 1s, vai para login
     const timeout = setTimeout(() => {
       setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
-    }, 10000);
+    }, 1000);
 
     // Única fonte de verdade: onAuthStateChange
     // O evento INITIAL_SESSION é disparado imediatamente com a sessão atual (ou null)
