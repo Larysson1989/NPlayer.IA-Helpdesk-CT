@@ -43,6 +43,8 @@ export interface User {
 
 type AppState = 'loading' | 'unauthenticated' | 'pending' | 'inactive' | UserRole;
 
+// ─── Telas auxiliares ────────────────────────────────────────
+
 function PendingPage({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-6 p-8">
@@ -87,6 +89,8 @@ function InactivePage({ onLogout }: { onLogout: () => void }) {
   );
 }
 
+// ─── Busca perfil no banco ───────────────────────────────────
+
 async function resolveState(userId: string): Promise<{ state: AppState; profile: Partial<User> }> {
   const { data } = await supabase
     .from('profiles')
@@ -101,6 +105,8 @@ async function resolveState(userId: string): Promise<{ state: AppState; profile:
   return { state: data.role as UserRole, profile: data };
 }
 
+// ─── App principal ───────────────────────────────────────────
+
 export default function App() {
   const [appState, setAppState]                     = useState<AppState>('loading');
   const [user, setUser]                             = useState<User | null>(null);
@@ -110,52 +116,75 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    // Timeout de segurança: se o Supabase não responder em 1s, vai para login
-    const timeout = setTimeout(() => {
-      setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
-    }, 1000);
+  // ── Helper: monta objeto User a partir da sessão + perfil ──
+  function buildUser(sessionUser: { id: string; email?: string }, profile: Partial<User>): User {
+    return {
+      id:        sessionUser.id,
+      email:     sessionUser.email ?? '',
+      name:      profile.name      ?? (sessionUser.email ?? '').split('@')[0],
+      role:      (profile.role as UserRole) ?? null,
+      active:    profile.active    ?? true,
+      matricula: profile.matricula ?? undefined,
+      telefone:  profile.telefone  ?? undefined,
+      avatar:    profile.avatar    ?? undefined,
+    };
+  }
 
-    // Única fonte de verdade: onAuthStateChange
-    // O evento INITIAL_SESSION é disparado imediatamente com a sessão atual (ou null)
+  useEffect(() => {
+    let mounted = true;
+
+    // 1. Verifica sessão existente imediatamente (não depende de evento)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+
+      if (!session?.user) {
+        setAppState('unauthenticated');
+        return;
+      }
+
+      try {
+        const { state, profile } = await resolveState(session.user.id);
+        if (!mounted) return;
+        setUser(buildUser(session.user, profile));
+        setAppState(state);
+      } catch {
+        if (mounted) setAppState('unauthenticated');
+      }
+    });
+
+    // 2. Escuta mudanças futuras: login, logout, refresh de token
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        clearTimeout(timeout);
+        if (!mounted) return;
 
-        // Sem sessão → tela de login
+        // INITIAL_SESSION já foi tratado pelo getSession() acima
+        if (event === 'INITIAL_SESSION') return;
+
         if (!session?.user) {
           setUser(null);
           setAppState('unauthenticated');
           return;
         }
 
-        // Com sessão → busca perfil e define estado
         setAppState('loading');
         try {
           const { state, profile } = await resolveState(session.user.id);
-          setUser({
-            id:        session.user.id,
-            email:     session.user.email ?? '',
-            name:      profile.name      ?? (session.user.email ?? '').split('@')[0],
-            role:      (profile.role as UserRole) ?? null,
-            active:    profile.active    ?? true,
-            matricula: profile.matricula ?? undefined,
-            telefone:  profile.telefone  ?? undefined,
-            avatar:    profile.avatar    ?? undefined,
-          });
+          if (!mounted) return;
+          setUser(buildUser(session.user, profile));
           setAppState(state);
         } catch {
-          setUser(null);
-          setAppState('unauthenticated');
+          if (mounted) setAppState('unauthenticated');
         }
       }
     );
 
     return () => {
-      clearTimeout(timeout);
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
+
+  // ── Ações ──────────────────────────────────────────────────
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -180,7 +209,7 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); openChat(searchQuery); }
   };
 
-  // ── Estados globais ────────────────────────────────────────
+  // ── Roteamento por estado ──────────────────────────────────
 
   if (appState === 'loading') {
     return (
@@ -201,12 +230,7 @@ export default function App() {
   if (appState === 'pending')  return <PendingPage  onLogout={handleLogout} />;
 
   if (appState === 'administrador') {
-    return (
-      <AdminPage
-        adminName={user.name}
-        onLogout={handleLogout}
-      />
-    );
+    return <AdminPage adminName={user.name} onLogout={handleLogout} />;
   }
 
   if (activeProfilePage !== null) {
@@ -227,6 +251,8 @@ export default function App() {
       />
     );
   }
+
+  // ── Dashboard principal ────────────────────────────────────
 
   const roleBadge: Record<UserRole, { label: string; color: string }> = {
     captador:      { label: 'Captador',   color: 'text-blue-600 bg-blue-50' },
@@ -253,6 +279,7 @@ export default function App() {
         }}
       />
 
+      {/* Header */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
@@ -286,6 +313,7 @@ export default function App() {
         </div>
       </header>
 
+      {/* Main */}
       <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white">
         <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
