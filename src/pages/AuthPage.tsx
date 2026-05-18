@@ -1,8 +1,14 @@
 // src/pages/AuthPage.tsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { ShieldAlert, X, Eye, EyeOff, Loader2 } from 'lucide-react';
+
+// ─── Supabase inline (evita dependência de path alias) ───────
+const supabase = createClient(
+  'https://uinfkxxfmowkjixcduuy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbmZreHhmbW93a2ppeGNkdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzc0NjcsImV4cCI6MjA5NDY1MzQ2N30.6fkxUMbliL8WncNHpWhvDejLpN1-ttSCDGDxIYrYeA0'
+);
 
 // Domínios permitidos
 const ALLOWED_DOMAINS = ['hpp.org.br'];
@@ -31,7 +37,6 @@ function BlockedDomainModal({ email, onClose }: { email: string; onClose: () => 
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
         className="w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl"
       >
-        {/* Topo vermelho */}
         <div className="bg-red-600 px-6 pt-8 pb-6 text-white text-center relative">
           <button
             onClick={onClose}
@@ -45,16 +50,11 @@ function BlockedDomainModal({ email, onClose }: { email: string; onClose: () => 
           <h2 className="text-xl font-extrabold tracking-tight">Acesso Bloqueado</h2>
           <p className="text-red-100 text-sm mt-1 font-medium">Domínio não autorizado</p>
         </div>
-
-        {/* Corpo */}
         <div className="px-6 py-6 space-y-4">
           <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
-            <p className="text-sm font-bold text-red-700 mb-1">
-              E-mail rejeitado:
-            </p>
+            <p className="text-sm font-bold text-red-700 mb-1">E-mail rejeitado:</p>
             <p className="text-sm text-red-500 font-mono break-all">{email}</p>
           </div>
-
           <div className="space-y-2 text-sm text-slate-600">
             <p className="font-bold text-slate-800">🔒 Política de segurança</p>
             <p>Este sistema é de uso <strong>exclusivo</strong> para colaboradores do Hospital Pequeno Príncipe.</p>
@@ -69,7 +69,6 @@ function BlockedDomainModal({ email, onClose }: { email: string; onClose: () => 
               Se você é colaborador e está tendo dificuldades de acesso, entre em contato com o suporte de TI.
             </p>
           </div>
-
           <button
             onClick={onClose}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95"
@@ -101,7 +100,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     clearError();
 
-    // Validação de domínio (front-end)
     if (!isDomainAllowed(email)) {
       setBlockedEmail(email);
       return;
@@ -115,21 +113,16 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
         if (error) throw error;
         onSuccess();
       } else {
-        // Registro
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            data: { name: name || email.split('@')[0] },
-          },
+          options: { data: { name: name || email.split('@')[0] } },
         });
         if (error) throw error;
-        // O trigger handle_new_user cuida do user_permissions automaticamente
         onSuccess();
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-      // Traduz mensagens comuns do Supabase
       if (msg.includes('Invalid login credentials')) {
         setError('E-mail ou senha incorretos.');
       } else if (msg.includes('Email not confirmed')) {
@@ -163,28 +156,21 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-sm bg-white rounded-3xl shadow-xl overflow-hidden"
         >
-          {/* Header */}
           <div className="px-8 pt-8 pb-6 text-center border-b border-slate-50">
-            {/* Coloque aqui o logo do HPP */}
             <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-extrabold text-xl">L</span>
             </div>
             <h1 className="text-xl font-extrabold text-primary">Portal Lary</h1>
-            <p className="text-xs text-slate-400 mt-1 font-medium">
-              Hospital Pequeno Príncipe
-            </p>
+            <p className="text-xs text-slate-400 mt-1 font-medium">Hospital Pequeno Príncipe</p>
           </div>
 
-          {/* Tabs login / cadastro */}
           <div className="flex mx-6 mt-6 bg-slate-50 rounded-2xl p-1 gap-1">
             {(['login', 'register'] as AuthMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); clearError(); }}
                 className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                  mode === m
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-slate-400 hover:text-slate-600'
+                  mode === m ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
                 {m === 'login' ? 'Entrar' : 'Cadastrar'}
@@ -192,7 +178,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
             ))}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="px-6 pt-5 pb-8 space-y-4">
             <AnimatePresence mode="wait">
               {mode === 'register' && (
@@ -258,7 +243,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
               </div>
             </div>
 
-            {/* Erro inline */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -287,7 +271,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
               )}
             </button>
 
-            {/* Aviso de domínio */}
             <p className="text-center text-[10px] text-slate-300 font-medium pt-1">
               Acesso exclusivo para{' '}
               <span className="font-mono text-slate-400">@hpp.org.br</span>
