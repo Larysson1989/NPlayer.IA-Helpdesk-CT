@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
@@ -110,65 +110,46 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // Flag para evitar que onAuthStateChange rode antes do getSession terminar
-  const sessionChecked = useRef(false);
-
-  const applySession = async (id: string, email: string) => {
-    try {
-      const { state, profile } = await resolveState(id);
-      setUser({
-        id,
-        email,
-        name:      profile.name      ?? email.split('@')[0],
-        role:      (profile.role as UserRole) ?? null,
-        active:    profile.active    ?? true,
-        matricula: profile.matricula ?? undefined,
-        telefone:  profile.telefone  ?? undefined,
-        avatar:    profile.avatar    ?? undefined,
-      });
-      setAppState(state);
-    } catch {
-      setAppState('unauthenticated');
-    }
-  };
-
   useEffect(() => {
+    // Timeout de segurança: se o Supabase não responder em 10s, vai para login
     const timeout = setTimeout(() => {
       setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
-    }, 8000);
+    }, 10000);
 
-    // 1) Verifica sessão existente primeiro
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
-        sessionChecked.current = true;
+    // Única fonte de verdade: onAuthStateChange
+    // O evento INITIAL_SESSION é disparado imediatamente com a sessão atual (ou null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         clearTimeout(timeout);
+
+        // Sem sessão → tela de login
         if (!session?.user) {
+          setUser(null);
           setAppState('unauthenticated');
           return;
         }
-        await applySession(session.user.id, session.user.email ?? '');
-      })
-      .catch(() => {
-        sessionChecked.current = true;
-        clearTimeout(timeout);
-        setAppState('unauthenticated');
-      });
 
-    // 2) Escuta mudanças após login/logout — só age se getSession já terminou
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Ignora o disparo inicial enquanto getSession ainda está rodando
-      if (!sessionChecked.current && event === 'INITIAL_SESSION') return;
-
-      if (!session?.user) {
-        setUser(null);
-        setAppState('unauthenticated');
-        return;
-      }
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Com sessão → busca perfil e define estado
         setAppState('loading');
-        await applySession(session.user.id, session.user.email ?? '');
+        try {
+          const { state, profile } = await resolveState(session.user.id);
+          setUser({
+            id:        session.user.id,
+            email:     session.user.email ?? '',
+            name:      profile.name      ?? (session.user.email ?? '').split('@')[0],
+            role:      (profile.role as UserRole) ?? null,
+            active:    profile.active    ?? true,
+            matricula: profile.matricula ?? undefined,
+            telefone:  profile.telefone  ?? undefined,
+            avatar:    profile.avatar    ?? undefined,
+          });
+          setAppState(state);
+        } catch {
+          setUser(null);
+          setAppState('unauthenticated');
+        }
       }
-    });
+    );
 
     return () => {
       clearTimeout(timeout);
@@ -199,6 +180,8 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); openChat(searchQuery); }
   };
 
+  // ── Estados globais ────────────────────────────────────────
+
   if (appState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -211,7 +194,7 @@ export default function App() {
   }
 
   if (appState === 'unauthenticated' || !user) {
-    return <AuthPage onSuccess={() => setAppState('loading')} />;
+    return <AuthPage onSuccess={() => { /* onAuthStateChange cuida do resto */ }} />;
   }
 
   if (appState === 'inactive') return <InactivePage onLogout={handleLogout} />;
