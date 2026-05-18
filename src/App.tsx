@@ -3,13 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { AuthPage } from './pages/AuthPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { motion } from 'motion/react';
+
+// ── Supabase inline (mesmo padrão do AuthPage) ───────────────
+const supabase = createClient(
+  'https://uinfkxxfmowkjixcduuy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbmZreHhmbW93a2ppeGNkdXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzc0NjcsImV4cCI6MjA5NDY1MzQ2N30.6fkxUMbliL8WncNHpWhvDejLpN1-ttSCDGDxIYrYeA0'
+);
 
 const AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsja2GmlJ7z64XhGwI_WRtSwLQ1cA8yB2IW_SxUGC6xqrXSNnd-tjPNwXd-yFuW16id4il3bF0eTU5CTbxIhUStSPK0G5iNPPFwpfo1UM1AMKUoznN9IjvQqOPHLyLb099WSpiqb_qwqR5eQCh5dlmkkAEnCT1uH3RwRus2scZ8deMJcrPfN-ABL3mSAL6_EiQdL3quKIwfpWChNxAEQQrTQfc_jJEEV_GjJN4dzgfdHxxBs2i8834KMIg3F9grlI_ov603xAceHM';
 
@@ -36,13 +43,59 @@ interface User {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChatQuery, setActiveChatQuery] = useState<string | null>(null);
   const [activeProfilePage, setActiveProfilePage] = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const handleLogout = () => {
+  // ── Restaura sessão ao recarregar ────────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user.email ?? '', session.user.user_metadata?.name);
+      } else {
+        setLoadingSession(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) setUser(null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Carrega dados extras de user_permissions ─────────────────
+  const loadUserProfile = async (email: string, fallbackName?: string) => {
+    const { data } = await supabase
+      .from('user_permissions')
+      .select('name, matricula, telefone, avatar')
+      .eq('email', email)
+      .maybeSingle();
+
+    setUser({
+      email,
+      name: data?.name ?? fallbackName ?? email.split('@')[0],
+      matricula: data?.matricula ?? undefined,
+      telefone: data?.telefone ?? undefined,
+      avatar: data?.avatar ?? undefined,
+    });
+    setLoadingSession(false);
+  };
+
+  // ── Callback do AuthPage ─────────────────────────────────────
+  const handleLoginSuccess = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser?.email) {
+      await loadUserProfile(authUser.email, authUser.user_metadata?.name);
+    }
+  };
+
+  // ── Logout ───────────────────────────────────────────────────
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setSearchQuery('');
     setActiveChatQuery(null);
@@ -69,9 +122,22 @@ export default function App() {
     }
   };
 
+  // ── Loading inicial ──────────────────────────────────────────
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-400 font-medium">Verificando sessão...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Sem sessão → login ───────────────────────────────────────
   if (!user) return <AuthPage onSuccess={handleLoginSuccess} />;
 
-  // ── Tela UnderConstruction ──
+  // ── UnderConstruction ────────────────────────────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -81,7 +147,7 @@ export default function App() {
     );
   }
 
-  // ── Tela de Chat ──
+  // ── Chat ─────────────────────────────────────────────────────
   if (activeChatQuery !== null) {
     return (
       <ChatView
@@ -97,7 +163,7 @@ export default function App() {
 
   const firstName = user.name.split(' ')[0];
 
-  // ── Tela Principal ──
+  // ── Tela Principal ───────────────────────────────────────────
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
@@ -148,7 +214,6 @@ export default function App() {
       <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white">
         <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
-          {/* Saudação */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -162,7 +227,6 @@ export default function App() {
             </p>
           </motion.div>
 
-          {/* Input */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -194,7 +258,6 @@ export default function App() {
             </p>
           </motion.div>
 
-          {/* FAQ Grid */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
