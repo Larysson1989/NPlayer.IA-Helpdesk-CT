@@ -1,5 +1,5 @@
 // src/pages/AuthPage.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@supabase/supabase-js';
 import { ShieldAlert, X, Eye, EyeOff, Loader2, Headphones, User, Mail, Lock, ArrowRight } from 'lucide-react';
@@ -55,7 +55,6 @@ function FloatingLetters() {
           user-select: none;
           line-height: 1;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&display=swap');
       `}</style>
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" style={{ perspective: '600px' }}>
         {items.map(item => (
@@ -344,7 +343,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                             placeholder="Seu nome"
                             required={mode === 'register'}
                             className="w-full pl-11 pr-4 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
-                            style={{ '--tw-ring-color': 'rgba(16,100,174,0.10)' } as React.CSSProperties}
                             onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)'}
                             onBlur={e => e.currentTarget.style.boxShadow = ''}
                           />
@@ -374,7 +372,7 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   </div>
                 </div>
 
-                {/* Campo Senha */}
+                {/* Campo Senha — minLength removido */}
                 <div className="space-y-1.5">
                   <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
                     Senha
@@ -387,7 +385,6 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      minLength={6}
                       className="w-full pl-11 pr-12 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
                       onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)'}
                       onBlur={e => e.currentTarget.style.boxShadow = ''}
@@ -417,7 +414,7 @@ export function AuthPage({ onSuccess }: { onSuccess: () => void }) {
                   ) : (
                     <>
                       {mode === 'login' ? 'Entrar no Portal' : 'Criar Conta'}
-                      <ArrowRight size={16} className="transition-transform group-hover:translate-x-1.5" />
+                      <ArrowRight size={16} />
                     </>
                   )}
                 </button>
