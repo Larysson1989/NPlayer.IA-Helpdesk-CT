@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Login } from './components/Login';
+import { AuthPage } from './pages/AuthPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
@@ -69,7 +69,7 @@ export default function App() {
     }
   };
 
-  if (!user) return <Login onLogin={setUser} />;
+  if (!user) return <AuthPage onSuccess={handleLoginSuccess} />;
 
   // ── Tela UnderConstruction ──
   if (activeProfilePage !== null) {
