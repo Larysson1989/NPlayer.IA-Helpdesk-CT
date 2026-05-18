@@ -1,18 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Storage seguro com fallback em memória
+// Storage seguro com fallback silencioso (evita travamento em ambientes restritos)
 const safeStorage = {
   getItem: (key: string): string | null => {
-    try { return localStorage.getItem(key); }
-    catch { return null; }
+    try { return localStorage.getItem(key); } catch { return null; }
   },
   setItem: (key: string, value: string): void => {
-    try { localStorage.setItem(key, value); }
-    catch { /* silencia erro */ }
+    try { localStorage.setItem(key, value); } catch { /* silencia */ }
   },
   removeItem: (key: string): void => {
-    try { localStorage.removeItem(key); }
-    catch { /* silencia erro */ }
+    try { localStorage.removeItem(key); } catch { /* silencia */ }
   },
 };
 
@@ -25,7 +22,7 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
       storageKey: 'nplayer-auth',
-      storage: safeStorage, // ← proteção contra localStorage inacessível
+      storage: safeStorage,
     },
   }
 );
