@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { AuthPage } from './pages/AuthPage';
+import { AdminPage } from './pages/AdminPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
@@ -27,7 +28,7 @@ const FAQ_CARDS = [
   { icon: 'task_alt',          title: 'Finalização de chamada',        desc: 'Protocolo para encerramento e confirmação.' },
 ];
 
-// ── Tipos ────────────────────────────────────────────────────
+// ── Tipos ─────────────────────────────────────────────────────
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
 
 export interface User {
@@ -89,7 +90,7 @@ function InactivePage({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-// ── Resolve role do usuário logado ────────────────────────────
+// ── Resolve estado do usuário logado ──────────────────────────
 async function resolveState(userId: string): Promise<{ state: AppState; profile: Partial<User> }> {
   const { data } = await supabase
     .from('profiles')
@@ -97,21 +98,21 @@ async function resolveState(userId: string): Promise<{ state: AppState; profile:
     .eq('id', userId)
     .maybeSingle();
 
-  if (!data)             return { state: 'pending', profile: {} };
-  if (!data.active)      return { state: 'inactive', profile: data };
-  if (!data.role)        return { state: 'pending', profile: data };
+  if (!data)        return { state: 'pending',  profile: {} };
+  if (!data.active) return { state: 'inactive', profile: data };
+  if (!data.role)   return { state: 'pending',  profile: data };
 
   return { state: data.role as UserRole, profile: data };
 }
 
 // ── App principal ─────────────────────────────────────────────
 export default function App() {
-  const [appState, setAppState]           = useState<AppState>('loading');
-  const [user, setUser]                   = useState<User | null>(null);
+  const [appState, setAppState]                   = useState<AppState>('loading');
+  const [user, setUser]                           = useState<User | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery]     = useState('');
-  const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
-  const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
+  const [searchQuery, setSearchQuery]             = useState('');
+  const [activeChatQuery, setActiveChatQuery]     = useState<string | null>(null);
+  const [activeProfilePage, setActiveProfilePage] = useState<ProfilePage | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   // ── Inicializa sessão ──────────────────────────────────────
@@ -122,7 +123,11 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!session?.user) { setUser(null); setAppState('unauthenticated'); return; }
+      if (!session?.user) {
+        setUser(null);
+        setAppState('unauthenticated');
+        return;
+      }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setAppState('loading');
         await applySession(session.user.id, session.user.email ?? '');
@@ -157,6 +162,7 @@ export default function App() {
     setAppState('unauthenticated');
   };
 
+  // ── Chat helpers ───────────────────────────────────────────
   const openChat = (query: string) => {
     if (!query.trim()) return;
     setActiveChatQuery(query);
@@ -171,7 +177,7 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); openChat(searchQuery); }
   };
 
-  // ── Estados globais ─────────────────────────────────────────
+  // ── Estados globais ────────────────────────────────────────
   if (appState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -190,7 +196,17 @@ export default function App() {
   if (appState === 'inactive') return <InactivePage onLogout={handleLogout} />;
   if (appState === 'pending')  return <PendingPage  onLogout={handleLogout} />;
 
-  // ── Sub-páginas (UnderConstruction / Chat) ──────────────────
+  // ── Tela exclusiva do Administrador ───────────────────────
+  if (appState === 'administrador') {
+    return (
+      <AdminPage
+        adminName={user.name}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // ── Sub-páginas (UnderConstruction / Chat) ─────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -210,16 +226,18 @@ export default function App() {
     );
   }
 
-  // ── Badge de role no header ─────────────────────────────────
+  // ── Badge de role no header ────────────────────────────────
   const roleBadge: Record<UserRole, { label: string; color: string }> = {
-    captador:      { label: 'Captador',      color: 'text-blue-600 bg-blue-50' },
-    supervisor:    { label: 'Supervisor',    color: 'text-purple-600 bg-purple-50' },
-    administrador: { label: 'Administrador', color: 'text-emerald-600 bg-emerald-50' },
+    captador:      { label: 'Captador',   color: 'text-blue-600 bg-blue-50' },
+    supervisor:    { label: 'Supervisor', color: 'text-purple-600 bg-purple-50' },
+    administrador: { label: 'Admin',      color: 'text-emerald-600 bg-emerald-50' },
   };
-  const badge = user.role ? roleBadge[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  const badge = user.role
+    ? roleBadge[user.role]
+    : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName = user.name.split(' ')[0];
 
-  // ── Tela principal (captador / supervisor / administrador) ───
+  // ── Tela principal (captador / supervisor) ─────────────────
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
