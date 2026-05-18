@@ -133,8 +133,16 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
-    // 1. Verifica sessão existente imediatamente (não depende de evento)
+    // Timeout de segurança: nunca trava em loading (ex: localStorage inacessível)
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        setAppState(prev => prev === 'loading' ? 'unauthenticated' : prev);
+      }
+    }, 4000);
+
+    // 1. Verifica sessão existente (fonte primária, mais confiável)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(safetyTimer);
       if (!mounted) return;
 
       if (!session?.user) {
@@ -150,6 +158,10 @@ export default function App() {
       } catch {
         if (mounted) setAppState('unauthenticated');
       }
+    }).catch(() => {
+      // getSession() falhou completamente (ex: sem rede)
+      clearTimeout(safetyTimer);
+      if (mounted) setAppState('unauthenticated');
     });
 
     // 2. Escuta mudanças futuras: login, logout, refresh de token
@@ -180,6 +192,7 @@ export default function App() {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
