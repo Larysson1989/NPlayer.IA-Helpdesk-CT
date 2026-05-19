@@ -7,7 +7,6 @@ import {
   CheckCircle2, Clock, Ban, ChevronDown,
 } from 'lucide-react';
 
-// ─── Tipos ────────────────────────────────────────────────────
 type UserStatus  = 'ativo' | 'inativo' | 'bloqueado';
 type UserRole    = 'captador' | 'supervisor' | 'administrador';
 type FilterTab   = 'todos' | 'online' | 'offline' | 'bloqueado';
@@ -29,7 +28,6 @@ interface AdminPageProps {
   onBack:    () => void;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 
 function isOnline(last_seen_at: string | null): boolean {
@@ -58,7 +56,6 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
-// ─── Modal de Edição ─────────────────────────────────────────
 interface EditModalProps {
   profile: Profile;
   onSave:  (id: string, data: Partial<Profile>) => Promise<void>;
@@ -99,7 +96,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
         className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-800">Editar Usuário</h2>
@@ -110,7 +106,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
           </button>
         </div>
 
-        {/* Corpo */}
         <div className="px-6 py-5 space-y-5">
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nome completo</label>
@@ -175,7 +170,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-6 pb-6 flex gap-2">
           <button
             onClick={onClose}
@@ -200,7 +194,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
   );
 }
 
-// ─── AdminPage ────────────────────────────────────────────────
 export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
   const [profiles,    setProfiles]    = useState<Profile[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -209,9 +202,18 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
   const [tick,        setTick]        = useState(0);
 
-  // ── Busca de perfis ───────────────────────────────────────
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
+
+    // Verifica a sessão ativa
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('[AdminPage] Session user:', session?.user?.email, session?.user?.id);
+
+    // Testa a role via RPC
+    const { data: myRole, error: roleError } = await supabase.rpc('get_my_role');
+    console.log('[AdminPage] get_my_role:', myRole, roleError?.message);
+
+    // Busca os perfis
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, name, role, status, active, last_seen_at, created_at')
@@ -227,7 +229,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
     setLoading(false);
   }, []);
 
-  // ── Realtime + tick ───────────────────────────────────────
   useEffect(() => {
     fetchProfiles();
 
@@ -261,7 +262,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
     };
   }, [fetchProfiles]);
 
-  // ── Save ──────────────────────────────────────────────────
   async function handleSave(id: string, data: Partial<Profile>) {
     const { error } = await supabase
       .from('profiles')
@@ -270,7 +270,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
     if (error) console.error('[AdminPage] Erro ao salvar:', error.message);
   }
 
-  // ── Filtros ───────────────────────────────────────────────
   const filtered = profiles.filter(p => {
     const q = search.toLowerCase();
     const matchSearch = !q || (p.name?.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
@@ -297,11 +296,9 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
     { key: 'bloqueado', label: 'Bloqueados', icon: <ShieldOff size={14} />, dotColor: 'bg-red-400'     },
   ];
 
-  // ── Render ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
@@ -335,7 +332,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
         </div>
       </header>
 
-      {/* Main */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-5xl mx-auto w-full space-y-5">
 
         <div className="flex items-start justify-between">
@@ -352,7 +348,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {TABS.map(t => (
             <button
@@ -385,7 +380,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           ))}
         </div>
 
-        {/* Busca */}
         <div className="relative">
           <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -397,7 +391,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           />
         </div>
 
-        {/* Tabela */}
         <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
 
           <div className="hidden sm:grid grid-cols-[1fr_1.2fr_120px_100px_100px_44px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
@@ -529,7 +522,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
         </div>
       </main>
 
-      {/* Modal */}
       <AnimatePresence>
         {editProfile && (
           <EditModal
