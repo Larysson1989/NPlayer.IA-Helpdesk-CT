@@ -1,145 +1,198 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Construction, User, Lock, MessageSquare, Sparkles } from 'lucide-react';
 
-export type ProfilePage = 'perfil' | 'seguranca' | 'suporte' | 'melhorias';
+// ─── Tipos ───────────────────────────────────────────────────
+export type ProfilePage = 'metrics' | 'admin' | 'settings' | 'help' | 'about';
 
-interface UnderConstructionProps {
-  page: ProfilePage;
-  onBack: () => void;
+interface PageConfig {
+  icon:        string;
+  title:       string;
+  description: string;
+  support:     string;   // frase de apoio
+  color:       string;
+  bg:          string;
+  iconBg:      string;
 }
 
-const PAGE_CONFIG: Record<ProfilePage, {
-  title: string;
-  subtitle: string;
-  description: string;
-  icon: React.ReactNode;
-  bg: string;
-  iconColor: string;
-  eta: string;
-}> = {
-  perfil: {
-    title: 'Meu Perfil',
-    subtitle: 'Dados Cadastrais',
-    description: 'Em breve você poderá editar nome, foto, telefone, matrícula e todas as suas informações diretamente por aqui.',
-    icon: <User size={36} />,
-    bg: 'bg-primary/10',
-    iconColor: 'text-primary',
-    eta: 'Sprint 2',
+const PAGE_CONFIG: Record<ProfilePage, PageConfig> = {
+  metrics: {
+    icon:        'bar_chart',
+    title:       'Equipe & Métricas',
+    description: 'Acompanhamento de desempenho, metas e visão geral da equipe de captação.',
+    support:     'Em breve você poderá visualizar o desempenho individual e coletivo da sua equipe, acompanhar metas em tempo real e identificar oportunidades de melhoria.',
+    color:       'text-purple-600',
+    bg:          'bg-purple-50',
+    iconBg:      'bg-purple-100',
   },
-  seguranca: {
-    title: 'Segurança & Senha',
-    subtitle: 'Gerencie sua segurança',
-    description: 'Em breve você terá acesso completo para alterar sua senha, configurar autenticação em dois fatores e gerenciar sessões ativas.',
-    icon: <Lock size={36} />,
-    bg: 'bg-primary/10',
-    iconColor: 'text-primary',
-    eta: 'Sprint 2',
+  admin: {
+    icon:        'admin_panel_settings',
+    title:       'Painel Administrativo',
+    description: 'Gestão completa de usuários, configurações e dados do sistema.',
+    support:     'O painel administrativo está sendo aprimorado para oferecer mais controle e visibilidade sobre todas as operações do NPlayer.IA.',
+    color:       'text-emerald-600',
+    bg:          'bg-emerald-50',
+    iconBg:      'bg-emerald-100',
   },
-  suporte: {
-    title: 'Suporte',
-    subtitle: 'Reporte problemas técnicos',
-    description: 'Em breve você poderá abrir chamados, acompanhar o status dos tickets e falar diretamente com a equipe técnica.',
-    icon: <MessageSquare size={36} />,
-    bg: 'bg-primary/10',
-    iconColor: 'text-primary',
-    eta: 'Sprint 3',
+  settings: {
+    icon:        'settings',
+    title:       'Configurações',
+    description: 'Preferências do sistema e dados da conta.',
+    support:     'Aqui você poderá personalizar sua experiência, alterar dados de perfil e configurar notificações.',
+    color:       'text-slate-600',
+    bg:          'bg-slate-50',
+    iconBg:      'bg-slate-100',
   },
-  melhorias: {
-    title: 'Melhorias',
-    subtitle: 'Sugira novas funcionalidades',
-    description: 'Em breve você poderá enviar sugestões, votar nas ideias da equipe e acompanhar o roadmap de evoluções do NPlayer.IA.',
-    icon: <Sparkles size={36} />,
-    bg: 'bg-yellow-400/15',
-    iconColor: 'text-primary',
-    eta: 'Sprint 3',
+  help: {
+    icon:        'help_outline',
+    title:       'Ajuda & Suporte',
+    description: 'Central de ajuda, tutoriais e contato com o suporte técnico.',
+    support:     'Nossa central de ajuda vai reunir tutoriais em vídeo, perguntas frequentes e um canal direto com o time de suporte.',
+    color:       'text-blue-600',
+    bg:          'bg-blue-50',
+    iconBg:      'bg-blue-100',
+  },
+  about: {
+    icon:        'info',
+    title:       'Sobre o Sistema',
+    description: 'Versão, créditos e informações técnicas do NPlayer.IA.',
+    support:     'Informações detalhadas sobre versão, tecnologias utilizadas e os responsáveis pelo desenvolvimento do sistema.',
+    color:       'text-sky-600',
+    bg:          'bg-sky-50',
+    iconBg:      'bg-sky-100',
   },
 };
 
+// ─── Componente ───────────────────────────────────────────────
+interface UnderConstructionProps {
+  page:   ProfilePage;
+  onBack: () => void;
+}
+
 export function UnderConstruction({ page, onBack }: UnderConstructionProps) {
-  const config = PAGE_CONFIG[page];
+  const cfg = PAGE_CONFIG[page];
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
 
-      {/* Header */}
-      <header className="h-16 border-b border-slate-100 flex items-center px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+      {/* ── Header ── */}
+      <header className="h-16 border-b border-slate-200 flex items-center px-6 md:px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+
+        {/* Botão voltar */}
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors group"
+          className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors group"
         >
-          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="material-icons-round text-[20px] group-hover:-translate-x-1 transition-transform">
+            arrow_back
+          </span>
           Voltar
         </button>
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">N</div>
-          <span className="text-base font-bold text-primary tracking-tight">
-            NPlayer.<span className="text-yellow-400">IA</span>
-          </span>
+
+        {/* Logo centralizado */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
+              N
+            </div>
+            <span className="text-xl font-bold text-blue-600 tracking-tight">
+              NPlayer.<span className="text-yellow-400">IA</span>
+            </span>
+          </div>
         </div>
+
+        {/* Espaçador espelho para centralizar logo */}
+        <div className="w-[72px]" />
       </header>
 
-      {/* Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
+      {/* ── Conteúdo ── */}
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-sm w-full text-center space-y-8"
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center max-w-lg space-y-6"
         >
-          {/* Ícone */}
-          <div className="flex justify-center">
-            <motion.div
-              initial={{ scale: 0.8, rotate: -8 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-              className={`w-28 h-28 rounded-[36px] ${config.bg} ${config.iconColor} flex items-center justify-center shadow-md`}
-            >
-              {config.icon}
-            </motion.div>
-          </div>
 
-          {/* Texto */}
-          <div className="space-y-2">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{config.subtitle}</p>
-            <h1 className="text-3xl font-bold text-primary tracking-tight">{config.title}</h1>
-            <p className="text-slate-500 text-sm leading-relaxed pt-1">{config.description}</p>
-          </div>
-
-          {/* Badge */}
+          {/* Ícone animado */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl"
+            initial={{ scale: 0.75, opacity: 0 }}
+            animate={{ scale: 1,    opacity: 1 }}
+            transition={{ delay: 0.1, type: 'spring', stiffness: 220, damping: 16 }}
+            className={`w-24 h-24 ${cfg.iconBg} ${cfg.color} rounded-3xl flex items-center justify-center mx-auto shadow-sm`}
           >
-            <div className="relative shrink-0">
-              <Construction size={18} className="text-amber-500" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-bold text-slate-700 leading-none">Em Construção</p>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Previsão: {config.eta}</p>
-            </div>
+            <span className="material-icons-round text-[48px]">{cfg.icon}</span>
           </motion.div>
 
-          {/* Botão */}
-          <motion.button
+          {/* Badge "Em construção" */}
+          <motion.span
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full"
+          >
+            <span className="material-icons-round text-[13px]">construction</span>
+            Em construção
+          </motion.span>
+
+          {/* Título e descrição */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.24 }}
+            className="space-y-3"
+          >
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
+              {cfg.title}
+            </h1>
+            <p className="text-slate-600 text-base leading-relaxed">
+              {cfg.description}
+            </p>
+          </motion.div>
+
+          {/* Frase de apoio */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            className={`${cfg.bg} border border-slate-100 rounded-2xl px-6 py-4`}
+          >
+            <p className={`text-sm font-medium ${cfg.color} leading-relaxed`}>
+              💡 {cfg.support}
+            </p>
+          </motion.div>
+
+          {/* Aviso de prazo */}
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            onClick={onBack}
-            className="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:-translate-y-0.5 active:scale-95 transition-all"
+            transition={{ delay: 0.38 }}
+            className="text-slate-400 text-sm"
           >
-            Voltar ao Início
+            Esta funcionalidade estará disponível em breve.
+          </motion.p>
+
+          {/* Botão voltar */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.44 }}
+            onClick={onBack}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-8 py-3.5 rounded-2xl transition-colors shadow-md active:scale-95"
+          >
+            <span className="material-icons-round text-[18px]">arrow_back</span>
+            Voltar ao início
           </motion.button>
+
         </motion.div>
       </main>
 
-      <footer className="py-4 text-center">
-        <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest">Hospital Pequeno Príncipe • 2026</span>
+      {/* ── Footer ── */}
+      <footer className="py-6 text-center">
+        <p className="text-[11px] font-black uppercase tracking-[0.35em] text-slate-300">
+          Hospital Pequeno Príncipe © 2026
+        </p>
       </footer>
+
     </div>
   );
 }
