@@ -108,12 +108,18 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // 3. Administrador → painel admin
-  if (canAccessAdmin(user.role)) {
-    return <AdminPage adminName={user.name} onLogout={handleLogout} />;
+  // 3. Painel admin — acessado via botão, não automático
+  if (activeProfilePage === 'admin') {
+    return (
+      <AdminPage
+        adminName={user.name}
+        onLogout={handleLogout}
+        onBack={() => setActiveProfilePage(null)}
+      />
+    );
   }
 
-  // 4. Página de recurso em construção
+  // 4. Página em construção (metrics, settings, help, about)
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -137,10 +143,11 @@ export default function App() {
     );
   }
 
-  // 6. Dashboard principal (captador / supervisor)
-  const badge     = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
-  const firstName = user.name.split(' ')[0];
+  // 6. Dashboard principal — todos os perfis (captador, supervisor, administrador)
+  const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
+  const hasAdmin   = canAccessAdmin(user.role);
 
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
@@ -159,6 +166,8 @@ export default function App() {
 
       {/* ── Header ── */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
+
+        {/* Logo */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
@@ -173,17 +182,33 @@ export default function App() {
           </p>
         </div>
 
-        {/* Métricas rápidas — somente supervisor */}
-        {hasMetrics && (
-          <button
-            onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
-            className="hidden md:flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
-          >
-            <span className="material-icons-round text-[18px]">bar_chart</span>
-            Equipe & Métricas
-          </button>
-        )}
+        {/* Ações centrais do header */}
+        <div className="hidden md:flex items-center gap-2">
 
+          {/* Equipe & Métricas — supervisor e administrador */}
+          {hasMetrics && (
+            <button
+              onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+              className="flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
+            >
+              <span className="material-icons-round text-[18px]">bar_chart</span>
+              Equipe & Métricas
+            </button>
+          )}
+
+          {/* Painel Admin — somente administrador */}
+          {hasAdmin && (
+            <button
+              onClick={() => setActiveProfilePage('admin' as ProfilePage)}
+              className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
+            >
+              <span className="material-icons-round text-[18px]">admin_panel_settings</span>
+              Painel Admin
+            </button>
+          )}
+        </div>
+
+        {/* Avatar / perfil */}
         <button
           onClick={() => setIsProfileModalOpen(true)}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -221,21 +246,32 @@ export default function App() {
             </p>
           </motion.div>
 
-          {/* Atalho métricas mobile — somente supervisor */}
-          {hasMetrics && (
+          {/* Atalhos mobile — métricas e admin */}
+          {(hasMetrics || hasAdmin) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="mb-8 md:hidden"
+              className="mb-8 md:hidden flex flex-col gap-2"
             >
-              <button
-                onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
-                className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
-              >
-                <span className="material-icons-round text-[18px]">bar_chart</span>
-                Equipe & Métricas
-              </button>
+              {hasMetrics && (
+                <button
+                  onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
+                >
+                  <span className="material-icons-round text-[18px]">bar_chart</span>
+                  Equipe & Métricas
+                </button>
+              )}
+              {hasAdmin && (
+                <button
+                  onClick={() => setActiveProfilePage('admin' as ProfilePage)}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl hover:bg-emerald-100 transition-colors"
+                >
+                  <span className="material-icons-round text-[18px]">admin_panel_settings</span>
+                  Painel Admin
+                </button>
+              )}
             </motion.div>
           )}
 
