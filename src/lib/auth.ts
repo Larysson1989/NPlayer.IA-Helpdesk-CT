@@ -1,6 +1,5 @@
 import type { UserRole, User } from '../App';
 
-// ─── Usuários permitidos ─────────────────────────────────────
 const USERS: Array<{ email: string; password: string; name: string; role: UserRole }> = [
   {
     email:    'admin@lary.ia.br',
@@ -58,4 +57,21 @@ export function getStoredSession(): User | null {
   } catch {
     return null;
   }
+}
+
+// ─── Helpers de permissão ────────────────────────────────────
+
+/** Chat IA, scripts, FAQ e materiais — todos os perfis */
+export function canAccessChat(role: UserRole | null): boolean {
+  return role === 'captador' || role === 'supervisor' || role === 'administrador';
+}
+
+/** Visão de equipe e métricas — supervisor e administrador */
+export function canAccessMetrics(role: UserRole | null): boolean {
+  return role === 'supervisor' || role === 'administrador';
+}
+
+/** Painel administrativo completo — somente administrador */
+export function canAccessAdmin(role: UserRole | null): boolean {
+  return role === 'administrador';
 }
