@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { getStoredSession, logout } from './lib/auth';
-import type { User as StoredUser } from './lib/auth';
+import { getStoredSession, logout, canAccessMetrics, canAccessAdmin } from './lib/auth';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { UserModals } from './components/UserModals';
@@ -56,10 +55,9 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
-  // Recupera sessão ao iniciar
   useEffect(() => {
-    const stored = getStoredSession() as StoredUser | null;
-    if (stored) setUser(stored as User);
+    const stored = getStoredSession();
+    if (stored) setUser(stored);
     setReady(true);
   }, []);
 
@@ -96,7 +94,7 @@ export default function App() {
 
   // ── Roteamento ───────────────────────────────────────────────
 
-  // 1. Aguardando leitura do localStorage
+  // 1. Carregando sessão
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -110,8 +108,8 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // 3. Administrador
-  if (user.role === 'administrador') {
+  // 3. Administrador → painel admin
+  if (canAccessAdmin(user.role)) {
     return <AdminPage adminName={user.name} onLogout={handleLogout} />;
   }
 
@@ -139,14 +137,14 @@ export default function App() {
     );
   }
 
-  // 6. Dashboard principal
-  const badge   = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  // 6. Dashboard principal (captador / supervisor)
+  const badge     = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName = user.name.split(' ')[0];
+  const hasMetrics = canAccessMetrics(user.role);
 
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
-      {/* ── Modais de perfil ── */}
       <UserModals
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
@@ -174,6 +172,17 @@ export default function App() {
             "Inteligência que transforma cada ligação"
           </p>
         </div>
+
+        {/* Métricas rápidas — somente supervisor */}
+        {hasMetrics && (
+          <button
+            onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+            className="hidden md:flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
+          >
+            <span className="material-icons-round text-[18px]">bar_chart</span>
+            Equipe & Métricas
+          </button>
+        )}
 
         <button
           onClick={() => setIsProfileModalOpen(true)}
@@ -211,6 +220,24 @@ export default function App() {
               Faça uma pergunta ou selecione um dos tópicos rápidos abaixo.
             </p>
           </motion.div>
+
+          {/* Atalho métricas mobile — somente supervisor */}
+          {hasMetrics && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="mb-8 md:hidden"
+            >
+              <button
+                onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+                className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
+              >
+                <span className="material-icons-round text-[18px]">bar_chart</span>
+                Equipe & Métricas
+              </button>
+            </motion.div>
+          )}
 
           {/* Campo de busca */}
           <motion.div
