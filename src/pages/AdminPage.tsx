@@ -30,7 +30,7 @@ interface AdminPageProps {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
-const ONLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 
 function isOnline(last_seen_at: string | null): boolean {
   if (!last_seen_at) return false;
@@ -40,8 +40,8 @@ function isOnline(last_seen_at: string | null): boolean {
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return 'Nunca';
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60)   return 'Agora mesmo';
-  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
+  if (diff < 60)    return 'Agora mesmo';
+  if (diff < 3600)  return `${Math.floor(diff / 60)}min atrás`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
   return `${Math.floor(diff / 86400)}d atrás`;
 }
@@ -53,21 +53,21 @@ const STATUS_CONFIG: Record<UserStatus, { label: string; color: string; bg: stri
 };
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }> = {
-  captador:      { label: 'Captador',      color: 'text-blue-600',   bg: 'bg-blue-50'   },
-  supervisor:    { label: 'Supervisor',    color: 'text-purple-600', bg: 'bg-purple-50' },
+  captador:      { label: 'Captador',      color: 'text-blue-600',    bg: 'bg-blue-50'    },
+  supervisor:    { label: 'Supervisor',    color: 'text-purple-600',  bg: 'bg-purple-50'  },
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
 // ─── Modal de Edição ─────────────────────────────────────────
 interface EditModalProps {
-  profile:  Profile;
-  onSave:   (id: string, data: Partial<Profile>) => Promise<void>;
-  onClose:  () => void;
+  profile: Profile;
+  onSave:  (id: string, data: Partial<Profile>) => Promise<void>;
+  onClose: () => void;
 }
 
 function EditModal({ profile, onSave, onClose }: EditModalProps) {
   const [name,   setName]   = useState(profile.name   ?? '');
-  const [role,   setRole]   = useState<UserRole | ''>(profile.role   ?? '');
+  const [role,   setRole]   = useState<UserRole | ''>(profile.role ?? '');
   const [status, setStatus] = useState<UserStatus>(profile.status ?? 'ativo');
   const [saving, setSaving] = useState(false);
 
@@ -99,7 +99,7 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
         className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header do modal */}
+        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-800">Editar Usuário</h2>
@@ -112,8 +112,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
 
         {/* Corpo */}
         <div className="px-6 py-5 space-y-5">
-
-          {/* Nome */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nome completo</label>
             <input
@@ -125,7 +123,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
             />
           </div>
 
-          {/* E-mail (readonly) */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Login (e-mail)</label>
             <input
@@ -136,7 +133,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
             />
           </div>
 
-          {/* Perfil */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Perfil</label>
             <div className="relative">
@@ -154,7 +150,6 @@ function EditModal({ profile, onSave, onClose }: EditModalProps) {
             </div>
           </div>
 
-          {/* Status */}
           <div className="space-y-2">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Status da conta</label>
             <div className="grid grid-cols-3 gap-2">
@@ -212,20 +207,27 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
   const [search,      setSearch]      = useState('');
   const [tab,         setTab]         = useState<FilterTab>('todos');
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
-  const [tick,        setTick]        = useState(0); // força re-render a cada minuto
+  const [tick,        setTick]        = useState(0);
 
-  // ── Busca inicial ─────────────────────────────────────────
+  // ── Busca de perfis ───────────────────────────────────────
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, name, role, status, active, last_seen_at, created_at')
       .order('name');
-    if (!error && data) setProfiles(data as Profile[]);
+
+    if (error) {
+      console.error('[AdminPage] Erro ao buscar perfis:', error.message, error.details, error.hint);
+    } else {
+      console.log('[AdminPage] Perfis carregados:', data?.length, data);
+    }
+
+    if (data) setProfiles(data as Profile[]);
     setLoading(false);
   }, []);
 
-  // ── Realtime subscription ─────────────────────────────────
+  // ── Realtime + tick ───────────────────────────────────────
   useEffect(() => {
     fetchProfiles();
 
@@ -251,7 +253,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
       )
       .subscribe();
 
-    // Atualiza indicador de online/offline a cada 60s
     const interval = setInterval(() => setTick(t => t + 1), 60_000);
 
     return () => {
@@ -262,7 +263,11 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
 
   // ── Save ──────────────────────────────────────────────────
   async function handleSave(id: string, data: Partial<Profile>) {
-    await supabase.from('profiles').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...data, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) console.error('[AdminPage] Erro ao salvar:', error.message);
   }
 
   // ── Filtros ───────────────────────────────────────────────
@@ -286,17 +291,17 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
   };
 
   const TABS: { key: FilterTab; label: string; icon: React.ReactNode; dotColor: string }[] = [
-    { key: 'todos',     label: 'Todos',      icon: <Users size={14} />,    dotColor: 'bg-slate-400'   },
-    { key: 'online',    label: 'Online',     icon: <Wifi size={14} />,     dotColor: 'bg-emerald-400' },
-    { key: 'offline',   label: 'Offline',    icon: <WifiOff size={14} />,  dotColor: 'bg-slate-300'   },
-    { key: 'bloqueado', label: 'Bloqueados', icon: <ShieldOff size={14} />, dotColor: 'bg-red-400'    },
+    { key: 'todos',     label: 'Todos',      icon: <Users size={14} />,     dotColor: 'bg-slate-400'   },
+    { key: 'online',    label: 'Online',     icon: <Wifi size={14} />,      dotColor: 'bg-emerald-400' },
+    { key: 'offline',   label: 'Offline',    icon: <WifiOff size={14} />,   dotColor: 'bg-slate-300'   },
+    { key: 'bloqueado', label: 'Bloqueados', icon: <ShieldOff size={14} />, dotColor: 'bg-red-400'     },
   ];
 
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
@@ -308,7 +313,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Voltar */}
           <button
             onClick={onBack}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group"
@@ -317,7 +321,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
             <span className="hidden sm:block">Início</span>
           </button>
 
-          {/* Nome admin */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
             <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
               {adminName?.[0]?.toUpperCase() ?? 'A'}
@@ -326,17 +329,15 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
             <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full text-emerald-600 bg-emerald-100">Admin</span>
           </div>
 
-          {/* Logout */}
           <button onClick={onLogout} title="Sair" className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
             <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      {/* ── Main ── */}
+      {/* Main */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-5xl mx-auto w-full space-y-5">
 
-        {/* Título + refresh */}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Gestão de Usuários</h1>
@@ -351,7 +352,7 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           </button>
         </div>
 
-        {/* ── Tabs de filtro ── */}
+        {/* Tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {TABS.map(t => (
             <button
@@ -384,7 +385,7 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           ))}
         </div>
 
-        {/* ── Busca ── */}
+        {/* Busca */}
         <div className="relative">
           <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -396,10 +397,9 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
           />
         </div>
 
-        {/* ── Tabela / Lista ── */}
+        {/* Tabela */}
         <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
 
-          {/* Cabeçalho da tabela */}
           <div className="hidden sm:grid grid-cols-[1fr_1.2fr_120px_100px_100px_44px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
             {['Nome', 'Login', 'Perfil', 'Status', 'Presença', ''].map((h, i) => (
               <span key={i} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
@@ -419,9 +419,9 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
             <ul className="divide-y divide-slate-100">
               <AnimatePresence initial={false}>
                 {filtered.map(profile => {
-                  const online   = isOnline(profile.last_seen_at);
+                  const online    = isOnline(profile.last_seen_at);
                   const statusCfg = STATUS_CONFIG[profile.status] ?? STATUS_CONFIG['inativo'];
-                  const roleCfg  = profile.role ? ROLE_CONFIG[profile.role] : null;
+                  const roleCfg   = profile.role ? ROLE_CONFIG[profile.role] : null;
 
                   return (
                     <motion.li
@@ -434,8 +434,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
                     >
                       {/* Desktop */}
                       <div className="hidden sm:grid grid-cols-[1fr_1.2fr_120px_100px_100px_44px] gap-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors">
-
-                        {/* Nome + avatar */}
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative shrink-0">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black text-sm">
@@ -450,10 +448,8 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
                           </span>
                         </div>
 
-                        {/* Login */}
                         <span className="text-xs text-slate-400 font-medium truncate">{profile.email}</span>
 
-                        {/* Perfil */}
                         {roleCfg ? (
                           <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                             {roleCfg.label}
@@ -464,18 +460,15 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
                           </span>
                         )}
 
-                        {/* Status */}
                         <span className={`inline-flex items-center gap-1 w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${statusCfg.color} ${statusCfg.bg}`}>
                           {statusCfg.icon}
                           {statusCfg.label}
                         </span>
 
-                        {/* Presença */}
                         <span className={`text-xs font-semibold ${online && profile.status === 'ativo' ? 'text-emerald-600' : 'text-slate-400'}`}>
                           {profile.status === 'bloqueado' ? '—' : timeAgo(profile.last_seen_at)}
                         </span>
 
-                        {/* Editar */}
                         <button
                           onClick={() => setEditProfile(profile)}
                           className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
@@ -519,7 +512,6 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
             </ul>
           )}
 
-          {/* Rodapé da tabela */}
           {!loading && profiles.length > 0 && (
             <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <span className="text-xs text-slate-400 font-semibold">
@@ -537,7 +529,7 @@ export function AdminPage({ adminName, onLogout, onBack }: AdminPageProps) {
         </div>
       </main>
 
-      {/* ── Modal de edição ── */}
+      {/* Modal */}
       <AnimatePresence>
         {editProfile && (
           <EditModal
