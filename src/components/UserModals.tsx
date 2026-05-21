@@ -10,9 +10,14 @@ import {
 // Types
 // ─────────────────────────────────────────────
 
+import { UserRole } from '../App';
+
 interface UserData {
+  id?: string;
   email: string;
   name: string;
+  role?: UserRole | null;
+  active?: boolean;
   matricula?: string;
   telefone?: string;
   avatar?: string;
@@ -24,6 +29,7 @@ interface UserModalsProps {
   user: UserData;
   onUpdateUser: (updatedUser: UserData) => void;
   onLogout: () => void;
+  onNavigate?: (page: any) => void;
 }
 
 type FullscreenPage = 'edit' | 'password' | 'support' | 'improvements' | null;
@@ -279,9 +285,9 @@ export function UserModals({
 
   /* Profile completion */
   const completion = (() => {
-    const fields = ['name', 'email', 'matricula', 'telefone', 'avatar'];
+    const fields = ['name', 'email', 'matricula', 'telefone', 'avatar'] as const;
     const filled = fields.filter(
-      (f) => !!(user as Record<string, unknown>)[f]
+      (f) => !!(user as any)[f]
     ).length;
     return Math.round((filled / fields.length) * 100);
   })();
