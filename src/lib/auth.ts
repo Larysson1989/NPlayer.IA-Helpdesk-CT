@@ -8,6 +8,12 @@ const USERS: Array<{ email: string; password: string; name: string; role: UserRo
     role:     'administrador',
   },
   {
+    email:    'usuarioct@hpp.org.br',
+    password: '123456',
+    name:     'Teste CT',
+    role:     'supervisor',
+  },
+  {
     email:    'tatiana.soares@hpp.org.br',
     password: 'tati2026',
     name:     'Tatiana Soares',

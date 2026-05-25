@@ -70,7 +70,7 @@ ${HPP_KNOWLEDGE}`;
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Chave de API não configurada.');
+      if (!apiKey) throw new Error('Chave de API não configurada. Defina VITE_GEMINI_API_KEY no .env.local');
 
       const ai = new GoogleGenAI({ apiKey });
 
