@@ -19,6 +19,12 @@ const USERS: Array<{ email: string; password: string; name: string; role: UserRo
     name:     'Renata Andrade',
     role:     'supervisor',
   },
+  {
+    email:    'usuarioct@hpp.org.br',
+    password: '123456',
+    name:     'Usuário CT',
+    role:     'supervisor',
+  },
 ];
 
 const SESSION_KEY = 'nplayer-session';
