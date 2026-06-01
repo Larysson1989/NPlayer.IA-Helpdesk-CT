@@ -92,6 +92,14 @@ export default function App() {
     }
   };
 
+  // ── Navegação protegida ──────────────────────────────────────
+  const navigateTo = (page: ProfilePage) => {
+    if (page === 'admin' && !canAccessAdmin(user?.role ?? null)) return;
+    if (page === 'metrics' && !canAccessMetrics(user?.role ?? null)) return;
+    setIsProfileModalOpen(false);
+    setActiveProfilePage(page);
+  };
+
   // ── Roteamento ───────────────────────────────────────────────
 
   // 1. Carregando sessão
@@ -108,8 +116,12 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // 3. Painel admin — acessado via botão, não automático
+  // 3. Painel admin — somente administrador
   if (activeProfilePage === 'admin') {
+    if (!canAccessAdmin(user.role)) {
+      setActiveProfilePage(null);
+      return null;
+    }
     return (
       <AdminPage
         adminName={user.name}
@@ -119,7 +131,15 @@ export default function App() {
     );
   }
 
-  // 4. Página em construção (metrics, settings, help, about)
+  // 4. Métricas — somente supervisor e administrador
+  if (activeProfilePage === 'metrics') {
+    if (!canAccessMetrics(user.role)) {
+      setActiveProfilePage(null);
+      return null;
+    }
+  }
+
+  // 5. Página em construção (settings, help, about)
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -129,7 +149,7 @@ export default function App() {
     );
   }
 
-  // 5. Chat aberto
+  // 6. Chat aberto
   if (activeChatQuery !== null) {
     return (
       <ChatView
@@ -143,7 +163,7 @@ export default function App() {
     );
   }
 
-  // 6. Dashboard principal — todos os perfis (captador, supervisor, administrador)
+  // 7. Dashboard principal
   const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
@@ -158,10 +178,7 @@ export default function App() {
         user={user}
         onUpdateUser={(updated) => setUser(u => u ? { ...u, ...updated } : u)}
         onLogout={handleLogout}
-        onNavigate={(page) => {
-          setIsProfileModalOpen(false);
-          setActiveProfilePage(page);
-        }}
+        onNavigate={navigateTo}
       />
 
       {/* ── Header ── */}
@@ -188,7 +205,7 @@ export default function App() {
           {/* Equipe & Métricas — supervisor e administrador */}
           {hasMetrics && (
             <button
-              onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+              onClick={() => navigateTo('metrics' as ProfilePage)}
               className="flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
             >
               <span className="material-icons-round text-[18px]">bar_chart</span>
@@ -199,7 +216,7 @@ export default function App() {
           {/* Painel Admin — somente administrador */}
           {hasAdmin && (
             <button
-              onClick={() => setActiveProfilePage('admin' as ProfilePage)}
+              onClick={() => navigateTo('admin' as ProfilePage)}
               className="flex items-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
             >
               <span className="material-icons-round text-[18px]">admin_panel_settings</span>
@@ -256,7 +273,7 @@ export default function App() {
             >
               {hasMetrics && (
                 <button
-                  onClick={() => setActiveProfilePage('metrics' as ProfilePage)}
+                  onClick={() => navigateTo('metrics' as ProfilePage)}
                   className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
                 >
                   <span className="material-icons-round text-[18px]">bar_chart</span>
@@ -265,7 +282,7 @@ export default function App() {
               )}
               {hasAdmin && (
                 <button
-                  onClick={() => setActiveProfilePage('admin' as ProfilePage)}
+                  onClick={() => navigateTo('admin' as ProfilePage)}
                   className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl hover:bg-emerald-100 transition-colors"
                 >
                   <span className="material-icons-round text-[18px]">admin_panel_settings</span>
