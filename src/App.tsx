@@ -1,4 +1,3 @@
-﻿$appcontent = @'
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { getStoredSession, logout, canAccessMetrics, canAccessAdmin } from './lib/auth';
@@ -219,7 +218,7 @@ export default function App() {
               className="flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
             >
               <span className="material-icons-round text-[18px]">bar_chart</span>
-              Equipe & Metricas
+              Equipe &amp; Metricas
             </button>
           )}
           {hasAdmin && (
@@ -282,7 +281,7 @@ export default function App() {
                   className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
                 >
                   <span className="material-icons-round text-[18px]">bar_chart</span>
-                  Equipe & Metricas
+                  Equipe &amp; Metricas
                 </button>
               )}
               {hasAdmin && (
@@ -360,10 +359,3 @@ export default function App() {
     </div>
   );
 }
-'@
-
-[System.IO.File]::WriteAllText(
-  (Join-Path (Get-Location) "src\App.tsx"),
-  $appcontent,
-  (New-Object System.Text.UTF8Encoding $false)
-)
