@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Edit2, Save, X, ArrowLeft,
@@ -10,13 +10,13 @@ import { uploadAvatar, saveAvatarUrl } from '../services/avatarService';
 import { UserAvatar } from '../components/UserAvatar';
 import type { UserRole } from '../App';
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface LocalUser {
-  email:     string;
-  name:      string;
-  matricula: string;
-  password:  string;
-  role:      UserRole;
+  email:      string;
+  name:       string;
+  matricula:  string;
+  password:   string;
+  role:       UserRole;
+  avatar_url?: string;
 }
 
 interface AdminPageProps {
@@ -34,7 +34,6 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
-// â”€â”€ EditModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface EditModalProps {
   user:      LocalUser;
   adminRole: UserRole;
@@ -52,6 +51,11 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
 
+  const canChangeRole = adminRole === 'administrador';
+  const availableRoles: UserRole[] = adminRole === 'administrador'
+    ? ['captador', 'supervisor', 'administrador']
+    : ['captador', 'supervisor'];
+
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -60,11 +64,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
     if (url) { await saveAvatarUrl(user.email, url); setAvatarUrl(url); }
     setUploading(false);
   }
-
-  const canChangeRole  = adminRole === 'administrador';
-  const availableRoles: UserRole[] = adminRole === 'administrador'
-    ? ['captador', 'supervisor', 'administrador']
-    : ['captador', 'supervisor'];
 
   function handleSave() {
     setSaving(true);
@@ -87,7 +86,7 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
       >
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Editar UsuÃ¡rio</h2>
+            <h2 className="text-lg font-bold text-slate-800">Editar Usuario</h2>
             <p className="text-xs text-slate-400 mt-0.5">{user.email}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
@@ -95,27 +94,32 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
           </button>
         </div>
 
+        <div className="px-6 pt-4 flex flex-col items-center gap-2">
+          <UserAvatar name={name} avatarUrl={avatarUrl} size="lg" />
+          <label className="cursor-pointer text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+            {uploading ? <span className="animate-pulse">Enviando...</span> : 'Trocar foto'}
+            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+          </label>
+        </div>
+
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nome completo</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="Nome do usuÃ¡rio"
+              placeholder="Nome do usuario"
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
-
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">UsuÃ¡rio (e-mail)</label>
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Usuario (e-mail)</label>
             <input type="text" value={user.email} readOnly
               className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-400 outline-none cursor-not-allowed" />
           </div>
-
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">MatrÃ­cula</label>
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Matricula</label>
             <input type="text" value={matricula} onChange={e => setMatricula(e.target.value)}
-              placeholder="NÃºmero da matrÃ­cula"
+              placeholder="Numero da matricula"
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
-
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Senha</label>
             <div className="relative">
@@ -131,7 +135,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
               </button>
             </div>
           </div>
-
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
               Perfil {!canChangeRole && (
@@ -170,8 +173,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
   );
 }
 
-// â”€â”€ AdminPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Grid: Nome(minmax 200px) | Email(minmax 220px) | MatrÃ­cula(90px) | Perfil(130px) | Senha(90px) | Btn(44px)
 const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_90px_44px]';
 
 export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
@@ -224,8 +225,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      {/* â”€â”€ Header â”€â”€ */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
@@ -237,18 +236,14 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
             {adminRole === 'administrador' ? 'Administrador' : 'Supervisor'}
           </span>
         </div>
-
         <div className="flex items-center gap-2">
           <button onClick={onBack}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span className="hidden sm:block">InÃ­cio</span>
+            <span className="hidden sm:block">Inicio</span>
           </button>
-
           <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-              {adminName?.[0]?.toUpperCase() ?? 'A'}
-            </div>
+            <UserAvatar name={adminName} size="sm" />
             <span className="text-sm font-semibold text-slate-700">{adminName}</span>
             <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
               adminRole === 'administrador' ? 'text-emerald-600 bg-emerald-100' : 'text-purple-600 bg-purple-100'
@@ -256,7 +251,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
               {adminRole === 'administrador' ? 'Admin' : 'Supervisor'}
             </span>
           </div>
-
           <button onClick={onLogout} title="Sair"
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
             <LogOut size={18} />
@@ -264,17 +258,14 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
         </div>
       </header>
 
-      {/* â”€â”€ Main â”€â”€ */}
-      {/* max-w-screen-xl garante largura generosa na tela cheia */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
-
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">GestÃ£o de UsuÃ¡rios</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               {adminRole === 'administrador'
-                ? 'Acesso total â€” edite qualquer usuÃ¡rio, perfil ou senha.'
-                : 'VocÃª pode editar Captadores e Supervisores. Administradores sÃ£o protegidos.'}
+                ? 'Acesso total - edite qualquer usuario, perfil ou senha.'
+                : 'Voce pode editar Captadores e Supervisores. Administradores sao protegidos.'}
             </p>
           </div>
           {adminRole === 'administrador'
@@ -282,7 +273,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
             : <UserCog size={22} className="text-purple-400 mt-1" />}
         </div>
 
-        {/* Filter tabs */}
         <div className="flex flex-wrap gap-2">
           {FILTER_TABS.map(t => (
             <button key={t.key} onClick={() => setFilterRole(t.key)}
@@ -292,28 +282,21 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                   : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
               }`}>
               {t.label}
-              <span className={`text-xs font-black ${
-                filterRole === t.key ? 'text-blue-600' : 'text-slate-400'
-              }`}>{t.count}</span>
+              <span className={`text-xs font-black ${filterRole === t.key ? 'text-blue-600' : 'text-slate-400'}`}>{t.count}</span>
             </button>
           ))}
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou matrÃ­cula..."
+            placeholder="Buscar por nome, e-mail ou matricula..."
             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
         </div>
 
-        {/* â”€â”€ Table â”€â”€ */}
-        {/* overflow-x-auto para scroll horizontal em telas menores */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
-
-          {/* Header â€” desktop only */}
           <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[820px]`}>
-            {['Nome', 'UsuÃ¡rio (login)', 'MatrÃ­cula', 'Perfil', 'Senha', ''].map((h, i) => (
+            {['Nome', 'Usuario (login)', 'Matricula', 'Perfil', 'Senha', ''].map((h, i) => (
               <span key={i} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
             ))}
           </div>
@@ -321,7 +304,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-3">
               <Users size={48} strokeWidth={1} />
-              <p className="text-sm font-semibold">Nenhum usuÃ¡rio encontrado</p>
+              <p className="text-sm font-semibold">Nenhum usuario encontrado</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -329,61 +312,40 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                 {filtered.map(u => {
                   const roleCfg = ROLE_CONFIG[u.role];
                   const editable = canEdit(u);
-
                   return (
                     <motion.li key={u.email} layout
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      {/* â”€â”€ Desktop row â”€â”€ */}
                       <div className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors min-w-[820px]`}>
-
-                        {/* Nome â€” sem truncate, quebra linha se necessÃ¡rio */}
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">
-                            {u.name[0].toUpperCase()}
-                          </div>
+                          <UserAvatar name={u.name} avatarUrl={u.avatar_url} size="sm" />
                           <span className="text-sm font-bold text-slate-800 leading-snug">{u.name}</span>
                         </div>
-
-                        {/* E-mail â€” sem truncate */}
                         <span className="text-xs text-slate-500 font-medium break-all leading-snug">{u.email}</span>
-
-                        {/* MatrÃ­cula */}
                         <span className="text-xs font-bold text-slate-600 tabular-nums">
-                          {u.matricula || <span className="text-slate-300 italic font-normal">â€”</span>}
+                          {u.matricula || <span className="text-slate-300 italic font-normal">-</span>}
                         </span>
-
-                        {/* Perfil */}
                         <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                           {roleCfg.label}
                         </span>
-
-                        {/* Senha (mascarada) */}
                         <span className="flex items-center gap-1 text-xs font-mono text-slate-400">
                           <Lock size={10} className="text-slate-300 shrink-0" />
-                          {'â€¢'.repeat(Math.min(u.password.length, 8))}
+                          {'*'.repeat(Math.min(u.password.length, 8))}
                         </span>
-
-                        {/* BotÃ£o editar */}
                         <button
                           onClick={() => editable && setEditUser(u)}
                           disabled={!editable}
-                          title={editable ? 'Editar' : 'Sem permissÃ£o'}
+                          title={editable ? 'Editar' : 'Sem permissao'}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-                            editable
-                              ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50'
-                              : 'text-slate-200 cursor-not-allowed'
+                            editable ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
                           }`}>
                           <Edit2 size={15} />
                         </button>
                       </div>
 
-                      {/* â”€â”€ Mobile row â”€â”€ */}
                       <div className="flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black shrink-0 mt-0.5">
-                          {u.name[0].toUpperCase()}
-                        </div>
+                        <UserAvatar name={u.name} avatarUrl={u.avatar_url} size="md" className="mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800">{u.name}</p>
                           <p className="text-xs text-slate-400 break-all mt-0.5">{u.email}</p>
@@ -411,10 +373,9 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
               </AnimatePresence>
             </ul>
           )}
-
           <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
             <span className="text-xs text-slate-400 font-semibold">
-              {filtered.length} de {visibleUsers.length} usuÃ¡rio{visibleUsers.length !== 1 ? 's' : ''}
+              {filtered.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
