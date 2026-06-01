@@ -8,6 +8,7 @@ import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
+import { getAvatarUrl } from './services/avatarService';
 
 // --- Tipos exportados ---
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
@@ -58,12 +59,22 @@ export default function App() {
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const stored = getStoredSession();
-    if (stored) setUser(stored);
-    setReady(true);
+    async function restoreSession() {
+      const stored = getStoredSession();
+      if (stored) {
+        // Busca avatar_url atualizado do Supabase
+        const avatarUrl = await getAvatarUrl(stored.email);
+        setUser({ ...stored, avatar_url: avatarUrl ?? stored.avatar_url });
+      }
+      setReady(true);
+    }
+    restoreSession();
   }, []);
 
-  const handleLogin = (loggedUser: User) => setUser(loggedUser);
+  const handleLogin = async (loggedUser: User) => {
+    const avatarUrl = await getAvatarUrl(loggedUser.email);
+    setUser({ ...loggedUser, avatar_url: avatarUrl ?? loggedUser.avatar_url });
+  };
 
   const handleLogout = () => {
     logout();
