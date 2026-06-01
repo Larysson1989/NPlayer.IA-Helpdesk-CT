@@ -41,17 +41,14 @@ interface EditModalProps {
 }
 
 function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
-  const [name,       setName]       = useState(user.name);
-  const [matricula,  setMatricula]  = useState(user.matricula);
-  const [password,   setPassword]   = useState(user.password);
-  const [role,       setRole]       = useState<UserRole>(user.role);
-  const [showPass,   setShowPass]   = useState(false);
-  const [saving,     setSaving]     = useState(false);
+  const [name,      setName]      = useState(user.name);
+  const [matricula, setMatricula] = useState(user.matricula);
+  const [password,  setPassword]  = useState(user.password);
+  const [role,      setRole]      = useState<UserRole>(user.role);
+  const [showPass,  setShowPass]  = useState(false);
+  const [saving,    setSaving]    = useState(false);
 
-  // Supervisor não pode alterar perfil para/de administrador
-  const canChangeRole = adminRole === 'administrador';
-
-  // Roles disponíveis para supervisor
+  const canChangeRole  = adminRole === 'administrador';
   const availableRoles: UserRole[] = adminRole === 'administrador'
     ? ['captador', 'supervisor', 'administrador']
     : ['captador', 'supervisor'];
@@ -75,7 +72,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
         className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-800">Editar Usuário</h2>
@@ -87,7 +83,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Nome */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nome completo</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
@@ -95,14 +90,12 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
 
-          {/* Login (read-only) */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Usuário (e-mail)</label>
             <input type="text" value={user.email} readOnly
               className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-400 outline-none cursor-not-allowed" />
           </div>
 
-          {/* Matrícula */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Matrícula</label>
             <input type="text" value={matricula} onChange={e => setMatricula(e.target.value)}
@@ -110,7 +103,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
 
-          {/* Senha */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Senha</label>
             <div className="relative">
@@ -127,10 +119,13 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
             </div>
           </div>
 
-          {/* Perfil */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-              Perfil {!canChangeRole && <span className="text-amber-500 normal-case font-semibold tracking-normal">(somente Admin pode promover a Administrador)</span>}
+              Perfil {!canChangeRole && (
+                <span className="text-amber-500 normal-case font-semibold tracking-normal">
+                  (somente Admin pode promover a Administrador)
+                </span>
+              )}
             </label>
             <div className="relative">
               <select value={role} onChange={e => setRole(e.target.value as UserRole)}
@@ -144,7 +139,6 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-6 pb-6 flex gap-2">
           <button onClick={onClose}
             className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">
@@ -164,27 +158,30 @@ function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
 }
 
 // ── AdminPage ───────────────────────────────────────────
+// Grid: Nome(minmax 200px) | Email(minmax 220px) | Matrícula(90px) | Perfil(130px) | Senha(90px) | Btn(44px)
+const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_90px_44px]';
+
 export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
   const [users,      setUsers]      = useState<LocalUser[]>(() => getAllUsers());
   const [search,     setSearch]     = useState('');
   const [filterRole, setFilterRole] = useState<FilterRole>('todos');
   const [editUser,   setEditUser]   = useState<LocalUser | null>(null);
 
-  // Supervisor não vê administradores na lista
-  const visibleUsers = useMemo(() => {
-    return adminRole === 'administrador'
-      ? users
-      : users.filter(u => u.role !== 'administrador');
-  }, [users, adminRole]);
+  const visibleUsers = useMemo(() =>
+    adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador'),
+    [users, adminRole]);
 
-  const filtered = useMemo(() => {
-    return visibleUsers.filter(u => {
+  const filtered = useMemo(() =>
+    visibleUsers.filter(u => {
       const q = search.toLowerCase();
-      const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.matricula.includes(q);
-      const matchRole   = filterRole === 'todos' || u.role === filterRole;
+      const matchSearch = !q ||
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.matricula.includes(q);
+      const matchRole = filterRole === 'todos' || u.role === filterRole;
       return matchSearch && matchRole;
-    });
-  }, [visibleUsers, search, filterRole]);
+    }),
+    [visibleUsers, search, filterRole]);
 
   const counts = useMemo(() => ({
     todos:         visibleUsers.length,
@@ -198,16 +195,15 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     setUsers(getAllUsers());
   }
 
-  // Verifica se o usuário pode ser editado por quem está logado
   function canEdit(target: LocalUser): boolean {
     if (adminRole === 'administrador') return true;
-    return target.role !== 'administrador'; // supervisor não edita admin
+    return target.role !== 'administrador';
   }
 
   const FILTER_TABS: { key: FilterRole; label: string; count: number }[] = [
-    { key: 'todos',         label: 'Todos',          count: counts.todos         },
-    { key: 'captador',      label: 'Captadores',     count: counts.captador      },
-    { key: 'supervisor',    label: 'Supervisores',   count: counts.supervisor    },
+    { key: 'todos',      label: 'Todos',        count: counts.todos      },
+    { key: 'captador',   label: 'Captadores',   count: counts.captador   },
+    { key: 'supervisor', label: 'Supervisores', count: counts.supervisor },
     ...(adminRole === 'administrador'
       ? [{ key: 'administrador' as FilterRole, label: 'Administradores', count: counts.administrador }]
       : []),
@@ -216,7 +212,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
@@ -255,8 +251,9 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 px-4 md:px-8 py-6 max-w-5xl mx-auto w-full space-y-5">
+      {/* ── Main ── */}
+      {/* max-w-screen-xl garante largura generosa na tela cheia */}
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
 
         <div className="flex items-start justify-between">
           <div>
@@ -297,11 +294,12 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+        {/* ── Table ── */}
+        {/* overflow-x-auto para scroll horizontal em telas menores */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
 
-          {/* Desktop header */}
-          <div className="hidden sm:grid grid-cols-[1fr_1.2fr_110px_100px_100px_44px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
+          {/* Header — desktop only */}
+          <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[820px]`}>
             {['Nome', 'Usuário (login)', 'Matrícula', 'Perfil', 'Senha', ''].map((h, i) => (
               <span key={i} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
             ))}
@@ -324,23 +322,37 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      {/* Desktop row */}
-                      <div className="hidden sm:grid grid-cols-[1fr_1.2fr_110px_100px_100px_44px] gap-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
+                      {/* ── Desktop row ── */}
+                      <div className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors min-w-[820px]`}>
+
+                        {/* Nome — sem truncate, quebra linha se necessário */}
+                        <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">
                             {u.name[0].toUpperCase()}
                           </div>
-                          <span className="text-sm font-bold text-slate-800 truncate">{u.name}</span>
+                          <span className="text-sm font-bold text-slate-800 leading-snug">{u.name}</span>
                         </div>
-                        <span className="text-xs text-slate-400 font-medium truncate">{u.email}</span>
-                        <span className="text-xs font-bold text-slate-600">{u.matricula || <span className="text-slate-300 italic font-normal">—</span>}</span>
+
+                        {/* E-mail — sem truncate */}
+                        <span className="text-xs text-slate-500 font-medium break-all leading-snug">{u.email}</span>
+
+                        {/* Matrícula */}
+                        <span className="text-xs font-bold text-slate-600 tabular-nums">
+                          {u.matricula || <span className="text-slate-300 italic font-normal">—</span>}
+                        </span>
+
+                        {/* Perfil */}
                         <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                           {roleCfg.label}
                         </span>
+
+                        {/* Senha (mascarada) */}
                         <span className="flex items-center gap-1 text-xs font-mono text-slate-400">
-                          <Lock size={10} className="text-slate-300" />
+                          <Lock size={10} className="text-slate-300 shrink-0" />
                           {'•'.repeat(Math.min(u.password.length, 8))}
                         </span>
+
+                        {/* Botão editar */}
                         <button
                           onClick={() => editable && setEditUser(u)}
                           disabled={!editable}
@@ -354,15 +366,15 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                         </button>
                       </div>
 
-                      {/* Mobile row */}
-                      <div className="flex sm:hidden items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black shrink-0">
+                      {/* ── Mobile row ── */}
+                      <div className="flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-black shrink-0 mt-0.5">
                           {u.name[0].toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 truncate">{u.name}</p>
-                          <p className="text-xs text-slate-400 truncate">{u.email}</p>
-                          <div className="flex gap-1.5 mt-1">
+                          <p className="text-sm font-bold text-slate-800">{u.name}</p>
+                          <p className="text-xs text-slate-400 break-all mt-0.5">{u.email}</p>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
                             <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                               {roleCfg.label}
                             </span>
@@ -374,7 +386,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                           </div>
                         </div>
                         <button onClick={() => editable && setEditUser(u)} disabled={!editable}
-                          className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
+                          className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors shrink-0 ${
                             editable ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
                           }`}>
                           <Edit2 size={15} />
