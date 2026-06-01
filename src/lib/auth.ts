@@ -23,7 +23,7 @@ const USERS: Array<{ email: string; password: string; name: string; role: UserRo
     email:    'usuarioct@hpp.org.br',
     password: '123456',
     name:     'Usuário CT',
-    role:     'supervisor',
+    role:     'captador',
   },
 ];
 
