@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { getStoredSession, logout, canAccessMetrics, canAccessAdmin } from './lib/auth';
 import { AuthPage } from './pages/AuthPage';
@@ -8,7 +8,7 @@ import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 
-// ─── Tipos exportados ────────────────────────────────────────
+// â”€â”€â”€ Tipos exportados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
 
 export interface User {
@@ -18,25 +18,26 @@ export interface User {
   role: UserRole | null;
   active: boolean;
   matricula?: string;
+  avatar_url?: string;
   telefone?: string;
   avatar?: string;
 }
 
-// ─── Constantes ──────────────────────────────────────────────
+// â”€â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEFAULT_AVATAR =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBsja2GmlJ7z64XhGwI_WRtSwLQ1cA8yB2IW_SxUGC6xqrXSNnd-tjPNwXd-yFuW16id4il3bF0eTU5CTbxIhUStSPK0G5iNPPFwpfo1UM1AMKUoznN9IjvQqOPHLyLb099WSpiqb_qwqR5eQCh5dlmkkAEnCT1uH3RwRus2scZ8deMJcrPfN-ABL3mSAL6_EiQdL3quKIwfpWChNxAEQQrTQfc_jJEEV_GjJN4dzgfdHxxBs2i8834KMIg3F9grlI_ov603xAceHM';
 
 const FAQ_CARDS = [
-  { icon: 'contact_support',   title: 'Como abordar um doador?',       desc: 'Estratégias para quebrar o gelo e iniciar contato.' },
-  { icon: 'description',       title: 'Script de captação atualizado', desc: 'Confira a versão mais recente do roteiro.' },
-  { icon: 'question_answer',   title: 'Tratativa de objeções',         desc: 'Como lidar com questionamentos comuns.' },
-  { icon: 'lock',              title: 'Segurança de dados',            desc: 'Normas de LGPD e segurança da informação.' },
-  { icon: 'favorite',          title: 'Valores do HPP',                desc: 'Missão, visão e valores da instituição.' },
-  { icon: 'account_balance',   title: 'Histórico da Instituição',      desc: 'Linha do tempo e conquistas importantes.' },
-  { icon: 'record_voice_over', title: 'Dicas de rapport',              desc: 'Como criar conexão imediata pelo telefone.' },
-  { icon: 'block',             title: "Contorno de 'não' inicial",     desc: 'Técnicas de reversão de negativa precoce.' },
+  { icon: 'contact_support',   title: 'Como abordar um doador?',       desc: 'EstratÃ©gias para quebrar o gelo e iniciar contato.' },
+  { icon: 'description',       title: 'Script de captaÃ§Ã£o atualizado', desc: 'Confira a versÃ£o mais recente do roteiro.' },
+  { icon: 'question_answer',   title: 'Tratativa de objeÃ§Ãµes',         desc: 'Como lidar com questionamentos comuns.' },
+  { icon: 'lock',              title: 'SeguranÃ§a de dados',            desc: 'Normas de LGPD e seguranÃ§a da informaÃ§Ã£o.' },
+  { icon: 'favorite',          title: 'Valores do HPP',                desc: 'MissÃ£o, visÃ£o e valores da instituiÃ§Ã£o.' },
+  { icon: 'account_balance',   title: 'HistÃ³rico da InstituiÃ§Ã£o',      desc: 'Linha do tempo e conquistas importantes.' },
+  { icon: 'record_voice_over', title: 'Dicas de rapport',              desc: 'Como criar conexÃ£o imediata pelo telefone.' },
+  { icon: 'block',             title: "Contorno de 'nÃ£o' inicial",     desc: 'TÃ©cnicas de reversÃ£o de negativa precoce.' },
   { icon: 'psychology',        title: 'Uso de gatilhos mentais',       desc: 'Escassez, autoridade e prova social.' },
-  { icon: 'task_alt',          title: 'Finalização de chamada',        desc: 'Protocolo para encerramento e confirmação.' },
+  { icon: 'task_alt',          title: 'FinalizaÃ§Ã£o de chamada',        desc: 'Protocolo para encerramento e confirmaÃ§Ã£o.' },
 ];
 
 const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
@@ -45,7 +46,7 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
   administrador: { label: 'Admin',      color: 'text-emerald-600 bg-emerald-50' },
 };
 
-// ─── App ─────────────────────────────────────────────────────
+// â”€â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function App() {
   const [user, setUser]                             = useState<User | null>(null);
   const [ready, setReady]                           = useState(false);
@@ -61,7 +62,7 @@ export default function App() {
     setReady(true);
   }, []);
 
-  // ── Handlers ────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleLogin = (loggedUser: User) => setUser(loggedUser);
 
@@ -92,7 +93,7 @@ export default function App() {
     }
   };
 
-  // ── Navegação protegida ──────────────────────────────────────
+  // â”€â”€ NavegaÃ§Ã£o protegida â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const navigateTo = (page: ProfilePage) => {
     if (page === 'admin'   && !canAccessAdmin(user?.role ?? null))   return;
     if (page === 'metrics' && !canAccessMetrics(user?.role ?? null)) return;
@@ -100,7 +101,7 @@ export default function App() {
     setActiveProfilePage(page);
   };
 
-  // ── Roteamento ───────────────────────────────────────────────
+  // â”€â”€ Roteamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (!ready) {
     return (
@@ -130,7 +131,7 @@ export default function App() {
     );
   }
 
-  // Métricas
+  // MÃ©tricas
   if (activeProfilePage === 'metrics') {
     if (!canAccessMetrics(user.role)) {
       setActiveProfilePage(null);
@@ -138,7 +139,7 @@ export default function App() {
     }
   }
 
-  // Páginas em construção
+  // PÃ¡ginas em construÃ§Ã£o
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -180,7 +181,7 @@ export default function App() {
         onNavigate={navigateTo}
       />
 
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
 
         <div className="flex items-center gap-6">
@@ -193,7 +194,7 @@ export default function App() {
             </span>
           </div>
           <p className="text-sm font-medium text-slate-400 hidden md:block italic">
-            "Inteligência que transforma cada ligação"
+            "InteligÃªncia que transforma cada ligaÃ§Ã£o"
           </p>
         </div>
 
@@ -204,7 +205,7 @@ export default function App() {
               className="flex items-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors"
             >
               <span className="material-icons-round text-[18px]">bar_chart</span>
-              Equipe & Métricas
+              Equipe & MÃ©tricas
             </button>
           )}
           {hasAdmin && (
@@ -236,7 +237,7 @@ export default function App() {
         </button>
       </header>
 
-      {/* ── Main ── */}
+      {/* â”€â”€ Main â”€â”€ */}
       <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white">
         <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
@@ -246,11 +247,11 @@ export default function App() {
             className="text-center mb-10 space-y-4"
           >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-800">
-              Olá, <span className="text-blue-600">{firstName}</span>.{' '}
-              Como posso apoiar sua captação hoje?
+              OlÃ¡, <span className="text-blue-600">{firstName}</span>.{' '}
+              Como posso apoiar sua captaÃ§Ã£o hoje?
             </h1>
             <p className="text-slate-500 text-lg">
-              Faça uma pergunta ou selecione um dos tópicos rápidos abaixo.
+              FaÃ§a uma pergunta ou selecione um dos tÃ³picos rÃ¡pidos abaixo.
             </p>
           </motion.div>
 
@@ -267,7 +268,7 @@ export default function App() {
                   className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
                 >
                   <span className="material-icons-round text-[18px]">bar_chart</span>
-                  Equipe & Métricas
+                  Equipe & MÃ©tricas
                 </button>
               )}
               {hasAdmin && (
@@ -296,7 +297,7 @@ export default function App() {
                 onChange={e => setSearchQuery(e.target.value)}
                 onInput={handleTextareaInput}
                 onKeyDown={handleTextareaKeyDown}
-                placeholder="Escreva sua dúvida aqui... (ex: Como lidar com doador sem tempo?)"
+                placeholder="Escreva sua dÃºvida aqui... (ex: Como lidar com doador sem tempo?)"
                 className="w-full bg-slate-100 border-none rounded-2xl py-5 pl-7 pr-16 focus:ring-2 focus:ring-blue-500 shadow-sm text-lg text-slate-800 resize-none transition-all placeholder:text-slate-400 outline-none"
               />
               <button
@@ -309,7 +310,7 @@ export default function App() {
             </div>
             <p className="text-[10px] text-center text-slate-400 mt-3 flex items-center justify-center gap-1">
               <span className="material-icons-round text-[12px]">info</span>
-              O NPlayer.IA pode cometer erros. Verifique informações importantes.
+              O NPlayer.IA pode cometer erros. Verifique informaÃ§Ãµes importantes.
             </p>
           </motion.div>
 
