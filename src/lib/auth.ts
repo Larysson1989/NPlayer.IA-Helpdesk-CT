@@ -67,17 +67,32 @@ export function getStoredSession(): User | null {
 
 // ─── Helpers de permissão ────────────────────────────────────
 
-/** Chat IA, scripts, FAQ e materiais — todos os perfis */
+/** Chat IA — todos os perfis */
 export function canAccessChat(role: UserRole | null): boolean {
   return role === 'captador' || role === 'supervisor' || role === 'administrador';
 }
 
-/** Visão de equipe e métricas — supervisor e administrador */
+/** Ajuda & Suporte — todos os perfis */
+export function canAccessHelp(role: UserRole | null): boolean {
+  return role === 'captador' || role === 'supervisor' || role === 'administrador';
+}
+
+/** Sobre o Sistema — todos os perfis */
+export function canAccessAbout(role: UserRole | null): boolean {
+  return role === 'captador' || role === 'supervisor' || role === 'administrador';
+}
+
+/** Configurações — todos os perfis */
+export function canAccessSettings(role: UserRole | null): boolean {
+  return role === 'captador' || role === 'supervisor' || role === 'administrador';
+}
+
+/** Equipe & Métricas — supervisor e administrador */
 export function canAccessMetrics(role: UserRole | null): boolean {
   return role === 'supervisor' || role === 'administrador';
 }
 
-/** Painel administrativo completo — somente administrador */
+/** Painel Administrativo — somente administrador */
 export function canAccessAdmin(role: UserRole | null): boolean {
   return role === 'administrador';
 }
