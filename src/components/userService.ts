@@ -1,5 +1,5 @@
 // src/services/userService.ts
-import { supabase } from '@/lib/supabase'; // ajuste o path
+import { supabase } from '../lib/supabase'; // ajuste o path
 
 export async function getUserProfile(email: string) {
   const { data, error } = await supabase

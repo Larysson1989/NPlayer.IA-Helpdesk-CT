@@ -196,7 +196,7 @@ export function UserModals({
 
   const completion = (() => {
     const fields = ['name', 'email', 'matricula', 'telefone', 'avatar'];
-    const filled = fields.filter((f) => !!(user as Record<string, unknown>)[f]).length;
+    const filled = fields.filter((f) => !!(user as unknown as Record<string, unknown>)[f]).length;
     return Math.round((filled / fields.length) * 100);
   })();
 

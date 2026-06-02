@@ -883,7 +883,6 @@ Equipamentos: Cuidar conforme NR17. Internet e energia são responsabilidade do 
 Reuniões: Câmera ligada, vestimenta adequada, pontualidade e participação ativa.
 
 Respeito e Profissionalismo: Comunicação clara, educada e assertiva mesmo à distância.
-`;
 
 [SYSTEM_ROLE]
 
@@ -1497,3 +1496,4 @@ Resposta padrão do agente ao captador:
   'Use o PP Norte como nosso sonho de futuro, nunca como destinação garantida.
    O recurso de uso livre é o que viabiliza esse sonho no longo prazo.'
 
+`;
