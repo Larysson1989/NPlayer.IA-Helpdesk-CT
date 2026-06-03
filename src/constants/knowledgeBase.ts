@@ -24,7 +24,7 @@ Mailing → Ligações via Discador → Fechamento → Lançamento no Sistema �
 
 === REGRAS GERAIS ===
 - Verificar no sistema se já existe doação ativa antes de lançar.
-- Gravação obrigatória (checklist Weon), exceto link de LP ou Multicanal.
+- Gravação obrigatória (checklist Selbetti), exceto link de LP ou Multicanal.
 - Cadastro sempre em nome do titular. Lançar no mês vigente da gravação.
 
 === TIPOS DE DOADORES ===
