@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Send, Loader2, Download, Copy, AlertTriangle } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,21 +42,21 @@ export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const didSendInitial = useRef(false);
 
-  const SYSTEM_PROMPT = `VocÃª Ã© o "PrÃ­ncipe", o assistente de IA do NPlayer.IA para a equipe de captaÃ§Ã£o do Hospital Pequeno PrÃ­ncipe (HPP).
+  const SYSTEM_PROMPT = `Você é o "Príncipe", o assistente de IA do NPlayer.IA para a equipe de captação do Hospital Pequeno Príncipe (HPP).
 
-O usuÃ¡rio atual Ã© **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
+O usuário atual é **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
 
 PERSONALIDADE E COMPORTAMENTO HUMANO:
-- Reatividade Natural: Responda diretamente ao que o usuÃ¡rio disse.
-- Conversa, nÃ£o Discurso: Seja breve e atencioso. NÃ£o use textos longos.
-- Empatia e Acolhimento: Tom de colega de trabalho, nÃ£o de robÃ´ de suporte.
-- Encantamento e Rapport: Valide o sentimento do usuÃ¡rio.
+- Reatividade Natural: Responda diretamente ao que o usuário disse.
+- Conversa, não Discurso: Seja breve e atencioso. Não use textos longos.
+- Empatia e Acolhimento: Tom de colega de trabalho, não de robô de suporte.
+- Encantamento e Rapport: Valide o sentimento do usuário.
 
 DIRETRIZES DE ATENDIMENTO:
 1. Resposta Direta: Atenda ao contexto imediato da mensagem recebida.
-2. Sem Overload: NÃ£o ofereÃ§a todos os temas se nÃ£o for solicitado.
-3. Evitar AlucinaÃ§Ãµes: Use a base de conhecimento apenas para dÃºvidas tÃ©cnicas.
-4. ValidaÃ§Ã£o: Pergunte se a dÃºvida foi sanada apenas apÃ³s uma explicaÃ§Ã£o tÃ©cnica.
+2. Sem Overload: Não ofereça todos os temas se não for solicitado.
+3. Evitar Alucinações: Use a base de conhecimento apenas para dúvidas técnicas.
+4. Validação: Pergunte se a dúvida foi sanada apenas após uma explicação técnica.
 5. NPS: Solicite nota (0-10) apenas quando o atendimento for claramente finalizado.
 
 BASE DE CONHECIMENTO:
@@ -76,11 +76,11 @@ ${HPP_KNOWLEDGE}`;
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Chave de API nÃ£o configurada.');
+      if (!apiKey) throw new Error('Chave de API não configurada.');
 
       const ai = new GoogleGenAI({ apiKey });
 
-      // âœ… CORRIGIDO: gemini-2.0-flash â†’ gemini-2.5-flash
+      // ✅ CORRIGIDO: gemini-2.0-flash → gemini-2.5-flash
       const result = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
         contents: text.trim(),
@@ -117,7 +117,7 @@ ${HPP_KNOWLEDGE}`;
     }
   }, []);
 
-  // Scroll automÃ¡tico
+  // Scroll automático
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -207,7 +207,7 @@ ${HPP_KNOWLEDGE}`;
   return (
     <div className="flex flex-col h-screen bg-white">
 
-      {/* â”€â”€ HEADER â”€â”€ */}
+      {/* ── HEADER ── */}
       <header className="h-16 border-b border-slate-200 flex items-center gap-4 px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
         <button
           onClick={onBack}
@@ -217,9 +217,9 @@ ${HPP_KNOWLEDGE}`;
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-3">
-          <img src={AVATAR} alt="PrÃ­ncipe" className="w-9 h-9 rounded-full object-cover border-2 border-primary/20" />
+          <img src={AVATAR} alt="Príncipe" className="w-9 h-9 rounded-full object-cover border-2 border-primary/20" />
           <div>
-            <p className="font-bold text-sm text-slate-800 leading-none">PrÃ­ncipe</p>
+            <p className="font-bold text-sm text-slate-800 leading-none">Príncipe</p>
             <p className="text-xs text-emerald-500 font-medium mt-0.5">Online</p>
           </div>
         </div>
@@ -230,7 +230,7 @@ ${HPP_KNOWLEDGE}`;
         </div>
       </header>
 
-      {/* â”€â”€ MENSAGENS â”€â”€ */}
+      {/* ── MENSAGENS ── */}
       <main className="flex-1 overflow-y-auto px-4 py-8 bg-slate-50">
         <div className="max-w-3xl mx-auto w-full space-y-6">
 
@@ -241,7 +241,7 @@ ${HPP_KNOWLEDGE}`;
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-12"
             >
-              <img src={AVATAR} alt="PrÃ­ncipe" className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-primary/10" />
+              <img src={AVATAR} alt="Príncipe" className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-primary/10" />
               <p className="text-slate-400 text-sm">Iniciando conversa...</p>
             </motion.div>
           )}
@@ -258,7 +258,7 @@ ${HPP_KNOWLEDGE}`;
                 {/* Avatar */}
                 <div className="shrink-0 mt-1">
                   {msg.role === 'bot' ? (
-                    <img src={AVATAR} alt="PrÃ­ncipe" className="w-8 h-8 rounded-full object-cover" />
+                    <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
                       {firstName[0].toUpperCase()}
@@ -266,10 +266,10 @@ ${HPP_KNOWLEDGE}`;
                   )}
                 </div>
 
-                {/* BalÃ£o */}
+                {/* Balão */}
                 <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                   <p className="text-[11px] font-medium text-slate-400 px-1">
-                    {msg.role === 'bot' ? 'PrÃ­ncipe' : firstName} Â· {msg.time}
+                    {msg.role === 'bot' ? 'Príncipe' : firstName} · {msg.time}
                   </p>
                   <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.role === 'user'
@@ -307,7 +307,7 @@ ${HPP_KNOWLEDGE}`;
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-3"
             >
-              <img src={AVATAR} alt="PrÃ­ncipe" className="w-8 h-8 rounded-full object-cover shrink-0 mt-1" />
+              <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover shrink-0 mt-1" />
               <div className="bg-white border border-slate-100 px-5 py-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
                 <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -320,7 +320,6 @@ ${HPP_KNOWLEDGE}`;
         </div>
       </main>
 
-      {/* ── INPUT ── */}
       {/* ── INPUT ── */}
       <div className="border-t border-slate-200 bg-white px-4 py-4 shrink-0">
         <div className="max-w-3xl mx-auto w-full">
@@ -412,7 +411,6 @@ ${HPP_KNOWLEDGE}`;
           </div>
         </div>
       )}
-
 
       {/* Modal: Sucesso */}
       {showSuccessModal && (
