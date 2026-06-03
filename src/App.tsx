@@ -218,7 +218,7 @@ export default function App() {
             </span>
           </div>
           <p className="text-sm font-medium text-slate-400 hidden md:block italic">
-            "Inteligencia que transforma cada ligacao"
+            "Conhecimento certo, na hora certa"
           </p>
         </div>
 
