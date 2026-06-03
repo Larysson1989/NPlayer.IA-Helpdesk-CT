@@ -62,7 +62,6 @@ export default function App() {
     async function restoreSession() {
       const stored = getStoredSession();
       if (stored) {
-        // Busca avatar_url atualizado do Supabase
         const avatarUrl = await getAvatarUrl(stored.email);
         setUser({ ...stored, avatar_url: avatarUrl ?? stored.avatar_url });
       }
@@ -124,7 +123,6 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // Painel admin/supervisor
   if (activeProfilePage === 'admin') {
     if (!canAccessAdmin(user.role)) {
       setActiveProfilePage(null);
@@ -140,7 +138,6 @@ export default function App() {
     );
   }
 
-  // Configuracoes do usuario
   if (activeProfilePage === 'settings') {
     return (
       <SettingsPage
@@ -156,7 +153,6 @@ export default function App() {
     );
   }
 
-  // Metricas
   if (activeProfilePage === 'metrics') {
     if (!canAccessMetrics(user.role)) {
       setActiveProfilePage(null);
@@ -164,7 +160,6 @@ export default function App() {
     }
   }
 
-  // Paginas em construcao
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -174,7 +169,6 @@ export default function App() {
     );
   }
 
-  // Chat aberto
   if (activeChatQuery !== null) {
     return (
       <ChatView
@@ -188,7 +182,6 @@ export default function App() {
     );
   }
 
-  // Dashboard principal
   const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
@@ -209,17 +202,20 @@ export default function App() {
       {/* -- Header -- */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
-              N
+          {/* Logo + slogan empilhados */}
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
+                N
+              </div>
+              <span className="text-xl font-bold text-blue-600 tracking-tight">
+                NPlayer.<span className="text-yellow-400">IA</span>
+              </span>
             </div>
-            <span className="text-xl font-bold text-blue-600 tracking-tight">
-              NPlayer.<span className="text-yellow-400">IA</span>
-            </span>
+            <p className="text-[10px] text-slate-400 italic leading-none mt-0.5 pl-10">
+              Conhecimento certo, na hora certa
+            </p>
           </div>
-          <p className="text-sm font-medium text-slate-400 hidden md:block italic">
-            "Conhecimento certo, na hora certa"
-          </p>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
