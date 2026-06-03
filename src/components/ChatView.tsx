@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, Loader2 } from 'lucide-react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Send, Loader2, Download, Copy, AlertTriangle } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseGeminiError } from '../services/geminiService';
@@ -32,25 +32,31 @@ export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [correctionTitle, setCorrectionTitle] = useState('Informação incorreta');
+  const [correctionDescription, setCorrectionDescription] = useState('');
+  const [savingCorrection, setSavingCorrection] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const didSendInitial = useRef(false);
 
-  const SYSTEM_PROMPT = `Você é o "Príncipe", o assistente de IA do NPlayer.IA para a equipe de captação do Hospital Pequeno Príncipe (HPP).
+  const SYSTEM_PROMPT = `VocÃª Ã© o "PrÃ­ncipe", o assistente de IA do NPlayer.IA para a equipe de captaÃ§Ã£o do Hospital Pequeno PrÃ­ncipe (HPP).
 
-O usuário atual é **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
+O usuÃ¡rio atual Ã© **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
 
 PERSONALIDADE E COMPORTAMENTO HUMANO:
-- Reatividade Natural: Responda diretamente ao que o usuário disse.
-- Conversa, não Discurso: Seja breve e atencioso. Não use textos longos.
-- Empatia e Acolhimento: Tom de colega de trabalho, não de robô de suporte.
-- Encantamento e Rapport: Valide o sentimento do usuário.
+- Reatividade Natural: Responda diretamente ao que o usuÃ¡rio disse.
+- Conversa, nÃ£o Discurso: Seja breve e atencioso. NÃ£o use textos longos.
+- Empatia e Acolhimento: Tom de colega de trabalho, nÃ£o de robÃ´ de suporte.
+- Encantamento e Rapport: Valide o sentimento do usuÃ¡rio.
 
 DIRETRIZES DE ATENDIMENTO:
 1. Resposta Direta: Atenda ao contexto imediato da mensagem recebida.
-2. Sem Overload: Não ofereça todos os temas se não for solicitado.
-3. Evitar Alucinações: Use a base de conhecimento apenas para dúvidas técnicas.
-4. Validação: Pergunte se a dúvida foi sanada apenas após uma explicação técnica.
+2. Sem Overload: NÃ£o ofereÃ§a todos os temas se nÃ£o for solicitado.
+3. Evitar AlucinaÃ§Ãµes: Use a base de conhecimento apenas para dÃºvidas tÃ©cnicas.
+4. ValidaÃ§Ã£o: Pergunte se a dÃºvida foi sanada apenas apÃ³s uma explicaÃ§Ã£o tÃ©cnica.
 5. NPS: Solicite nota (0-10) apenas quando o atendimento for claramente finalizado.
 
 BASE DE CONHECIMENTO:
@@ -70,11 +76,11 @@ ${HPP_KNOWLEDGE}`;
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Chave de API não configurada.');
+      if (!apiKey) throw new Error('Chave de API nÃ£o configurada.');
 
       const ai = new GoogleGenAI({ apiKey });
 
-      // ✅ CORRIGIDO: gemini-2.0-flash → gemini-2.5-flash
+      // âœ… CORRIGIDO: gemini-2.0-flash â†’ gemini-2.5-flash
       const result = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
         contents: text.trim(),
@@ -111,7 +117,7 @@ ${HPP_KNOWLEDGE}`;
     }
   }, []);
 
-  // Scroll automático
+  // Scroll automÃ¡tico
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -139,10 +145,69 @@ ${HPP_KNOWLEDGE}`;
 
   const firstName = user.name.split(' ')[0];
 
+  const buildConversationContext = () => {
+    const header = [
+      'NPlayer.IA - Contexto da Conversa',
+      `Usuário: ${user.name}`,
+      `E-mail: ${user.email}`,
+      `Data: ${new Date().toLocaleString('pt-BR')}`,
+      '',
+      '--- INÍCIO DO DIÁLOGO ---',
+      '',
+    ].join('\n');
+
+    const body = messages
+      .map((msg) => {
+        const author = msg.role === 'user' ? user.name : 'Príncipe';
+        return `[${author} - ${msg.time}]\n${msg.text}\n`;
+      })
+      .join('\n');
+
+    return `${header}${body}\n--- FIM DO DIÁLOGO ---`;
+  };
+
+  const handleDownloadTxt = () => {
+    const context = buildConversationContext();
+    const blob = new Blob([context], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contexto-conversa-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyContext = async () => {
+    try {
+      await navigator.clipboard.writeText(buildConversationContext());
+      setShowCopyModal(true);
+    } catch {
+      setShowCopyModal(true);
+    }
+  };
+
+  const handleOpenCorrectionModal = () => {
+    setCorrectionTitle('Informação incorreta');
+    setCorrectionDescription('');
+    setShowCorrectionModal(true);
+  };
+
+  const handleCloseCopyModal = () => {
+    setShowCopyModal(false);
+  };
+
+  const handleCancelCorrection = () => {
+    setCorrectionTitle('Informação incorreta');
+    setCorrectionDescription('');
+    setShowCorrectionModal(false);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white">
 
-      {/* ── HEADER ── */}
+      {/* â”€â”€ HEADER â”€â”€ */}
       <header className="h-16 border-b border-slate-200 flex items-center gap-4 px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
         <button
           onClick={onBack}
@@ -152,9 +217,9 @@ ${HPP_KNOWLEDGE}`;
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-3">
-          <img src={AVATAR} alt="Príncipe" className="w-9 h-9 rounded-full object-cover border-2 border-primary/20" />
+          <img src={AVATAR} alt="PrÃ­ncipe" className="w-9 h-9 rounded-full object-cover border-2 border-primary/20" />
           <div>
-            <p className="font-bold text-sm text-slate-800 leading-none">Príncipe</p>
+            <p className="font-bold text-sm text-slate-800 leading-none">PrÃ­ncipe</p>
             <p className="text-xs text-emerald-500 font-medium mt-0.5">Online</p>
           </div>
         </div>
@@ -165,7 +230,7 @@ ${HPP_KNOWLEDGE}`;
         </div>
       </header>
 
-      {/* ── MENSAGENS ── */}
+      {/* â”€â”€ MENSAGENS â”€â”€ */}
       <main className="flex-1 overflow-y-auto px-4 py-8 bg-slate-50">
         <div className="max-w-3xl mx-auto w-full space-y-6">
 
@@ -176,7 +241,7 @@ ${HPP_KNOWLEDGE}`;
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-12"
             >
-              <img src={AVATAR} alt="Príncipe" className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-primary/10" />
+              <img src={AVATAR} alt="PrÃ­ncipe" className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-primary/10" />
               <p className="text-slate-400 text-sm">Iniciando conversa...</p>
             </motion.div>
           )}
@@ -193,7 +258,7 @@ ${HPP_KNOWLEDGE}`;
                 {/* Avatar */}
                 <div className="shrink-0 mt-1">
                   {msg.role === 'bot' ? (
-                    <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover" />
+                    <img src={AVATAR} alt="PrÃ­ncipe" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
                       {firstName[0].toUpperCase()}
@@ -201,10 +266,10 @@ ${HPP_KNOWLEDGE}`;
                   )}
                 </div>
 
-                {/* Balão */}
+                {/* BalÃ£o */}
                 <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                   <p className="text-[11px] font-medium text-slate-400 px-1">
-                    {msg.role === 'bot' ? 'Príncipe' : firstName} · {msg.time}
+                    {msg.role === 'bot' ? 'PrÃ­ncipe' : firstName} Â· {msg.time}
                   </p>
                   <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.role === 'user'
@@ -242,7 +307,7 @@ ${HPP_KNOWLEDGE}`;
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-3"
             >
-              <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover shrink-0 mt-1" />
+              <img src={AVATAR} alt="PrÃ­ncipe" className="w-8 h-8 rounded-full object-cover shrink-0 mt-1" />
               <div className="bg-white border border-slate-100 px-5 py-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
                 <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -256,34 +321,162 @@ ${HPP_KNOWLEDGE}`;
       </main>
 
       {/* ── INPUT ── */}
+      {/* ── INPUT ── */}
       <div className="border-t border-slate-200 bg-white px-4 py-4 shrink-0">
         <div className="max-w-3xl mx-auto w-full">
-          <div className="flex items-end gap-3 bg-slate-100 rounded-2xl px-4 py-3">
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onInput={handleTextareaInput}
-              onKeyDown={handleKeyDown}
-              placeholder="Digite sua mensagem... (Enter para enviar)"
-              disabled={loading}
-              className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 max-h-40 leading-relaxed disabled:opacity-50"
-            />
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || loading}
-              className="shrink-0 w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Enviar"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            </button>
+          <div className="bg-slate-100 rounded-2xl px-4 py-3">
+            <div className="flex items-end gap-3">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onInput={handleTextareaInput}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua mensagem... (Enter para enviar)"
+                disabled={loading}
+                className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 max-h-40 leading-relaxed disabled:opacity-50"
+              />
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleDownloadTxt}
+                  disabled={messages.length === 0}
+                  className="w-9 h-9 rounded-xl bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                  aria-label="Baixar contexto da conversa em TXT"
+                  title="Baixar TXT"
+                >
+                  <Download size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyContext}
+                  disabled={messages.length === 0}
+                  className="w-9 h-9 rounded-xl bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                  aria-label="Copiar contexto da conversa"
+                  title="Copiar"
+                >
+                  <Copy size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCorrectionModal}
+                  disabled={messages.length === 0}
+                  className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                  aria-label="Registrar correção"
+                  title="Correção"
+                >
+                  <AlertTriangle size={16} />
+                </button>
+
+                <button
+                  onClick={() => sendMessage(input)}
+                  disabled={!input.trim() || loading}
+                  className="w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Enviar"
+                  title="Enviar"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                </button>
+              </div>
+            </div>
           </div>
+
           <p className="text-[10px] text-center text-slate-400 mt-2">
             O NPlayer.IA pode cometer erros. Verifique informações importantes.
           </p>
         </div>
       </div>
+
+      {/* Modal: Conteúdo copiado */}
+      {showCopyModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Copy size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Conteúdo copiado</h3>
+                <p className="text-sm text-slate-500">O contexto da conversa foi copiado com sucesso.</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button type="button" onClick={handleCloseCopyModal} className="h-10 px-4 rounded-xl bg-primary text-white hover:bg-blue-700 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal: Sucesso */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-slate-200 p-8 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Ocorrência registrada!</h3>
+            <p className="text-sm text-slate-500 mb-6">Obrigado pelo feedback. Sua correção foi enviada com sucesso.</p>
+            <button
+              type="button"
+              onClick={() => setShowSuccessModal(false)}
+              className="h-10 px-6 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-medium"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Registrar correção */}
+      {showCorrectionModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl border border-slate-200 p-6">
+            <div className="mb-5">
+              <h3 className="text-lg font-bold text-slate-800">Registrar correção</h3>
+              <p className="text-sm text-slate-500 mt-1">Informe o tipo da ocorrência e descreva o problema encontrado.</p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Título da correção</label>
+                <select value={correctionTitle} onChange={(e) => setCorrectionTitle(e.target.value)} className="w-full h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-primary">
+                  <option>Informação incorreta</option>
+                  <option>Resposta duvidosa</option>
+                  <option>Contexto incompleto</option>
+                  <option>Procedimento inadequado</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Descrição</label>
+                <textarea rows={6} value={correctionDescription} onChange={(e) => setCorrectionDescription(e.target.value.slice(0, 1000))} placeholder="Descreva com detalhes o que estava errado, duvidoso ou incompleto..." className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none resize-none focus:border-primary" />
+                <p className="text-xs text-slate-400 mt-1 text-right">{correctionDescription.length}/1000</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" onClick={handleCancelCorrection} className="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => { setSavingCorrection(true); await new Promise((r) => setTimeout(r, 500)); setSavingCorrection(false); setShowCorrectionModal(false); setCorrectionTitle('Informação incorreta'); setCorrectionDescription(''); setShowSuccessModal(true); }}
+                disabled={savingCorrection || !correctionDescription.trim()}
+                className="h-10 px-4 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingCorrection ? 'Enviando...' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
