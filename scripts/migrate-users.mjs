@@ -12,8 +12,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ⚠️  PREENCHA ANTES DE RODAR — NÃO COMMITAR COM OS VALORES REAIS
-const SUPABASE_URL     = 'https://SEU_PROJECT_ID.supabase.co';
-const SERVICE_ROLE_KEY = 'SUA_SERVICE_ROLE_KEY'; // Settings → API → service_role secret
+const SUPABASE_URL     = 'https://uinfkxxfmowkjixcduuy.supabase.co';
+const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpbmZreHhmbW93a2ppeGNkdXV5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTA3NzQ2NywiZXhwIjoyMDk0NjUzNDY3fQ.EA7pcTgXPw8VipvqWQhQXpVfp8BlVxR2nUOpNMypDe4';
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
