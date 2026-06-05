@@ -21,10 +21,11 @@ interface UserProfilePageProps {
   onUserUpdate?: (updated: User) => void;
 }
 
-const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  captador:      { label: 'Captador',      color: 'text-blue-700',    bg: 'bg-blue-50',    icon: <UserCog size={16} /> },
-  supervisor:    { label: 'Supervisor',    color: 'text-purple-700',  bg: 'bg-purple-50',  icon: <ShieldCheck size={16} /> },
-  administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: <ShieldCheck size={16} /> },
+// Sem JSX fora de componentes — apenas dados primitivos
+const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
+  captador:      { label: 'Captador',      color: 'text-blue-700',    bg: 'bg-blue-50'    },
+  supervisor:    { label: 'Supervisor',    color: 'text-purple-700',  bg: 'bg-purple-50'  },
+  administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
 const CARGO_BY_ROLE: Record<UserRole, string> = {
@@ -38,6 +39,12 @@ const DEPT_BY_ROLE: Record<UserRole, string> = {
   supervisor:    'Gestão de Equipes',
   administrador: 'Tecnologia da Informação',
 };
+
+// Ícone resolvido em runtime dentro de componente
+function RoleIcon({ role }: { role: UserRole }) {
+  if (role === 'captador') return <UserCog size={16} />;
+  return <ShieldCheck size={16} />;
+}
 
 function InfoField({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
@@ -97,7 +104,7 @@ export function UserProfilePage({
 }: UserProfilePageProps) {
   const [user, setUser]               = useState<User>(profileUser);
   const role                          = user.role ?? 'captador';
-  const roleCfg                       = ROLE_CONFIG[role];
+  const roleMeta                      = ROLE_META[role];
   const handleBase                    = user.name.split(' ')[0].toLowerCase();
   const handle                        = `@${handleBase}_${role}`;
 
@@ -118,13 +125,21 @@ export function UserProfilePage({
   const [editTelefone, setEditTel]    = useState(user.telefone ?? '');
   const [editRole,     setEditRole]   = useState<UserRole>(role);
 
+  const openEdit = () => {
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditTel(user.telefone ?? '');
+    setEditRole(role);
+    setModal('edit');
+  };
+
   const handleSaveEdit = async () => {
     setSaving(true);
     const updates: Record<string, unknown> = {};
-    if (editName.trim()  !== user.name)           updates.name     = editName.trim();
-    if (editEmail.trim() !== user.email)          updates.email    = editEmail.trim().toLowerCase();
-    if (editTelefone     !== (user.telefone ?? '')) updates.telefone = editTelefone.trim();
-    if (editRole         !== role)                updates.role     = editRole;
+    if (editName.trim()   !== user.name)            updates.name     = editName.trim();
+    if (editEmail.trim()  !== user.email)           updates.email    = editEmail.trim().toLowerCase();
+    if (editTelefone      !== (user.telefone ?? '')) updates.telefone = editTelefone.trim();
+    if (editRole          !== role)                 updates.role     = editRole;
 
     if (Object.keys(updates).length === 0) { closeModal(); setSaving(false); return; }
 
@@ -150,6 +165,8 @@ export function UserProfilePage({
   const [confirmSenha, setConfirm]   = useState('');
   const [showPass,     setShowPass]  = useState(false);
 
+  const openSenha = () => { setNovaSenha(''); setConfirm(''); setShowPass(false); setModal('senha'); };
+
   const handleResetSenha = async () => {
     if (novaSenha.length < 6)       { showToast('Senha deve ter no mínimo 6 caracteres.', 'error'); return; }
     if (novaSenha !== confirmSenha) { showToast('As senhas não coincidem.', 'error'); return; }
@@ -168,15 +185,15 @@ export function UserProfilePage({
   const handleExportar = () => {
     const rows = [
       ['Campo', 'Valor'],
-      ['Nome',           user.name],
-      ['E-mail',         user.email],
-      ['Matrícula',      user.matricula ?? '-'],
-      ['Cargo',          CARGO_BY_ROLE[role]],
-      ['Departamento',   DEPT_BY_ROLE[role]],
-      ['Nível de Acesso', roleCfg.label],
-      ['Telefone',       user.telefone ?? '-'],
-      ['Status',         user.active ? 'Ativo' : 'Inativo'],
-      ['Exportado em',   new Date().toLocaleString('pt-BR')],
+      ['Nome',            user.name],
+      ['E-mail',          user.email],
+      ['Matrícula',       user.matricula ?? '-'],
+      ['Cargo',           CARGO_BY_ROLE[role]],
+      ['Departamento',    DEPT_BY_ROLE[role]],
+      ['Nível de Acesso', roleMeta.label],
+      ['Telefone',        user.telefone ?? '-'],
+      ['Status',          user.active ? 'Ativo' : 'Inativo'],
+      ['Exportado em',    new Date().toLocaleString('pt-BR')],
     ];
     const csv  = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -257,7 +274,7 @@ export function UserProfilePage({
       {modal === 'senha' && (
         <Modal title="Resetar Senha" onClose={closeModal}>
           <p className="text-sm text-slate-500 mb-4">
-            Preencha a nova senha abaixo. Um e-mail de redefinição será enviado para{' '}
+            Um e-mail de redefinição será enviado para{' '}
             <strong className="text-slate-800">{user.email}</strong>.
           </p>
           <div className="flex flex-col gap-4">
@@ -391,7 +408,7 @@ export function UserProfilePage({
                   className="border-4 border-white shadow-md"
                 />
                 <button
-                  onClick={() => { setEditName(user.name); setEditEmail(user.email); setEditTel(user.telefone ?? ''); setEditRole(role); setModal('edit'); }}
+                  onClick={openEdit}
                   className="absolute bottom-0.5 right-0.5 w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors"
                   title="Editar dados"
                 >
@@ -414,36 +431,30 @@ export function UserProfilePage({
 
             {/* Nível de acesso */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className={`${roleCfg.bg} rounded-3xl p-4 flex items-center justify-between border border-slate-100`}>
+              className={`${roleMeta.bg} rounded-3xl p-4 flex items-center justify-between border border-slate-100`}>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nível de Acesso</p>
-                <p className={`text-base font-black uppercase tracking-wider mt-0.5 ${roleCfg.color}`}>{roleCfg.label}</p>
+                <p className={`text-base font-black uppercase tracking-wider mt-0.5 ${roleMeta.color}`}>{roleMeta.label}</p>
               </div>
-              <span className={roleCfg.color}>{roleCfg.icon}</span>
+              <span className={roleMeta.color}><RoleIcon role={role} /></span>
             </motion.div>
 
             {/* Botões de ação */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
               className="flex flex-col gap-2">
 
-              <button
-                onClick={() => { setEditName(user.name); setEditEmail(user.email); setEditTel(user.telefone ?? ''); setEditRole(role); setModal('edit'); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-slate-900 text-white hover:bg-slate-800"
-              >
+              <button onClick={openEdit}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-slate-900 text-white hover:bg-slate-800">
                 <Edit2 size={15} /> Editar Dados
               </button>
 
-              <button
-                onClick={() => { setNovaSenha(''); setConfirm(''); setShowPass(false); setModal('senha'); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-              >
+              <button onClick={openSenha}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50">
                 <KeyRound size={15} /> Resetar Senha
               </button>
 
-              <button
-                onClick={handleExportar}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-              >
+              <button onClick={handleExportar}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50">
                 <Download size={15} /> Exportar Histórico
               </button>
 
@@ -495,8 +506,8 @@ export function UserProfilePage({
                   value={user.matricula
                     ? <span className="font-black text-slate-900">#{user.matricula}</span>
                     : <span className="text-slate-300 italic font-normal">-</span>} />
-                <InfoField label="Cargo"          icon={<Briefcase size={11} />}    value={CARGO_BY_ROLE[role]} />
-                <InfoField label="Departamento"   icon={<Building2 size={11} />}    value={DEPT_BY_ROLE[role]} />
+                <InfoField label="Cargo"          icon={<Briefcase size={11} />} value={CARGO_BY_ROLE[role]} />
+                <InfoField label="Departamento"   icon={<Building2 size={11} />} value={DEPT_BY_ROLE[role]} />
                 <InfoField label="Data de Início" icon={<CalendarCheck size={11} />}
                   value={<span className="text-slate-300 italic font-normal">Não informado</span>} />
               </div>
