@@ -57,6 +57,37 @@ export async function getStoredSession(): Promise<User | null> {
   };
 }
 
+// ─── Admin: listar todos os usuários ─────────────────────────────────────────
+
+export async function getAllUsers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, name, role, matricula, active')
+    .order('name');
+
+  if (error || !data) return [];
+
+  return data.map(p => ({
+    id:        p.id,
+    email:     p.email,
+    name:      p.name,
+    role:      p.role as UserRole,
+    active:    p.active ?? true,
+    matricula: p.matricula ?? '',
+  }));
+}
+
+// ─── Admin: ativar/desativar usuário ──────────────────────────────────────────
+
+export async function updateUserActive(id: string, active: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ active })
+    .eq('id', id);
+
+  return !error;
+}
+
 // ─── Helpers de permissão ─────────────────────────────────────────────────────
 
 export function canAccessChat(role: UserRole | null): boolean {
