@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getAllUsers, updateUserActive } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
+import { UserProfilePage } from './UserProfilePage';
 import type { User, UserRole } from '../App';
 
 interface AdminPageProps {
@@ -54,14 +55,26 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
   const [sortDir,       setSortDir]       = useState<SortDir>('asc');
   const [filterOpen,    setFilterOpen]    = useState(false);
   const [sortOpen,      setSortOpen]      = useState(false);
+  const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
 
   useEffect(() => {
     getAllUsers().then(data => { setUsers(data); setLoading(false); });
   }, []);
 
-  const visibleUsers = useMemo(() =>
-    adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador'),
-    [users, adminRole]);
+  // Se um usuário está selecionado, exibe o perfil
+  if (selectedUser) {
+    return (
+      <UserProfilePage
+        profileUser={selectedUser}
+        adminName={adminName}
+        adminRole={adminRole}
+        onBack={() => setSelectedUser(null)}
+        onLogout={onLogout}
+      />
+    );
+  }
+
+  const visibleUsers = adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -157,7 +170,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
-        {/* TÍTULO — sem ícone */}
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
           <p className="text-sm text-slate-400 mt-0.5">
@@ -169,7 +181,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
 
         {/* BUSCA + FILTRO + ORDENAÇÃO */}
         <div className="flex gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
-          {/* Busca */}
           <div className="relative flex-1 min-w-[220px]">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -177,7 +188,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
 
-          {/* Dropdown Filtro */}
           <div className="relative">
             <button
               onClick={() => { setFilterOpen(o => !o); setSortOpen(false); }}
@@ -220,7 +230,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
             </AnimatePresence>
           </div>
 
-          {/* Dropdown Ordenação */}
           <div className="relative">
             <button
               onClick={() => { setSortOpen(o => !o); setFilterOpen(false); }}
@@ -259,7 +268,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
 
         {/* TABELA */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
-          {/* Cabeçalho clicável */}
           <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[860px]`}>
             {(['Nome','E-mail','Matricula','Perfil','Status',''] as const).map((h, i) => {
               const fieldMap: Record<string, SortField> = {
@@ -305,11 +313,14 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                       transition={{ duration: 0.2 }}
                     >
                       {/* Desktop */}
-                      <div className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors min-w-[860px] ${
-                        !u.active ? 'opacity-50' : ''
-                      }`}>
+                      <div
+                        className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-blue-50 transition-colors min-w-[860px] cursor-pointer ${
+                          !u.active ? 'opacity-50' : ''
+                        }`}
+                        onClick={() => setSelectedUser(u)}
+                      >
                         <div className="flex items-center gap-3">
-                          <UserAvatar name={u.name} size="sm" />
+                          <UserAvatar name={u.name} avatarUrl={u.avatar_url ?? u.avatar ?? null} size="sm" />
                           <span className="text-sm font-bold text-slate-800 leading-snug">{u.name}</span>
                         </div>
                         <span className="text-xs text-slate-500 font-medium break-all">{u.email}</span>
@@ -325,11 +336,11 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                           {u.active ? 'Ativo' : 'Inativo'}
                         </span>
                         <button
-                          onClick={() => canToggle && handleToggleActive(u)}
+                          onClick={e => { e.stopPropagation(); canToggle && handleToggleActive(u); }}
                           disabled={!canToggle || isToggling}
                           title={canToggle ? (u.active ? 'Desativar' : 'Ativar') : 'Sem permissao'}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
+                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
                           {isToggling
                             ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -338,10 +349,13 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                       </div>
 
                       {/* Mobile */}
-                      <div className={`flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors ${
-                        !u.active ? 'opacity-50' : ''
-                      }`}>
-                        <UserAvatar name={u.name} size="md" />
+                      <div
+                        className={`flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-blue-50 transition-colors cursor-pointer ${
+                          !u.active ? 'opacity-50' : ''
+                        }`}
+                        onClick={() => setSelectedUser(u)}
+                      >
+                        <UserAvatar name={u.name} avatarUrl={u.avatar_url ?? u.avatar ?? null} size="md" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800">{u.name}</p>
                           <p className="text-xs text-slate-400 break-all mt-0.5">{u.email}</p>
@@ -356,9 +370,11 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                             </span>
                           </div>
                         </div>
-                        <button onClick={() => canToggle && handleToggleActive(u)} disabled={!canToggle || isToggling}
+                        <button
+                          onClick={e => { e.stopPropagation(); canToggle && handleToggleActive(u); }}
+                          disabled={!canToggle || isToggling}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors shrink-0 ${
-                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
+                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
                           {isToggling
                             ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -372,10 +388,11 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
             </ul>
           )}
 
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
+          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-semibold">
               {sorted.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
             </span>
+            <span className="text-xs text-slate-300 italic">Clique em uma linha para ver o perfil</span>
           </div>
         </div>
       </main>

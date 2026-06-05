@@ -3,14 +3,15 @@ import React from 'react';
 interface UserAvatarProps {
   name: string;
   avatarUrl?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
 const sizes = {
-  sm: 'w-8 h-8 text-xs',
+  sm: 'w-8  h-8  text-xs',
   md: 'w-10 h-10 text-sm',
   lg: 'w-16 h-16 text-xl',
+  xl: 'w-24 h-24 text-2xl',
 };
 
 export function UserAvatar({ name, avatarUrl, size = 'md', className = '' }: UserAvatarProps) {
@@ -37,7 +38,7 @@ export function UserAvatar({ name, avatarUrl, size = 'md', className = '' }: Use
   }
 
   return (
-    <div className={`${base} bg-blue-600 flex items-center justify-center font-semibold text-white`}>
+    <div className={`${base} bg-blue-600 flex items-center justify-center font-bold text-white select-none`}>
       {initials}
     </div>
   );
