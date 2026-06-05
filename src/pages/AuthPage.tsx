@@ -24,7 +24,7 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
     // Simula delay mínimo para UX
     await new Promise(r => setTimeout(r, 400));
 
-    const user = login(email, password);
+    const user = await login(email, password);
     setLoading(false);
 
     if (!user) {
