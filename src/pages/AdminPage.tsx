@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Users, Search, Edit2, Save, X, ArrowLeft,
-  LogOut, ShieldCheck, UserCog, ChevronDown,
+  Users, Search, Edit2, ArrowLeft,
+  LogOut, Filter, ChevronDown, ArrowUpAZ, ArrowDownAZ,
 } from 'lucide-react';
 import { getAllUsers, updateUserActive } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
@@ -16,6 +16,8 @@ interface AdminPageProps {
 }
 
 type FilterRole = 'todos' | UserRole;
+type SortField  = 'name' | 'email' | 'matricula' | 'role' | 'active';
+type SortDir    = 'asc' | 'desc';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }> = {
   captador:      { label: 'Captador',      color: 'text-blue-600',    bg: 'bg-blue-50'    },
@@ -23,14 +25,35 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
+const ROLE_ORDER: Record<UserRole, number> = { captador: 0, supervisor: 1, administrador: 2 };
+
 const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_120px_44px]';
 
+const FILTER_LABELS: Record<FilterRole, string> = {
+  todos:         'Todos os perfis',
+  captador:      'Captadores',
+  supervisor:    'Supervisores',
+  administrador: 'Administradores',
+};
+
+const SORT_LABELS: Record<SortField, string> = {
+  name:      'Nome',
+  email:     'E-mail',
+  matricula: 'Matrícula',
+  role:      'Perfil',
+  active:    'Status',
+};
+
 export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
-  const [users,      setUsers]      = useState<User[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [search,     setSearch]     = useState('');
-  const [filterRole, setFilterRole] = useState<FilterRole>('todos');
-  const [toggling,   setToggling]   = useState<string | null>(null);
+  const [users,         setUsers]         = useState<User[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState('');
+  const [filterRole,    setFilterRole]    = useState<FilterRole>('todos');
+  const [toggling,      setToggling]      = useState<string | null>(null);
+  const [sortField,     setSortField]     = useState<SortField>('name');
+  const [sortDir,       setSortDir]       = useState<SortDir>('asc');
+  const [filterOpen,    setFilterOpen]    = useState(false);
+  const [sortOpen,      setSortOpen]      = useState(false);
 
   useEffect(() => {
     getAllUsers().then(data => { setUsers(data); setLoading(false); });
@@ -40,17 +63,32 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador'),
     [users, adminRole]);
 
-  const filtered = useMemo(() =>
-    visibleUsers.filter(u => {
-      const q = search.toLowerCase();
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return visibleUsers.filter(u => {
       const matchSearch = !q ||
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         (u.matricula ?? '').includes(q);
       const matchRole = filterRole === 'todos' || u.role === filterRole;
       return matchSearch && matchRole;
-    }),
-    [visibleUsers, search, filterRole]);
+    });
+  }, [visibleUsers, search, filterRole]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let va: string | number = '';
+      let vb: string | number = '';
+      if (sortField === 'name')      { va = a.name.toLowerCase();      vb = b.name.toLowerCase(); }
+      if (sortField === 'email')     { va = a.email.toLowerCase();     vb = b.email.toLowerCase(); }
+      if (sortField === 'matricula') { va = (a.matricula ?? '');        vb = (b.matricula ?? ''); }
+      if (sortField === 'role')      { va = ROLE_ORDER[a.role] ?? 0;   vb = ROLE_ORDER[b.role] ?? 0; }
+      if (sortField === 'active')    { va = a.active ? 1 : 0;          vb = b.active ? 1 : 0; }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+  }, [filtered, sortField, sortDir]);
 
   const counts = useMemo(() => ({
     todos:         visibleUsers.length,
@@ -66,17 +104,24 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     setToggling(null);
   }
 
-  const FILTER_TABS: { key: FilterRole; label: string; count: number }[] = [
-    { key: 'todos',      label: 'Todos',        count: counts.todos      },
-    { key: 'captador',   label: 'Captadores',   count: counts.captador   },
-    { key: 'supervisor', label: 'Supervisores', count: counts.supervisor },
-    ...(adminRole === 'administrador'
-      ? [{ key: 'administrador' as FilterRole, label: 'Administradores', count: counts.administrador }]
-      : []),
-  ];
+  function handleSort(field: SortField) {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+    setSortOpen(false);
+  }
+
+  function handleFilter(role: FilterRole) {
+    setFilterRole(role);
+    setFilterOpen(false);
+  }
+
+  const SORTABLE_FIELDS: SortField[] = ['name', 'email', 'matricula', 'role', 'active'];
+  const FILTER_ROLES: FilterRole[] = adminRole === 'administrador'
+    ? ['todos', 'captador', 'supervisor', 'administrador']
+    : ['todos', 'captador', 'supervisor'];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col" onClick={() => { setFilterOpen(false); setSortOpen(false); }}>
       {/* HEADER */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -112,49 +157,129 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              {adminRole === 'administrador'
-                ? 'Acesso total - ative ou desative qualquer usuario.'
-                : 'Voce pode gerenciar Captadores e Supervisores.'}
-            </p>
+        {/* TÍTULO — sem ícone */}
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            {adminRole === 'administrador'
+              ? 'Acesso total - ative ou desative qualquer usuario.'
+              : 'Voce pode gerenciar Captadores e Supervisores.'}
+          </p>
+        </div>
+
+        {/* BUSCA + FILTRO + ORDENAÇÃO */}
+        <div className="flex gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
+          {/* Busca */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nome, e-mail ou matricula..."
+              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
-          {adminRole === 'administrador'
-            ? <ShieldCheck size={22} className="text-emerald-500 mt-1" />
-            : <UserCog size={22} className="text-purple-400 mt-1" />}
-        </div>
 
-        {/* FILTROS */}
-        <div className="flex flex-wrap gap-2">
-          {FILTER_TABS.map(t => (
-            <button key={t.key} onClick={() => setFilterRole(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-xs font-bold uppercase tracking-wider transition-all ${
-                filterRole === t.key
-                  ? 'bg-white border-blue-500 text-blue-600 shadow-sm shadow-blue-100'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
-              }`}>
-              {t.label}
-              <span className={`text-xs font-black ${filterRole === t.key ? 'text-blue-600' : 'text-slate-400'}`}>{t.count}</span>
+          {/* Dropdown Filtro */}
+          <div className="relative">
+            <button
+              onClick={() => { setFilterOpen(o => !o); setSortOpen(false); }}
+              className={`flex items-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                filterRole !== 'todos'
+                  ? 'bg-blue-50 border-blue-400 text-blue-600'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              <Filter size={15} />
+              <span className="hidden sm:inline">
+                {filterRole === 'todos' ? 'Filtrar' : FILTER_LABELS[filterRole]}
+              </span>
+              {filterRole !== 'todos' && (
+                <span className="ml-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">
+                  {counts[filterRole]}
+                </span>
+              )}
+              <ChevronDown size={14} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
             </button>
-          ))}
-        </div>
+            <AnimatePresence>
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-lg z-20 overflow-hidden"
+                >
+                  {FILTER_ROLES.map(role => (
+                    <button key={role} onClick={() => handleFilter(role)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        filterRole === role ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{FILTER_LABELS[role]}</span>
+                      <span className="text-xs font-black text-slate-400">{counts[role]}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-        {/* BUSCA */}
-        <div className="relative">
-          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou matricula..."
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          {/* Dropdown Ordenação */}
+          <div className="relative">
+            <button
+              onClick={() => { setSortOpen(o => !o); setFilterOpen(false); }}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 transition-all"
+            >
+              {sortDir === 'asc' ? <ArrowUpAZ size={15} /> : <ArrowDownAZ size={15} />}
+              <span className="hidden sm:inline">{SORT_LABELS[sortField]}</span>
+              <ChevronDown size={14} className={`transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {sortOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg z-20 overflow-hidden"
+                >
+                  {SORTABLE_FIELDS.map(field => (
+                    <button key={field} onClick={() => handleSort(field)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        sortField === field ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{SORT_LABELS[field]}</span>
+                      {sortField === field && (
+                        <span className="text-[10px] font-black text-blue-400">
+                          {sortDir === 'asc' ? 'A→Z' : 'Z→A'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* TABELA */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
+          {/* Cabeçalho clicável */}
           <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[860px]`}>
-            {['Nome', 'E-mail', 'Matricula', 'Perfil', 'Status', ''].map((h, i) => (
-              <span key={i} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
-            ))}
+            {(['Nome','E-mail','Matricula','Perfil','Status',''] as const).map((h, i) => {
+              const fieldMap: Record<string, SortField> = {
+                'Nome': 'name', 'E-mail': 'email', 'Matricula': 'matricula',
+                 'Perfil': 'role', 'Status': 'active',
+              };
+              const field = fieldMap[h];
+              return (
+                <button key={i} onClick={() => field && handleSort(field)}
+                  className={`text-[10px] font-black uppercase tracking-widest text-left flex items-center gap-1 transition-colors ${
+                    field ? 'text-slate-400 hover:text-blue-500 cursor-pointer' : 'text-slate-400 cursor-default'
+                  } ${sortField === field ? 'text-blue-500' : ''}`}
+                >
+                  {h}
+                  {sortField === field && (
+                    sortDir === 'asc' ? <ArrowUpAZ size={11} /> : <ArrowDownAZ size={11} />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {loading ? (
@@ -162,7 +287,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
               <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm font-semibold">Carregando usuarios...</span>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-3">
               <Users size={48} strokeWidth={1} />
               <p className="text-sm font-semibold">Nenhum usuario encontrado</p>
@@ -170,7 +295,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           ) : (
             <ul className="divide-y divide-slate-100">
               <AnimatePresence initial={false}>
-                {filtered.map(u => {
+                {sorted.map(u => {
                   const roleCfg = ROLE_CONFIG[u.role];
                   const isToggling = toggling === u.id;
                   const canToggle = adminRole === 'administrador' || u.role !== 'administrador';
@@ -249,7 +374,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
 
           <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
             <span className="text-xs text-slate-400 font-semibold">
-              {filtered.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
+              {sorted.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
