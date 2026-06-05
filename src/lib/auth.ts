@@ -88,6 +88,35 @@ export async function updateUserActive(id: string, active: boolean): Promise<boo
   return !error;
 }
 
+// ─── Usuário: atualizar nome e/ou senha ───────────────────────────────────────
+
+export async function updateUser(
+  _email: string,
+  updates: { name?: string; password?: string }
+): Promise<boolean> {
+  let ok = true;
+
+  // Atualiza nome no profile
+  if (updates.name) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ name: updates.name })
+        .eq('id', user.id);
+      if (error) ok = false;
+    }
+  }
+
+  // Atualiza senha via Supabase Auth
+  if (updates.password) {
+    const { error } = await supabase.auth.updateUser({ password: updates.password });
+    if (error) ok = false;
+  }
+
+  return ok;
+}
+
 // ─── Helpers de permissão ─────────────────────────────────────────────────────
 
 export function canAccessChat(role: UserRole | null): boolean {
