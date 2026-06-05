@@ -60,7 +60,7 @@ export default function App() {
 
   useEffect(() => {
     async function restoreSession() {
-      const stored = getStoredSession();
+      const stored = await getStoredSession();
       if (stored) {
         const avatarUrl = await getAvatarUrl(stored.email);
         setUser({ ...stored, avatar_url: avatarUrl ?? stored.avatar_url });
@@ -75,8 +75,8 @@ export default function App() {
     setUser({ ...loggedUser, avatar_url: avatarUrl ?? loggedUser.avatar_url });
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setUser(null);
     setSearchQuery('');
     setActiveChatQuery(null);
