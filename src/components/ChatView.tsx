@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseGeminiError } from '../services/geminiService';
 import { submitCorrection } from '../services/correctionService';
+import { registrarMensagem } from '../services/metricsService';
 import { HPP_KNOWLEDGE } from '../constants/knowledgeBase';
 import ReactMarkdown from 'react-markdown';
 
@@ -16,6 +17,7 @@ interface Message {
 }
 
 interface User {
+  id?: string;
   email: string;
   name: string;
   matricula?: string;
@@ -75,6 +77,11 @@ ${HPP_KNOWLEDGE}`;
     setInput('');
     resetTextarea();
     setLoading(true);
+
+    // Registra a pergunta nas métricas (fire-and-forget)
+    if (user.id) {
+      registrarMensagem(user.id, user.name, text.trim()).catch(() => {});
+    }
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
