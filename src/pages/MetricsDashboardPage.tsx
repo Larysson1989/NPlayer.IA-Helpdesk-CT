@@ -3,19 +3,24 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, LogOut, RefreshCw, Users, MessageSquare,
   LogIn, BarChart2, TrendingUp, AlertTriangle, Clock,
-  Repeat2, ThumbsDown, UserX, Activity,
+  Repeat2, ThumbsDown, UserX, Activity, Zap, Target,
+  AlignLeft, Flame, Calendar,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer,
+  ResponsiveContainer, RadialBarChart, RadialBar,
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
 import {
   fetchMetricsKPIs, fetchTopUsers, fetchWordCloud,
   fetchTimeSeries, fetchPeakHours, fetchUserActivity, fetchRoleDistribution,
+  fetchWeekdayDistribution, fetchUserCorrectionRates, fetchTopWordsByRole,
+  fetchUserStreaks, fetchMsgLengthByRole,
   type MetricsKPIs, type TopUser, type WordCount,
   type DayCount, type HourCount, type UserActivity, type RoleDistribution,
+  type WeekdayCount, type UserCorrectionRate, type RoleTopWords,
+  type UserStreak, type MsgLengthByRole,
 } from '../services/metricsService';
 import type { UserRole } from '../App';
 
@@ -101,6 +106,8 @@ function KpiCard({
     red:     { bg: 'bg-red-50',     text: 'text-red-700',     icon: 'text-red-400'     },
     purple:  { bg: 'bg-purple-50',  text: 'text-purple-700',  icon: 'text-purple-400'  },
     slate:   { bg: 'bg-slate-100',  text: 'text-slate-700',   icon: 'text-slate-400'   },
+    orange:  { bg: 'bg-orange-50',  text: 'text-orange-700',  icon: 'text-orange-400'  },
+    rose:    { bg: 'bg-rose-50',    text: 'text-rose-700',    icon: 'text-rose-400'    },
   };
   const c = COLORS[color] ?? COLORS.blue;
   return (
@@ -337,7 +344,7 @@ function UserActivityTable({ data }: { data: UserActivity[] }) {
   );
 }
 
-// ─── Ranking Top 10 com barras duplas (recharts) ──────────────────────────────
+// ─── Ranking Top 10 com barras duplas ─────────────────────────────────────────
 function TopUsersChart({ data }: { data: TopUser[] }) {
   const chartData = data.map(u => ({
     name: u.user_name.split(' ')[0],
@@ -364,24 +371,230 @@ function TopUsersChart({ data }: { data: TopUser[] }) {
   );
 }
 
+// ─── NOVO: Uso por dia da semana ──────────────────────────────────────────────
+function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p className="text-xs text-slate-400 font-semibold mb-3">Últimos 30 dias</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          <Legend iconType="circle" iconSize={8}
+            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
+          <Bar dataKey="msgs" name="Mensagens" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={32} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── NOVO: Taxa de correção por usuário ───────────────────────────────────────
+function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
+  const chartData = data
+    .filter(u => u.correcoes > 0)
+    .map(u => ({
+      name: u.user_name.split(' ')[0],
+      correcoes: u.correcoes,
+      taxa: u.taxa,
+      role: u.role,
+    }));
+
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center py-12 gap-2">
+        <Zap size={32} className="text-emerald-300" />
+        <p className="text-sm font-bold text-emerald-600">Nenhuma correção registrada!</p>
+        <p className="text-xs text-slate-400">A IA está acertando em cheio 🎯</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          <Legend iconType="circle" iconSize={8}
+            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Bar dataKey="correcoes" name="Correções" fill="#f87171" radius={[0, 4, 4, 0]} maxBarSize={18} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── NOVO: Gauge de taxa de acerto IA ─────────────────────────────────────────
+function IaAccuracyGauge({ taxa }: { taxa: number }) {
+  const color = taxa >= 90 ? '#10b981' : taxa >= 70 ? '#f59e0b' : '#ef4444';
+  const label = taxa >= 90 ? 'Excelente' : taxa >= 70 ? 'Atenção' : 'Crítico';
+  const gaugeData = [{ name: 'Taxa', value: taxa, fill: color }, { name: 'Resto', value: 100 - taxa, fill: '#f1f5f9' }];
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
+      <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
+      <div className="relative">
+        <ResponsiveContainer width={180} height={120}>
+          <RadialBarChart cx="50%" cy="100%" innerRadius={60} outerRadius={90}
+            startAngle={180} endAngle={0} data={gaugeData}>
+            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f5f9' }}>
+              {gaugeData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+            </RadialBar>
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+          <p className="text-3xl font-black tabular-nums" style={{ color }}>{taxa}%</p>
+          <p className="text-xs font-bold" style={{ color }}>{label}</p>
+        </div>
+      </div>
+      <p className="text-xs text-slate-400 mt-3 text-center">Baseado em msgs vs. correções submetidas</p>
+    </div>
+  );
+}
+
+// ─── NOVO: Comprimento médio por role ─────────────────────────────────────────
+function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p className="text-xs text-slate-400 font-semibold mb-3">Caracteres médios por perfil · últimas 500 mensagens</p>
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={['#3b82f6', '#9333ea', '#059669'][i % 3]} fillOpacity={0.85} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── NOVO: Streaks de uso ─────────────────────────────────────────────────────
+function StreakTable({ data }: { data: UserStreak[] }) {
+  const shown = data.filter(u => u.streak > 0 || u.max_streak > 0).slice(0, 8);
+  if (shown.length === 0) return <EmptyState label="Nenhum streak registrado ainda" />;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-50 bg-slate-50">
+              {['#', 'Usuário', 'Perfil', 'Streak atual', 'Recorde'].map(h => (
+                <th key={h} className="text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((u, i) => (
+              <tr key={u.user_id} className={`border-b border-slate-50 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                <td className="px-4 py-3">
+                  <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-black ${
+                    i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-400'
+                  }`}>{i + 1}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={u.user_name} size="sm" />
+                    <span className="text-sm font-bold text-slate-800 truncate max-w-[120px]">{u.user_name}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    ROLE_COLOR[u.role]?.badge ?? 'text-slate-500 bg-slate-100'
+                  }`}>{u.role}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="flex items-center gap-1.5 text-sm font-black text-orange-500">
+                    <Flame size={13} />{u.streak}d
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm font-bold text-slate-500 tabular-nums">{u.max_streak}d</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── NOVO: Top palavras por role ──────────────────────────────────────────────
+function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
+  const ROLE_LABELS: Record<string, string> = { captador: 'Captadores', supervisor: 'Supervisores', administrador: 'Admins' };
+  const COLORS_BY_ROLE: Record<string, string> = { captador: '#3b82f6', supervisor: '#9333ea', administrador: '#059669' };
+
+  if (data.length === 0) return <EmptyState label="Sem dados suficientes" />;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {data.map(r => (
+        <div key={r.role} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <p className="text-xs font-black uppercase tracking-wider mb-3" style={{ color: COLORS_BY_ROLE[r.role] ?? '#64748b' }}>
+            {ROLE_LABELS[r.role] ?? r.role}
+          </p>
+          <div className="flex flex-col gap-2">
+            {r.words.slice(0, 8).map((w, i) => {
+              const max = r.words[0]?.count ?? 1;
+              const pct = Math.round((w.count / max) * 100);
+              return (
+                <div key={w.word} className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 w-4">{i + 1}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-bold text-slate-700">{w.word}</span>
+                      <span className="text-[10px] font-black text-slate-400">{w.count}x</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full">
+                      <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: COLORS_BY_ROLE[r.role] ?? '#64748b', opacity: 0.7 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }: Props) {
-  const [kpis,      setKpis]      = useState<MetricsKPIs | null>(null);
-  const [topUsers,  setTopUsers]  = useState<TopUser[]>([]);
-  const [wordCloud, setWordCloud] = useState<WordCount[]>([]);
-  const [series,    setSeries]    = useState<DayCount[]>([]);
-  const [hours,     setHours]     = useState<HourCount[]>([]);
-  const [activity,  setActivity]  = useState<UserActivity[]>([]);
-  const [roles,     setRoles]     = useState<RoleDistribution[]>([]);
+  const [kpis,           setKpis]           = useState<MetricsKPIs | null>(null);
+  const [topUsers,       setTopUsers]       = useState<TopUser[]>([]);
+  const [wordCloud,      setWordCloud]      = useState<WordCount[]>([]);
+  const [series,         setSeries]         = useState<DayCount[]>([]);
+  const [hours,          setHours]          = useState<HourCount[]>([]);
+  const [activity,       setActivity]       = useState<UserActivity[]>([]);
+  const [roles,          setRoles]          = useState<RoleDistribution[]>([]);
+  // novos
+  const [weekdays,       setWeekdays]       = useState<WeekdayCount[]>([]);
+  const [corrRates,      setCorrRates]      = useState<UserCorrectionRate[]>([]);
+  const [roleWords,      setRoleWords]      = useState<RoleTopWords[]>([]);
+  const [streaks,        setStreaks]        = useState<UserStreak[]>([]);
+  const [msgLengths,     setMsgLengths]     = useState<MsgLengthByRole[]>([]);
+
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo'>('overview');
+  const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo' | 'qualidade'>('overview');
 
   const loadAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
 
-    const [k, tu, wc, s, h, a, r] = await Promise.all([
+    const [k, tu, wc, s, h, a, r, wd, cr, rw, st, ml] = await Promise.all([
       fetchMetricsKPIs(),
       fetchTopUsers(),
       fetchWordCloud(),
@@ -389,10 +602,16 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
       fetchPeakHours(),
       fetchUserActivity(),
       fetchRoleDistribution(),
+      fetchWeekdayDistribution(),
+      fetchUserCorrectionRates(),
+      fetchTopWordsByRole(),
+      fetchUserStreaks(),
+      fetchMsgLengthByRole(),
     ]);
 
     setKpis(k); setTopUsers(tu); setWordCloud(wc);
     setSeries(s); setHours(h); setActivity(a); setRoles(r);
+    setWeekdays(wd); setCorrRates(cr); setRoleWords(rw); setStreaks(st); setMsgLengths(ml);
     setLastUpdate(new Date());
     setLoading(false); setRefreshing(false);
   }, []);
@@ -406,9 +625,10 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
   const maxWord = wordCloud[0]?.count ?? 1;
 
   const TABS = [
-    { id: 'overview',  label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
-    { id: 'usuarios',  label: 'Usuários',       icon: <Users         size={14} /> },
-    { id: 'conteudo',  label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
+    { id: 'overview',   label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
+    { id: 'usuarios',   label: 'Usuários',       icon: <Users         size={14} /> },
+    { id: 'conteudo',   label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
+    { id: 'qualidade',  label: 'Qualidade IA',   icon: <Target        size={14} /> },
   ] as const;
 
   return (
@@ -462,12 +682,12 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
             </p>
           </div>
         </div>
-        <div className="flex gap-1 -mb-px">
+        <div className="flex gap-1 -mb-px overflow-x-auto">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -495,7 +715,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* KPIs de Mensagens */}
                 <section>
                   <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -506,7 +725,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   </div>
                 </section>
 
-                {/* KPIs de Usuários */}
                 <section>
                   <SectionTitle icon={<Users size={15} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -523,20 +741,22 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                     <KpiCard label="Usuários ativos" value={kpis!.usuariosAtivos} icon={<Users size={18}/>} color="green"
                       suffix={`/${kpis!.usuariosTotal}`} />
                     <KpiCard label="Total de logins" value={kpis!.totalLogins} icon={<LogIn size={18}/>} color="slate" />
-                    <KpiCard label="Feedbacks negativos" value={kpis!.totalCorrecoes} icon={<ThumbsDown size={18}/>}
-                      color={kpis!.totalCorrecoes > 0 ? 'amber' : 'green'}
-                      delta="Correções submetidas" />
+                    <KpiCard label="Comprimento médio" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="orange"
+                      suffix=" chars" delta="Média das últimas 200 perguntas" />
                     <KpiCard label="Total de usuários" value={kpis!.usuariosTotal} icon={<Users size={18}/>} color="indigo" />
                   </div>
                 </section>
 
-                {/* Gráfico de Área — Série temporal */}
                 <section>
                   <SectionTitle icon={<TrendingUp size={15} />} title="Atividade nos últimos 14 dias" subtitle="Logins e mensagens por dia" />
                   {series.length > 0 ? <TimeSeriesAreaChart data={series} /> : <EmptyState label="Sem dados" />}
                 </section>
 
-                {/* Donut — Distribuição por role */}
+                <section>
+                  <SectionTitle icon={<Calendar size={15} />} title="Uso por Dia da Semana" subtitle="Distribuição de logins e mensagens nos últimos 30 dias" />
+                  {weekdays.length > 0 ? <WeekdayBarChart data={weekdays} /> : <EmptyState label="Sem dados" />}
+                </section>
+
                 <section>
                   <SectionTitle icon={<Users size={15} />} title="Uso por Perfil" subtitle="Distribuição de mensagens por tipo de usuário" />
                   {roles.length > 0 ? <RoleDonutChart data={roles} /> : <EmptyState label="Sem dados" />}
@@ -551,7 +771,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* Ranking gráfico */}
                 <section>
                   <SectionTitle icon={<TrendingUp size={15} />} title="Ranking de Engajamento" subtitle="Top 10 usuários por logins e mensagens" />
                   {topUsers.length === 0
@@ -559,7 +778,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                     : <TopUsersChart data={topUsers} />}
                 </section>
 
-                {/* Ranking lista detalhada */}
                 {topUsers.length > 0 && (
                   <section>
                     <SectionTitle icon={<Users size={15} />} title="Detalhes do Ranking" subtitle="Posição e métricas individuais" />
@@ -612,7 +830,11 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   </section>
                 )}
 
-                {/* Tabela de atividade */}
+                <section>
+                  <SectionTitle icon={<Flame size={15} />} title="Streaks de Uso" subtitle="Dias consecutivos de uso por usuário" />
+                  <StreakTable data={streaks} />
+                </section>
+
                 <section>
                   <SectionTitle icon={<Activity size={15} />} title="Atividade Individual" subtitle="Histórico e status de cada usuário ativo" />
                   {activity.length === 0 ? <EmptyState label="Sem dados de atividade" /> : (
@@ -629,13 +851,16 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* Pico de horas — BarChart colorido */}
                 <section>
                   <SectionTitle icon={<Clock size={15} />} title="Horários de Pico" subtitle="Quando a equipe mais usa o sistema" />
                   {hours.length > 0 ? <PeakHoursBarChart data={hours} /> : <EmptyState label="Sem dados" />}
                 </section>
 
-                {/* Nuvem de palavras */}
+                <section>
+                  <SectionTitle icon={<AlignLeft size={15} />} title="Profundidade das Perguntas" subtitle="Comprimento médio de pergunta por perfil" />
+                  {msgLengths.length > 0 ? <MsgLengthChart data={msgLengths} /> : <EmptyState label="Sem dados" />}
+                </section>
+
                 <section>
                   <SectionTitle icon={<MessageSquare size={15} />} title="Temas mais Pesquisados" subtitle="Nuvem de palavras das últimas 500 perguntas" />
                   {wordCloud.length === 0 ? <EmptyState label="Nenhuma mensagem registrada ainda" /> : (
@@ -662,7 +887,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   )}
                 </section>
 
-                {/* Top temas por frequência */}
                 <section>
                   <SectionTitle icon={<BarChart2 size={15} />} title="Top Temas por Frequência" subtitle="Palavras-chave mais repetidas (gráfico)" />
                   {wordCloud.length === 0 ? <EmptyState label="Sem dados" /> : (
@@ -687,6 +911,123 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                     </div>
                   )}
                 </section>
+
+                <section>
+                  <SectionTitle icon={<Users size={15} />} title="Temas por Perfil" subtitle="O que cada grupo mais pergunta" />
+                  <TopWordsByRoleSection data={roleWords} />
+                </section>
+              </motion.div>
+            )}
+
+            {/* ═══════════ ABA: QUALIDADE IA ═══════════ */}
+            {activeTab === 'qualidade' && (
+              <motion.div key="qualidade"
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {/* KPIs de qualidade */}
+                <section>
+                  <SectionTitle icon={<Target size={15} />} title="Indicadores de Qualidade" subtitle="Precisão e comportamento de uso da IA" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <KpiCard label="Taxa de acerto IA" value={kpis!.taxaAcertoIA} icon={<Target size={18}/>}
+                      color={kpis!.taxaAcertoIA >= 90 ? 'emerald' : kpis!.taxaAcertoIA >= 70 ? 'amber' : 'red'}
+                      suffix="%" delta={kpis!.taxaAcertoIA >= 90 ? 'Excelente' : kpis!.taxaAcertoIA >= 70 ? 'Requer atenção' : 'Crítico'} />
+                    <KpiCard label="Total de correções" value={kpis!.totalCorrecoes} icon={<ThumbsDown size={18}/>}
+                      color={kpis!.totalCorrecoes === 0 ? 'green' : 'amber'}
+                      delta="Feedbacks negativos enviados" />
+                    <KpiCard label="Correções/usuário" value={kpis!.mediaCorrecoesUsuario} icon={<ThumbsDown size={18}/>}
+                      color={kpis!.mediaCorrecoesUsuario === 0 ? 'green' : kpis!.mediaCorrecoesUsuario < 1 ? 'amber' : 'red'}
+                      suffix=" /user" delta="Média de feedbacks negativos" />
+                    <KpiCard label="Comprimento médio" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>}
+                      color="blue" suffix=" chars"
+                      delta={kpis!.mediaCaracteresPergunta > 60 ? 'Perguntas elaboradas' : 'Perguntas curtas'} />
+                  </div>
+                </section>
+
+                {/* Gauge de acerto */}
+                <section>
+                  <SectionTitle icon={<Zap size={15} />} title="Precisão da IA" subtitle="Visualização da taxa de acerto geral" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <IaAccuracyGauge taxa={kpis!.taxaAcertoIA} />
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-center gap-4">
+                      <p className="text-xs font-black uppercase tracking-wider text-slate-500">Como interpretar</p>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">≥ 90% — Excelente</p>
+                            <p className="text-xs text-slate-400">Base de conhecimento muito bem calibrada</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">70–89% — Atenção</p>
+                            <p className="text-xs text-slate-400">Revisar tópicos com mais correções</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full bg-red-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">&lt; 70% — Crítico</p>
+                            <p className="text-xs text-slate-400">Base de conhecimento precisa de revisão urgente</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Correções por usuário */}
+                <section>
+                  <SectionTitle icon={<ThumbsDown size={15} />} title="Correções por Usuário" subtitle="Quem mais enviou feedbacks negativos" />
+                  <CorrectionRateChart data={corrRates} />
+                </section>
+
+                {/* Tabela detalhada */}
+                {corrRates.filter(u => u.correcoes > 0).length > 0 && (
+                  <section>
+                    <SectionTitle icon={<Users size={15} />} title="Detalhes de Correção" subtitle="Taxa individual de feedback negativo" />
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-slate-50 bg-slate-50">
+                              {['Usuário', 'Perfil', 'Mensagens', 'Correções', 'Taxa'].map(h => (
+                                <th key={h} className="text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {corrRates.filter(u => u.correcoes > 0).map((u, i) => (
+                              <tr key={u.user_id} className={`border-b border-slate-50 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <UserAvatar name={u.user_name} size="sm" />
+                                    <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">{u.user_name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                    ROLE_COLOR[u.role]?.badge ?? 'text-slate-500 bg-slate-100'
+                                  }`}>{u.role}</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-bold tabular-nums text-slate-700">{fmt(u.msgs)}</td>
+                                <td className="px-4 py-3 text-sm font-bold tabular-nums text-red-500">{u.correcoes}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-sm font-black tabular-nums ${
+                                    u.taxa > 10 ? 'text-red-500' : u.taxa > 5 ? 'text-amber-500' : 'text-emerald-600'
+                                  }`}>{u.taxa}%</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+                )}
               </motion.div>
             )}
 
