@@ -1,6 +1,8 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
 
+const APP_VERSION = '1.0.0';
+
 interface TopBarProps {
   onLogout?: () => void;
   onProfileClick?: () => void;
@@ -23,6 +25,9 @@ export function TopBar({ onLogout, onProfileClick, user }: TopBarProps) {
           </div>
           <span className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-[0.15em] mt-1.5">
             Apoio operacional para Captação por Telefone
+          </span>
+          <span style={{ fontSize: '8px', color: '#9ca3af', lineHeight: '1', marginTop: '2px' }}>
+            v{APP_VERSION}
           </span>
         </div>
         <div className="flex items-center gap-6">
