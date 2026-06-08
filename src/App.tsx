@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { getStoredSession, logout, canAccessMetrics, canAccessAdmin } from './lib/auth';
+import { supabase } from './lib/supabaseClient';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
@@ -52,6 +54,7 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
 export default function App() {
   const [user, setUser]                             = useState<User | null>(null);
   const [ready, setReady]                           = useState(false);
+  const [isRecovery, setIsRecovery]                 = useState(false);  // ← fluxo de reset
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery]               = useState('');
   const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
@@ -59,15 +62,31 @@ export default function App() {
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    // Detecta evento PASSWORD_RECOVERY emitido pelo Supabase
+    // quando o usuário abre o link de redefinição de senha.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecovery(true);
+          setUser(null);     // garante que nenhuma sessão "vaza" para o app
+          setReady(true);
+        }
+      }
+    );
+
     async function restoreSession() {
       const stored = await getStoredSession();
+      // Só restaura a sessão se NÃO estivermos no fluxo de recovery
       if (stored) {
         const avatarUrl = await getAvatarUrl(stored.email);
         setUser({ ...stored, avatar_url: avatarUrl ?? stored.avatar_url });
       }
       setReady(true);
     }
+
     restoreSession();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async (loggedUser: User) => {
@@ -116,6 +135,18 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // ── Fluxo de redefinição de senha ──────────────────────────
+  if (isRecovery) {
+    return (
+      <ResetPasswordPage
+        onDone={() => {
+          setIsRecovery(false);
+          setUser(null);
+        }}
+      />
     );
   }
 
