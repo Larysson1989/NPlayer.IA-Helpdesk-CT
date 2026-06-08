@@ -3,6 +3,7 @@ import { ArrowLeft, Send, Loader2, Download, Copy, AlertTriangle } from 'lucide-
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseGeminiError } from '../services/geminiService';
+import { submitCorrection } from '../services/correctionService';
 import { HPP_KNOWLEDGE } from '../constants/knowledgeBase';
 import ReactMarkdown from 'react-markdown';
 
@@ -37,6 +38,7 @@ export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) 
   const [correctionTitle, setCorrectionTitle] = useState('Informação incorreta');
   const [correctionDescription, setCorrectionDescription] = useState('');
   const [savingCorrection, setSavingCorrection] = useState(false);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +82,6 @@ ${HPP_KNOWLEDGE}`;
 
       const ai = new GoogleGenAI({ apiKey });
 
-      // ✅ CORRIGIDO: gemini-2.0-flash → gemini-2.5-flash
       const result = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
         contents: text.trim(),
@@ -109,7 +110,6 @@ ${HPP_KNOWLEDGE}`;
     }
   };
 
-  // Envia a query inicial automaticamente
   useEffect(() => {
     if (initialQuery && !didSendInitial.current) {
       didSendInitial.current = true;
@@ -117,7 +117,6 @@ ${HPP_KNOWLEDGE}`;
     }
   }, []);
 
-  // Scroll automático
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -170,20 +169,19 @@ ${HPP_KNOWLEDGE}`;
     const context = buildConversationContext();
     const blob = new Blob([context], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = `contexto-conversa-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
     a.click();
-
     URL.revokeObjectURL(url);
   };
 
   const handleCopyContext = async () => {
     try {
       await navigator.clipboard.writeText(buildConversationContext());
-      setShowCopyModal(true);
     } catch {
+      // silent — modal abre de qualquer jeito
+    } finally {
       setShowCopyModal(true);
     }
   };
@@ -191,17 +189,38 @@ ${HPP_KNOWLEDGE}`;
   const handleOpenCorrectionModal = () => {
     setCorrectionTitle('Informação incorreta');
     setCorrectionDescription('');
+    setCorrectionError(null);
     setShowCorrectionModal(true);
-  };
-
-  const handleCloseCopyModal = () => {
-    setShowCopyModal(false);
   };
 
   const handleCancelCorrection = () => {
     setCorrectionTitle('Informação incorreta');
     setCorrectionDescription('');
+    setCorrectionError(null);
     setShowCorrectionModal(false);
+  };
+
+  const handleSubmitCorrection = async () => {
+    if (!correctionDescription.trim()) return;
+    setSavingCorrection(true);
+    setCorrectionError(null);
+    try {
+      await submitCorrection({
+        user_email: user.email,
+        user_name: user.name,
+        title: correctionTitle,
+        description: correctionDescription,
+        conversation_context: buildConversationContext(),
+      });
+      setShowCorrectionModal(false);
+      setCorrectionTitle('Informação incorreta');
+      setCorrectionDescription('');
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      setCorrectionError('Erro ao enviar. Tente novamente.');
+    } finally {
+      setSavingCorrection(false);
+    }
   };
 
   return (
@@ -234,7 +253,6 @@ ${HPP_KNOWLEDGE}`;
       <main className="flex-1 overflow-y-auto px-4 py-8 bg-slate-50">
         <div className="max-w-3xl mx-auto w-full space-y-6">
 
-          {/* Aguardando primeira resposta */}
           {messages.length === 0 && !loading && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -255,7 +273,6 @@ ${HPP_KNOWLEDGE}`;
                 transition={{ duration: 0.2 }}
                 className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {/* Avatar */}
                 <div className="shrink-0 mt-1">
                   {msg.role === 'bot' ? (
                     <img src={AVATAR} alt="Príncipe" className="w-8 h-8 rounded-full object-cover" />
@@ -266,7 +283,6 @@ ${HPP_KNOWLEDGE}`;
                   )}
                 </div>
 
-                {/* Balão */}
                 <div className={`flex flex-col gap-1 max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                   <p className="text-[11px] font-medium text-slate-400 px-1">
                     {msg.role === 'bot' ? 'Príncipe' : firstName} · {msg.time}
@@ -300,7 +316,6 @@ ${HPP_KNOWLEDGE}`;
             ))}
           </AnimatePresence>
 
-          {/* Typing indicator */}
           {loading && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -404,7 +419,7 @@ ${HPP_KNOWLEDGE}`;
               </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={handleCloseCopyModal} className="h-10 px-4 rounded-xl bg-primary text-white hover:bg-blue-700 transition-colors">
+              <button type="button" onClick={() => setShowCopyModal(false)} className="h-10 px-4 rounded-xl bg-primary text-white hover:bg-blue-700 transition-colors">
                 Fechar
               </button>
             </div>
@@ -455,9 +470,18 @@ ${HPP_KNOWLEDGE}`;
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Descrição</label>
-                <textarea rows={6} value={correctionDescription} onChange={(e) => setCorrectionDescription(e.target.value.slice(0, 1000))} placeholder="Descreva com detalhes o que estava errado, duvidoso ou incompleto..." className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none resize-none focus:border-primary" />
+                <textarea
+                  rows={6}
+                  value={correctionDescription}
+                  onChange={(e) => setCorrectionDescription(e.target.value.slice(0, 1000))}
+                  placeholder="Descreva com detalhes o que estava errado, duvidoso ou incompleto..."
+                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none resize-none focus:border-primary"
+                />
                 <p className="text-xs text-slate-400 mt-1 text-right">{correctionDescription.length}/1000</p>
               </div>
+              {correctionError && (
+                <p className="text-sm text-red-500">{correctionError}</p>
+              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button type="button" onClick={handleCancelCorrection} className="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
@@ -465,7 +489,7 @@ ${HPP_KNOWLEDGE}`;
               </button>
               <button
                 type="button"
-                onClick={async () => { setSavingCorrection(true); await new Promise((r) => setTimeout(r, 500)); setSavingCorrection(false); setShowCorrectionModal(false); setCorrectionTitle('Informação incorreta'); setCorrectionDescription(''); setShowSuccessModal(true); }}
+                onClick={handleSubmitCorrection}
                 disabled={savingCorrection || !correctionDescription.trim()}
                 className="h-10 px-4 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
