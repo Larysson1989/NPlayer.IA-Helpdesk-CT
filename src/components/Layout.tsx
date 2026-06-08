@@ -4,7 +4,12 @@ import { LogOut } from 'lucide-react';
 declare const __COMMIT_HASH__: string;
 
 const APP_VERSION = '1.0.0';
-const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'dev';
+const COMMIT_HASH =
+  (typeof __COMMIT_HASH__ !== 'undefined' && __COMMIT_HASH__ !== 'dev'
+    ? __COMMIT_HASH__
+    : null) ??
+  (import.meta.env.VITE_COMMIT_HASH as string | undefined) ??
+  'dev';
 
 interface TopBarProps {
   onLogout?: () => void;
