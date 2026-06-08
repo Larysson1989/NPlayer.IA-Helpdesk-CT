@@ -69,30 +69,18 @@ async function listDriveFiles(folderId: string, token: string) {
   return data.files || []
 }
 
-// ─── Extrai texto via Gemini File API (sem carregar tudo na memória) ────────
-async function extractTextViaGemini(
-  fileId: string,
+// ─── Upload para Gemini File API ─────────────────────────────────────────────
+async function uploadToGemini(
+  driveUrl: string,
   mimeType: string,
-  fileName: string,
   driveToken: string,
   geminiKey: string
-): Promise<string> {
-  // 1. Obtém URL de download do Drive
-  const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
-
-  // 2. Para TXT, lemos diretamente sem passar pelo Gemini
-  if (mimeType === 'text/plain') {
-    const res = await fetch(driveUrl, { headers: { Authorization: `Bearer ${driveToken}` } })
-    return res.text()
-  }
-
-  // 3. Faz upload do arquivo para a Gemini File API (streaming)
+): Promise<{ uri: string; name: string }> {
   const driveRes = await fetch(driveUrl, { headers: { Authorization: `Bearer ${driveToken}` } })
   if (!driveRes.ok) throw new Error(`Drive download falhou: ${driveRes.status}`)
 
   const fileSize = parseInt(driveRes.headers.get('content-length') || '0')
 
-  // Upload para Gemini File API
   const uploadRes = await fetch(
     `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`,
     {
@@ -113,14 +101,19 @@ async function extractTextViaGemini(
   }
 
   const uploadData = await uploadRes.json()
-  const geminiFileUri = uploadData.file?.uri
-  if (!geminiFileUri) throw new Error(`URI do arquivo Gemini não retornado`)
+  const uri = uploadData.file?.uri
+  const name = uploadData.file?.name
+  if (!uri) throw new Error(`URI do arquivo Gemini não retornado`)
+  return { uri, name }
+}
 
-  // 4. Gera conteúdo com referência ao arquivo (sem base64 na memória)
-  const prompt = mimeType.startsWith('image/')
-    ? 'Extraia todo o texto visível nesta imagem. Retorne apenas o texto, sem comentários.'
-    : 'Extraia todo o texto deste documento. Retorne apenas o texto puro, sem formatação markdown.'
-
+// ─── Chama Gemini para gerar texto ───────────────────────────────────────────
+async function callGemini(
+  geminiKey: string,
+  prompt: string,
+  fileUri: string,
+  mimeType: string
+): Promise<string> {
   const genRes = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
     {
@@ -130,25 +123,68 @@ async function extractTextViaGemini(
         contents: [{
           parts: [
             { text: prompt },
-            { file_data: { mime_type: mimeType, file_uri: geminiFileUri } }
+            { file_data: { mime_type: mimeType, file_uri: fileUri } }
           ]
         }]
       })
     }
   )
-
   const genData = await genRes.json()
+  return genData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
 
-  // 5. Deleta arquivo do Gemini após uso
-  const geminiFileName = uploadData.file?.name
-  if (geminiFileName) {
-    await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${geminiFileName}?key=${geminiKey}`,
-      { method: 'DELETE' }
-    ).catch(() => {})
+// ─── Extrai texto via Gemini File API ────────────────────────────────────────
+async function extractTextViaGemini(
+  fileId: string,
+  mimeType: string,
+  fileName: string,
+  driveToken: string,
+  geminiKey: string
+): Promise<string> {
+  const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+
+  // TXT: lê direto sem Gemini
+  if (mimeType === 'text/plain') {
+    const res = await fetch(driveUrl, { headers: { Authorization: `Bearer ${driveToken}` } })
+    return res.text()
   }
 
-  return genData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  // Upload do arquivo para Gemini
+  const { uri: geminiFileUri, name: geminiFileName } = await uploadToGemini(
+    driveUrl, mimeType, driveToken, geminiKey
+  )
+
+  try {
+    // Prompt inicial — extração de texto padrão
+    const isImage = mimeType.startsWith('image/')
+    const promptPadrao = isImage
+      ? 'Extraia todo o texto visível nesta imagem. Retorne apenas o texto, sem comentários.'
+      : 'Extraia todo o texto deste documento. Retorne apenas o texto puro, sem formatação markdown, sem comentários adicionais.'
+
+    let text = await callGemini(geminiKey, promptPadrao, geminiFileUri, mimeType)
+    console.log(`  → Texto extraído (${text.length} chars)`)
+
+    // Se texto muito curto → tenta OCR forçado (PDF escaneado / imagem embutida)
+    if (text.length < 50 && !isImage) {
+      console.log(`  ⚠️ Texto curto, tentando OCR forçado...`)
+      const promptOCR = `Este documento pode ser um PDF escaneado ou conter páginas como imagens.
+Por favor, aplique OCR e extraia TODO o texto visível em todas as páginas.
+Inclua títulos, parágrafos, listas, tabelas e qualquer texto impresso.
+Retorne apenas o texto extraído, sem comentários ou explicações.`
+      text = await callGemini(geminiKey, promptOCR, geminiFileUri, mimeType)
+      console.log(`  → OCR forçado: ${text.length} chars`)
+    }
+
+    return text
+  } finally {
+    // Sempre deleta o arquivo do Gemini após uso
+    if (geminiFileName) {
+      await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${geminiFileName}?key=${geminiKey}`,
+        { method: 'DELETE' }
+      ).catch(() => {})
+    }
+  }
 }
 
 // ─── Divide texto em chunks ─────────────────────────────────────────────────
@@ -204,7 +240,8 @@ serve(async (req) => {
         )
 
         if (!text || text.length < 20) {
-          results.push({ file: file.name, status: 'skipped', reason: 'texto muito curto' })
+          console.log(`  ⛔ Skipped: texto insuficiente mesmo após OCR (${text?.length || 0} chars)`)
+          results.push({ file: file.name, status: 'skipped', reason: 'texto insuficiente mesmo após OCR' })
           continue
         }
 
