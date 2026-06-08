@@ -5,6 +5,11 @@ import {
   LogIn, BarChart2, TrendingUp, AlertTriangle, Clock,
   Repeat2, ThumbsDown, UserX, Activity,
 } from 'lucide-react';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
 import {
   fetchMetricsKPIs, fetchTopUsers, fetchWordCloud,
@@ -21,11 +26,15 @@ interface Props {
   onLogout: () => void;
 }
 
-const ROLE_COLOR: Record<string, { badge: string; bar: string }> = {
-  captador:      { badge: 'text-blue-600 bg-blue-50',    bar: '#3b82f6' },
-  supervisor:    { badge: 'text-purple-600 bg-purple-50', bar: '#9333ea' },
-  administrador: { badge: 'text-emerald-700 bg-emerald-50', bar: '#059669' },
+// ─── Cores ────────────────────────────────────────────────────────────────────
+const ROLE_COLOR: Record<string, { badge: string; hex: string }> = {
+  captador:      { badge: 'text-blue-600 bg-blue-50',    hex: '#3b82f6' },
+  supervisor:    { badge: 'text-purple-600 bg-purple-50', hex: '#9333ea' },
+  administrador: { badge: 'text-emerald-700 bg-emerald-50', hex: '#059669' },
 };
+
+const PIE_COLORS = ['#3b82f6', '#9333ea', '#059669', '#f59e0b', '#ef4444'];
+const WORD_COLORS = ['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0284c7','#16a34a','#ca8a04'];
 
 function fmt(n: number) { return n.toLocaleString('pt-BR'); }
 
@@ -41,8 +50,26 @@ function relTime(iso: string): string {
   return `${d}d atrás`;
 }
 
-// ─── Componentes utilitários ─────────────────────────────────────────────────
+// ─── Tooltip customizado ──────────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload, label }: {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-xs font-semibold text-slate-700">
+      {label && <p className="font-black text-slate-500 mb-1">{label}</p>}
+      {payload.map((p, i) => (
+        <p key={i} style={{ color: p.color }}>
+          {p.name}: <span className="font-black">{fmt(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
 
+// ─── Componentes utilitários ──────────────────────────────────────────────────
 function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
@@ -77,7 +104,11 @@ function KpiCard({
   };
   const c = COLORS[color] ?? COLORS.blue;
   return (
-    <div className={`${c.bg} ${alert ? 'ring-2 ring-red-300' : ''} rounded-2xl p-4 flex flex-col gap-2 relative`}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`${c.bg} ${alert ? 'ring-2 ring-red-300' : ''} rounded-2xl p-4 flex flex-col gap-2 relative`}
+    >
       {alert && (
         <span className="absolute top-2 right-2 w-2 h-2 bg-red-400 rounded-full animate-pulse" />
       )}
@@ -88,7 +119,7 @@ function KpiCard({
         {suffix && <span className="text-sm font-semibold text-slate-400 ml-0.5">{suffix}</span>}
       </p>
       {delta && <p className="text-xs text-slate-400 font-semibold">{delta}</p>}
-    </div>
+    </motion.div>
   );
 }
 
@@ -100,67 +131,69 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-// ─── Gráfico de barras duplas (logins + msgs por dia) ────────────────────────
-function TimeSeriesChart({ data }: { data: DayCount[] }) {
-  const maxVal = Math.max(...data.map(d => Math.max(d.logins, d.msgs)), 1);
+// ─── Gráfico de Área (Série temporal) ────────────────────────────────────────
+function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-      <div className="flex items-center gap-4 mb-4">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-blue-500">
-          <span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" /> Logins
-        </span>
-        <span className="flex items-center gap-1.5 text-xs font-bold text-violet-500">
-          <span className="w-3 h-3 rounded-sm bg-violet-500 inline-block" /> Mensagens
-        </span>
-      </div>
-      <div className="flex items-end gap-1.5 h-36 overflow-x-auto pb-1">
-        {data.map((d, i) => (
-          <div key={i} className="flex flex-col items-center gap-1 flex-1 min-w-[28px]">
-            <div className="flex items-end gap-0.5 w-full justify-center" style={{ height: 96 }}>
-              <div
-                title={`Logins: ${d.logins}`}
-                className="bg-blue-500 rounded-t w-2 md:w-3 transition-all hover:bg-blue-600"
-                style={{ height: `${Math.max(2, (d.logins / maxVal) * 96)}px` }}
-              />
-              <div
-                title={`Mensagens: ${d.msgs}`}
-                className="bg-violet-500 rounded-t w-2 md:w-3 transition-all hover:bg-violet-600"
-                style={{ height: `${Math.max(2, (d.msgs / maxVal) * 96)}px` }}
-              />
-            </div>
-            <span className="text-[9px] text-slate-400 font-semibold text-center leading-none">{d.label}</span>
-          </div>
-        ))}
-      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradLogins" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="gradMsgs" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            iconType="circle" iconSize={8}
+            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>}
+          />
+          <Area type="monotone" dataKey="logins" name="Logins" stroke="#3b82f6" strokeWidth={2}
+            fill="url(#gradLogins)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: '#3b82f6' }} />
+          <Area type="monotone" dataKey="msgs" name="Mensagens" stroke="#8b5cf6" strokeWidth={2}
+            fill="url(#gradMsgs)" dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: '#8b5cf6' }} />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-// ─── Gráfico de heatmap de horas ─────────────────────────────────────────────
-function PeakHoursChart({ data }: { data: HourCount[] }) {
-  const max = Math.max(...data.map(d => d.value), 1);
+// ─── Gráfico de barras (Pico de Horas) ───────────────────────────────────────
+function PeakHoursBarChart({ data }: { data: HourCount[] }) {
   const workHours = data.filter(d => d.hour >= 7 && d.hour <= 21);
+  const max = Math.max(...workHours.map(d => d.value), 1);
+
+  const coloredData = workHours.map(d => ({
+    ...d,
+    fill: d.value / max > 0.7 ? '#f87171' : d.value / max > 0.4 ? '#fbbf24' : '#60a5fa',
+  }));
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <p className="text-xs text-slate-400 font-semibold mb-3">Horários comerciais (07h–21h) · últimos 30 dias</p>
-      <div className="flex items-end gap-1 h-20">
-        {workHours.map((d, i) => {
-          const ratio = d.value / max;
-          const bg = ratio > 0.7 ? 'bg-red-400' : ratio > 0.4 ? 'bg-amber-400' : ratio > 0.1 ? 'bg-blue-400' : 'bg-slate-200';
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[9px] font-bold text-slate-400">{d.value > 0 ? d.value : ''}</span>
-              <div
-                title={`${d.label}: ${d.value} msgs`}
-                className={`w-full rounded-t ${bg} transition-all`}
-                style={{ height: `${Math.max(3, ratio * 56)}px` }}
-              />
-              <span className="text-[8px] text-slate-400 font-semibold">{d.label}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-4 mt-3">
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={coloredData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          <Bar dataKey="value" name="Mensagens" radius={[4, 4, 0, 0]} maxBarSize={28}>
+            {coloredData.map((entry, index) => (
+              <Cell key={index} fill={entry.fill} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex gap-4 mt-2">
         <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2 h-2 rounded bg-red-400" /> Alto</span>
         <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2 h-2 rounded bg-amber-400" /> Médio</span>
         <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2 h-2 rounded bg-blue-400" /> Baixo</span>
@@ -169,33 +202,62 @@ function PeakHoursChart({ data }: { data: HourCount[] }) {
   );
 }
 
-// ─── Distribuição por role (barras horizontais) ───────────────────────────────
-function RoleChart({ data }: { data: RoleDistribution[] }) {
-  const maxMsgs = Math.max(...data.map(d => d.msgs), 1);
-  const labels: Record<string, string> = {
+// ─── Donut de distribuição por role ──────────────────────────────────────────
+function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
+  const LABELS: Record<string, string> = {
     captador: 'Captador', supervisor: 'Supervisor', administrador: 'Admin',
   };
+  const pieData = data.map(d => ({ name: LABELS[d.role] ?? d.role, value: d.msgs, users: d.count }));
+  const total = pieData.reduce((s, d) => s + d.value, 0);
+
+  const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }: {
+    cx: number; cy: number; midAngle: number; innerRadius: number; outerRadius: number; index: number;
+  }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const pct = total > 0 ? Math.round((pieData[index].value / total) * 100) : 0;
+    if (pct < 5) return null;
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central"
+        className="text-[10px] font-black" style={{ fontSize: 11, fontWeight: 900 }}>
+        {pct}%
+      </text>
+    );
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-      {data.map((d, i) => {
-        const rc = ROLE_COLOR[d.role] ?? { badge: 'text-slate-500 bg-slate-100', bar: '#94a3b8' };
-        return (
-          <div key={i}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className={`text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${rc.badge}`}>
-                {labels[d.role] ?? d.role}
-              </span>
-              <span className="text-xs font-black text-slate-600">{fmt(d.msgs)} msgs · {d.count} users</span>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <ResponsiveContainer width={180} height={180}>
+          <PieChart>
+            <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+              dataKey="value" labelLine={false} label={CustomPieLabel as React.FC}>
+              {pieData.map((_, i) => (
+                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(v: number, name: string) => [`${fmt(v)} msgs`, name]} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="flex flex-col gap-3 flex-1">
+          {pieData.map((d, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span className="text-sm font-bold text-slate-700">{d.name}</span>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-black tabular-nums" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>
+                  {fmt(d.value)} msgs
+                </p>
+                <p className="text-[10px] text-slate-400">{d.users} usuário{d.users !== 1 ? 's' : ''}</p>
+              </div>
             </div>
-            <div className="bg-slate-100 rounded-full h-2">
-              <div
-                className="h-2 rounded-full transition-all"
-                style={{ width: `${(d.msgs / maxMsgs) * 100}%`, backgroundColor: rc.bar }}
-              />
-            </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -275,6 +337,33 @@ function UserActivityTable({ data }: { data: UserActivity[] }) {
   );
 }
 
+// ─── Ranking Top 10 com barras duplas (recharts) ──────────────────────────────
+function TopUsersChart({ data }: { data: TopUser[] }) {
+  const chartData = data.map(u => ({
+    name: u.user_name.split(' ')[0],
+    logins: u.logins,
+    mensagens: u.mensagens,
+    role: u.role,
+  }));
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          <Legend iconType="circle" iconSize={8}
+            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={14} />
+          <Bar dataKey="mensagens" name="Mensagens" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={14} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }: Props) {
   const [kpis,      setKpis]      = useState<MetricsKPIs | null>(null);
@@ -314,11 +403,11 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
     return () => clearInterval(id);
   }, [loadAll]);
 
-  const maxWord  = wordCloud[0]?.count ?? 1;
+  const maxWord = wordCloud[0]?.count ?? 1;
 
   const TABS = [
-    { id: 'overview',  label: 'Visão Geral',   icon: <BarChart2  size={14} /> },
-    { id: 'usuarios',  label: 'Usuários',       icon: <Users      size={14} /> },
+    { id: 'overview',  label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
+    { id: 'usuarios',  label: 'Usuários',       icon: <Users         size={14} /> },
     { id: 'conteudo',  label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
   ] as const;
 
@@ -373,7 +462,6 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
             </p>
           </div>
         </div>
-        {/* TABS */}
         <div className="flex gap-1 -mb-px">
           {TABS.map(tab => (
             <button
@@ -400,14 +488,14 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
         ) : (
           <AnimatePresence mode="wait">
 
-            {/* ═══════════════ ABA: VISÃO GERAL ═══════════════ */}
+            {/* ═══════════ ABA: VISÃO GERAL ═══════════ */}
             {activeTab === 'overview' && (
               <motion.div key="overview"
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* KPIs de Uso */}
+                {/* KPIs de Mensagens */}
                 <section>
                   <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -442,31 +530,39 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   </div>
                 </section>
 
-                {/* Série temporal */}
+                {/* Gráfico de Área — Série temporal */}
                 <section>
                   <SectionTitle icon={<TrendingUp size={15} />} title="Atividade nos últimos 14 dias" subtitle="Logins e mensagens por dia" />
-                  {series.length > 0 ? <TimeSeriesChart data={series} /> : <EmptyState label="Sem dados" />}
+                  {series.length > 0 ? <TimeSeriesAreaChart data={series} /> : <EmptyState label="Sem dados" />}
                 </section>
 
-                {/* Distribuição por role */}
+                {/* Donut — Distribuição por role */}
                 <section>
-                  <SectionTitle icon={<Users size={15} />} title="Uso por Perfil" subtitle="Mensagens e usuários por tipo de perfil" />
-                  {roles.length > 0 ? <RoleChart data={roles} /> : <EmptyState label="Sem dados" />}
+                  <SectionTitle icon={<Users size={15} />} title="Uso por Perfil" subtitle="Distribuição de mensagens por tipo de usuário" />
+                  {roles.length > 0 ? <RoleDonutChart data={roles} /> : <EmptyState label="Sem dados" />}
                 </section>
               </motion.div>
             )}
 
-            {/* ═══════════════ ABA: USUÁRIOS ═══════════════ */}
+            {/* ═══════════ ABA: USUÁRIOS ═══════════ */}
             {activeTab === 'usuarios' && (
               <motion.div key="usuarios"
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* Top 10 ranking */}
+                {/* Ranking gráfico */}
                 <section>
                   <SectionTitle icon={<TrendingUp size={15} />} title="Ranking de Engajamento" subtitle="Top 10 usuários por logins e mensagens" />
-                  {topUsers.length === 0 ? <EmptyState label="Nenhum login registrado ainda" /> : (
+                  {topUsers.length === 0
+                    ? <EmptyState label="Nenhum login registrado ainda" />
+                    : <TopUsersChart data={topUsers} />}
+                </section>
+
+                {/* Ranking lista detalhada */}
+                {topUsers.length > 0 && (
+                  <section>
+                    <SectionTitle icon={<Users size={15} />} title="Detalhes do Ranking" subtitle="Posição e métricas individuais" />
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                       {topUsers.map((u, i) => {
                         const maxLogins = topUsers[0]?.logins ?? 1;
@@ -492,14 +588,14 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                             <div className="hidden md:flex flex-col gap-1.5 w-40">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                                  <div className="h-1.5 bg-blue-500 rounded-full" style={{ width: `${(u.logins / maxLogins) * 100}%` }} />
+                                  <div className="h-1.5 bg-blue-500 rounded-full transition-all" style={{ width: `${(u.logins / maxLogins) * 100}%` }} />
                                 </div>
                                 <span className="text-xs font-black text-blue-600 tabular-nums w-8 text-right">{u.logins}</span>
                                 <span className="text-[9px] text-slate-400">login</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                                  <div className="h-1.5 bg-violet-500 rounded-full" style={{ width: `${(u.mensagens / maxMsgs) * 100}%` }} />
+                                  <div className="h-1.5 bg-violet-500 rounded-full transition-all" style={{ width: `${(u.mensagens / maxMsgs) * 100}%` }} />
                                 </div>
                                 <span className="text-xs font-black text-violet-600 tabular-nums w-8 text-right">{fmt(u.mensagens)}</span>
                                 <span className="text-[9px] text-slate-400">msgs</span>
@@ -513,8 +609,8 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                         );
                       })}
                     </div>
-                  )}
-                </section>
+                  </section>
+                )}
 
                 {/* Tabela de atividade */}
                 <section>
@@ -526,17 +622,17 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
               </motion.div>
             )}
 
-            {/* ═══════════════ ABA: CONTEÚDO ═══════════════ */}
+            {/* ═══════════ ABA: CONTEÚDO ═══════════ */}
             {activeTab === 'conteudo' && (
               <motion.div key="conteudo"
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
-                {/* Pico de horas */}
+                {/* Pico de horas — BarChart colorido */}
                 <section>
                   <SectionTitle icon={<Clock size={15} />} title="Horários de Pico" subtitle="Quando a equipe mais usa o sistema" />
-                  {hours.length > 0 ? <PeakHoursChart data={hours} /> : <EmptyState label="Sem dados" />}
+                  {hours.length > 0 ? <PeakHoursBarChart data={hours} /> : <EmptyState label="Sem dados" />}
                 </section>
 
                 {/* Nuvem de palavras */}
@@ -549,12 +645,11 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                           const ratio   = w.count / maxWord;
                           const size    = 11 + Math.round(ratio * 26);
                           const opacity = 0.45 + ratio * 0.55;
-                          const colors  = ['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0284c7','#16a34a','#ca8a04'];
                           return (
                             <span
                               key={w.word}
                               className="font-bold cursor-default select-none transition-transform hover:scale-110"
-                              style={{ fontSize: size, color: colors[i % colors.length], opacity }}
+                              style={{ fontSize: size, color: WORD_COLORS[i % WORD_COLORS.length], opacity }}
                               title={`${w.word}: ${w.count}x`}
                             >
                               {w.word}
@@ -567,28 +662,28 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   )}
                 </section>
 
-                {/* Top perguntas recentes */}
+                {/* Top temas por frequência */}
                 <section>
-                  <SectionTitle icon={<MessageSquare size={15} />} title="Top Temas por Frequência" subtitle="Palavras-chave mais repetidas" />
+                  <SectionTitle icon={<BarChart2 size={15} />} title="Top Temas por Frequência" subtitle="Palavras-chave mais repetidas (gráfico)" />
                   {wordCloud.length === 0 ? <EmptyState label="Sem dados" /> : (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                      {wordCloud.slice(0, 15).map((w, i) => {
-                        const ratio = w.count / maxWord;
-                        return (
-                          <div key={w.word} className="flex items-center gap-4 px-5 py-2.5 border-b border-slate-50 last:border-0">
-                            <span className="w-5 text-xs font-black text-slate-300 tabular-nums">{i+1}</span>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-bold text-slate-700">{w.word}</span>
-                                <span className="text-xs font-black text-slate-500">{w.count}x</span>
-                              </div>
-                              <div className="bg-slate-100 rounded-full h-1.5">
-                                <div className="h-1.5 bg-blue-500 rounded-full" style={{ width: `${ratio * 100}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                      <ResponsiveContainer width="100%" height={260}>
+                        <BarChart
+                          data={wordCloud.slice(0, 15).map(w => ({ name: w.word, count: w.count }))}
+                          layout="vertical"
+                          margin={{ top: 0, right: 20, left: 20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
+                          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                          <Bar dataKey="count" name="Ocorrências" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                            {wordCloud.slice(0, 15).map((_, i) => (
+                              <Cell key={i} fill={WORD_COLORS[i % WORD_COLORS.length]} fillOpacity={0.8} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
                   )}
                 </section>
