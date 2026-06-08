@@ -31,6 +31,9 @@ export interface User {
 const DEFAULT_AVATAR =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBsja2GmlJ7z64XhGwI_WRtSwLQ1cA8yB2IW_SxUGC6xqrXSNnd-tjPNwXd-yFuW16id4il3bF0eTU5CTbxIhUStSPK0G5iNPPFwpfo1UM1AMKUoznN9IjvQqOPHLyLb099WSpiqb_qwqR5eQCh5dlmkkAEnCT1uH3RwRus2scZ8deMJcrPfN-ABL3mSAL6_EiQdL3quKIwfpWChNxAEQQrTQfc_jJEEV_GjJN4dzgfdHxxBs2i8834KMIg3F9grlI_ov603xAceHM';
 
+declare const __COMMIT_HASH__: string;
+const COMMIT_HASH: string = (typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'dev');
+
 const FAQ_CARDS = [
   { icon: 'contact_support',   title: 'Como abordar um doador?',       desc: 'Estrategias para quebrar o gelo e iniciar contato.' },
   { icon: 'description',       title: 'Script de captacao atualizado', desc: 'Confira a versao mais recente do roteiro.' },
@@ -263,6 +266,9 @@ export default function App() {
             </div>
             <p className="text-[10px] text-slate-400 italic leading-none mt-0.5 pl-10">
               Conhecimento certo, na hora certa
+            </p>
+            <p className="text-[9px] text-slate-300 leading-none mt-0.5 pl-10 font-mono">
+              Versão: #{COMMIT_HASH}
             </p>
           </div>
         </div>
