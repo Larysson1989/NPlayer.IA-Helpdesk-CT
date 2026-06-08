@@ -1,14 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { execSync } from 'child_process';
 import {defineConfig, loadEnv} from 'vite';
+
+function getCommitHash(): string {
+  // 1. Vercel injeta esta variavel de sistema durante o build
+  if (process.env.VERCEL_GIT_COMMIT_SHA) {
+    return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
+  }
+  // 2. Fallback: pega do git local
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    return 'dev';
+  }
+}
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
-  // Vercel injeta VERCEL_GIT_COMMIT_SHA no ambiente de build
-  const commitHash = process.env.VERCEL_GIT_COMMIT_SHA
-    ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)
-    : 'dev';
+  const commitHash = getCommitHash();
   return {
     plugins: [react(), tailwindcss()],
     define: {
