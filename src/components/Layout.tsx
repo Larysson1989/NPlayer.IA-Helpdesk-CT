@@ -1,7 +1,10 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
 
+declare const __COMMIT_HASH__: string;
+
 const APP_VERSION = '1.0.0';
+const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'dev';
 
 interface TopBarProps {
   onLogout?: () => void;
@@ -27,7 +30,7 @@ export function TopBar({ onLogout, onProfileClick, user }: TopBarProps) {
             Apoio operacional para Captação por Telefone
           </span>
           <span style={{ fontSize: '8px', color: '#9ca3af', lineHeight: '1', marginTop: '2px' }}>
-            v{APP_VERSION}
+            v{APP_VERSION} #{COMMIT_HASH}
           </span>
         </div>
         <div className="flex items-center gap-6">

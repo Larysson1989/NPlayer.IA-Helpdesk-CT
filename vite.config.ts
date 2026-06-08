@@ -5,10 +5,15 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  // Vercel injeta VERCEL_GIT_COMMIT_SHA no ambiente de build
+  const commitHash = process.env.VERCEL_GIT_COMMIT_SHA
+    ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)
+    : 'dev';
   return {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      '__COMMIT_HASH__': JSON.stringify(commitHash),
     },
     resolve: {
       alias: {
