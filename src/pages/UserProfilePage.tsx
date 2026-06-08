@@ -5,7 +5,7 @@ import {
   Hash, Briefcase, Building2, CalendarCheck, ShieldCheck,
   UserCog, Edit2, KeyRound, Download, UserX, TrendingUp,
   CheckCircle2, X, Save, AlertTriangle,
-  UserCheck, Loader2,
+  UserCheck, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 import { UserAvatar } from '../components/UserAvatar';
 import { supabase } from '../lib/supabase';
@@ -158,16 +158,27 @@ export function UserProfilePage({
     showToast('Dados atualizados com sucesso!');
   };
 
-  // ── Resetar Senha ─────────────────────────────────────────────────────────
-  // Sem redirectTo: o Supabase usa a URL configurada no painel (Site URL)
-  // evitando o erro "redirect_uri_mismatch" / URL não permitida.
-  const openSenha = () => setModal('senha');
+  // ── Modal Senha — abas ────────────────────────────────────────────────────
+  const [senhaAba,      setSenhaAba]      = useState<'email' | 'definir'>('email');
+  const [novaSenha,     setNovaSenha]     = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [showNova,      setShowNova]      = useState(false);
+  const [showConfirmar, setShowConfirmar] = useState(false);
 
+  const openSenha = () => {
+    setSenhaAba('email');
+    setNovaSenha('');
+    setConfirmarSenha('');
+    setShowNova(false);
+    setShowConfirmar(false);
+    setModal('senha');
+  };
+
+  // Aba 1 — enviar e-mail de redefinição
   const handleResetSenha = async () => {
     setSaving(true);
     const { error } = await supabase.auth.resetPasswordForEmail(user.email);
     setSaving(false);
-
     if (error) {
       console.error('[resetPassword]', error);
       showToast(`Erro: ${error.message}`, 'error');
@@ -175,6 +186,28 @@ export function UserProfilePage({
     }
     closeModal();
     showToast(`E-mail de redefinição enviado para ${user.email}`);
+  };
+
+  // Aba 2 — definir nova senha diretamente (Admin API)
+  const handleDefinirSenha = async () => {
+    if (novaSenha.length < 6) {
+      showToast('A senha deve ter pelo menos 6 caracteres.', 'error');
+      return;
+    }
+    if (novaSenha !== confirmarSenha) {
+      showToast('As senhas não conferem.', 'error');
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.auth.admin.updateUserById(user.id, { password: novaSenha });
+    setSaving(false);
+    if (error) {
+      console.error('[definirSenha]', error);
+      showToast(`Erro: ${error.message}`, 'error');
+      return;
+    }
+    closeModal();
+    showToast('Nova senha definida com sucesso!');
   };
 
   // ── Exportar Histórico ────────────────────────────────────────────────────
@@ -266,37 +299,140 @@ export function UserProfilePage({
         </Modal>
       )}
 
-      {/* MODAL RESETAR SENHA */}
+      {/* MODAL SENHA (2 ABAS) */}
       {modal === 'senha' && (
-        <Modal title="Resetar Senha" onClose={closeModal}>
-          <div className="flex flex-col items-center text-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-              <KeyRound size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-700">
-                Será enviado um e-mail de redefinição para:
-              </p>
-              <p className="text-sm font-black text-slate-900 mt-1 break-all">{user.email}</p>
-              <p className="text-xs text-slate-400 mt-2">
-                O usuário receberá um link para criar uma nova senha.
-              </p>
-            </div>
-            <div className="flex gap-3 w-full">
-              <button onClick={closeModal}
-                className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                Cancelar
-              </button>
-              <button
-                onClick={handleResetSenha}
-                disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition disabled:opacity-60"
-              >
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
-                {saving ? 'Enviando...' : 'Enviar E-mail'}
-              </button>
-            </div>
+        <Modal title="Gerenciar Senha" onClose={closeModal}>
+          {/* Abas */}
+          <div className="flex gap-1 bg-slate-100 rounded-2xl p-1 mb-5">
+            <button
+              onClick={() => setSenhaAba('email')}
+              className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-xl transition-all ${
+                senhaAba === 'email'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <Mail size={13} /> Enviar E-mail
+            </button>
+            <button
+              onClick={() => setSenhaAba('definir')}
+              className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-xl transition-all ${
+                senhaAba === 'definir'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <KeyRound size={13} /> Definir Nova Senha
+            </button>
           </div>
+
+          {/* Aba: Enviar E-mail */}
+          {senhaAba === 'email' && (
+            <div className="flex flex-col items-center text-center gap-5">
+              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                <Mail size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Será enviado um e-mail de redefinição para:
+                </p>
+                <p className="text-sm font-black text-slate-900 mt-1 break-all">{user.email}</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  O usuário receberá um link para criar uma nova senha.
+                </p>
+              </div>
+              <div className="flex gap-3 w-full">
+                <button onClick={closeModal}
+                  className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleResetSenha}
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition disabled:opacity-60"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                  {saving ? 'Enviando...' : 'Enviar E-mail'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Aba: Definir Nova Senha */}
+          {senhaAba === 'definir' && (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+                <AlertTriangle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 font-medium">
+                  A nova senha será aplicada imediatamente. O usuário será desconectado em outras sessões.
+                </p>
+              </div>
+
+              {/* Campo Nova Senha */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                  Nova Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNova ? 'text' : 'password'}
+                    value={novaSenha}
+                    onChange={e => setNovaSenha(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNova(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showNova ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Campo Confirmar Senha */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                  Confirmar Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmar ? 'text' : 'password'}
+                    value={confirmarSenha}
+                    onChange={e => setConfirmarSenha(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmar(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showConfirmar ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {confirmarSenha && novaSenha !== confirmarSenha && (
+                  <p className="text-xs text-red-500 font-semibold mt-1">As senhas não conferem.</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-1">
+                <button onClick={closeModal}
+                  className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDefinirSenha}
+                  disabled={saving || !novaSenha || novaSenha !== confirmarSenha}
+                  className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition disabled:opacity-40"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                  {saving ? 'Salvando...' : 'Definir Senha'}
+                </button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
 
@@ -426,7 +562,7 @@ export function UserProfilePage({
 
               <button onClick={openSenha}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50">
-                <KeyRound size={15} /> Resetar Senha
+                <KeyRound size={15} /> Gerenciar Senha
               </button>
 
               <button onClick={handleExportar}
