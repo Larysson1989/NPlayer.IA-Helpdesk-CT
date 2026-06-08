@@ -1,51 +1,45 @@
 import { supabase } from '../lib/supabase';
+import type { UserRole } from '../App';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-export interface KpiData {
-  totalUsers: number;
-  activeUsers: number;
-  totalLogins: number;
-  loginsHoje: number;
-  loginsEstaSemana: number;
-  totalMensagens: number;
-  mensagensHoje: number;
-  mensagensEstaSemana: number;
-  mediaMensagensPorSessao: number;
+// ─── Tipos ───────────────────────────────────────────────────────────────────────────────
+export interface MetricsKPIs {
+  totalLogins:     number;
+  loginsHoje:      number;
+  logins7d:        number;
+  totalMensagens:  number;
+  mensagensHoje:   number;
+  mensagens7d:     number;
+  usuariosAtivos:  number;
+  usuariosTotal:   number;
+}
+
+export interface LoginEntry {
+  id:         string;
+  user_id:    string;
+  user_name:  string;
+  user_email: string;
+  user_role:  string;
+  created_at: string;
 }
 
 export interface TopUser {
-  user_id: string;
+  user_id:   string;
   user_name: string;
-  user_email: string;
-  user_role: string;
-  total_logins: number;
-  ultimo_login: string;
+  logins:    number;
+  role:      string;
 }
 
-export interface WordFreq {
-  word: string;
+export interface WordCount {
+  word:  string;
   count: number;
 }
 
-// Stop words em português para filtrar da nuvem
-const STOP_WORDS = new Set([
-  'a','o','e','é','de','da','do','em','na','no','para','por','com','um','uma',
-  'os','as','dos','das','que','se','não','mais','mas','ou','ao','aos','às','na',
-  'nos','nas','me','meu','minha','seu','sua','seus','suas','isso','este','esta',
-  'esse','essa','eles','elas','eu','você','ele','ela','nós','eles','como','quando',
-  'onde','qual','quais','quem','há','ter','ser','estar','foi','tem','são','pode',
-  'muito','bem','já','sim','não','também','ainda','sobre','entre','depois','antes',
-  'assim','então','aqui','ali','lá','vai','vou','vem','vir','ver','faz','fazer',
-  'tenho','preciso','quero','gostaria','poderia','seria','favor','obrigado','oi',
-  'olá','bom','dia','tarde','noite','tudo','certo','ok','okay','tá','ta',
-]);
-
-// ─── Registrar login ──────────────────────────────────────────────────────────
+// ─── Registrar login ──────────────────────────────────────────────────────────────────────────────
 export async function registrarLogin(
   userId: string,
   userName: string,
   userEmail: string,
-  userRole: string
+  userRole: UserRole,
 ): Promise<void> {
   await supabase.from('login_logs').insert({
     user_id:    userId,
@@ -55,134 +49,141 @@ export async function registrarLogin(
   });
 }
 
-// ─── Registrar mensagem do chat ───────────────────────────────────────────────
+// ─── Registrar mensagem (chamado no ChatView) ──────────────────────────────────────────────────
 export async function registrarMensagem(
   userId: string,
   userName: string,
-  userRole: string,
-  message: string
+  pergunta: string,
 ): Promise<void> {
   await supabase.from('chat_logs').insert({
     user_id:   userId,
     user_name: userName,
-    user_role: userRole,
-    message:   message.slice(0, 1000),
+    pergunta:  pergunta.slice(0, 1000),
   });
 }
 
-// ─── KPIs gerais ──────────────────────────────────────────────────────────────
-export async function getKpis(): Promise<KpiData> {
-  const agora = new Date();
-  const inicioDia = new Date(agora); inicioDia.setHours(0, 0, 0, 0);
-  const inicioSemana = new Date(agora);
-  inicioSemana.setDate(agora.getDate() - agora.getDay());
-  inicioSemana.setHours(0, 0, 0, 0);
+// ─── Buscar KPIs ───────────────────────────────────────────────────────────────────────────────
+export async function fetchMetricsKPIs(): Promise<MetricsKPIs> {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const hoje_iso = hoje.toISOString();
 
-  const [usersRes, loginsRes, mensagensRes] = await Promise.all([
-    supabase.from('profiles').select('id, active', { count: 'exact' }),
-    supabase.from('login_logs').select('logged_at', { count: 'exact' }),
-    supabase.from('chat_logs').select('sent_at', { count: 'exact' }),
-  ]);
+  const d7 = new Date(hoje);
+  d7.setDate(d7.getDate() - 7);
+  const d7_iso = d7.toISOString();
 
-  const users = usersRes.data || [];
-  const logins = loginsRes.data || [];
-  const mensagens = mensagensRes.data || [];
+  const [loginsTotalR, loginsHojeR, logins7dR, msgTotalR, msgHojeR, msg7dR, profilesR] =
+    await Promise.all([
+      supabase.from('login_logs').select('id', { count: 'exact', head: true }),
+      supabase.from('login_logs').select('id', { count: 'exact', head: true }).gte('created_at', hoje_iso),
+      supabase.from('login_logs').select('id', { count: 'exact', head: true }).gte('created_at', d7_iso),
+      supabase.from('chat_logs').select('id', { count: 'exact', head: true }),
+      supabase.from('chat_logs').select('id', { count: 'exact', head: true }).gte('created_at', hoje_iso),
+      supabase.from('chat_logs').select('id', { count: 'exact', head: true }).gte('created_at', d7_iso),
+      supabase.from('profiles').select('active', { count: 'exact' }),
+    ]);
 
-  const loginsHoje = logins.filter(l =>
-    new Date(l.logged_at) >= inicioDia
-  ).length;
-
-  const loginsEstaSemana = logins.filter(l =>
-    new Date(l.logged_at) >= inicioSemana
-  ).length;
-
-  const mensagensHoje = mensagens.filter(m =>
-    new Date(m.sent_at) >= inicioDia
-  ).length;
-
-  const mensagensEstaSemana = mensagens.filter(m =>
-    new Date(m.sent_at) >= inicioSemana
-  ).length;
-
-  const totalLogins = loginsRes.count || logins.length;
-  const totalMensagens = mensagensRes.count || mensagens.length;
+  const totalAtivos = (profilesR.data ?? []).filter((p: { active: boolean }) => p.active).length;
 
   return {
-    totalUsers:              users.length,
-    activeUsers:             users.filter(u => u.active).length,
-    totalLogins,
-    loginsHoje,
-    loginsEstaSemana,
-    totalMensagens,
-    mensagensHoje,
-    mensagensEstaSemana,
-    mediaMensagensPorSessao: totalLogins > 0 ? parseFloat((totalMensagens / totalLogins).toFixed(1)) : 0,
+    totalLogins:    loginsTotalR.count ?? 0,
+    loginsHoje:     loginsHojeR.count  ?? 0,
+    logins7d:       logins7dR.count    ?? 0,
+    totalMensagens: msgTotalR.count    ?? 0,
+    mensagensHoje:  msgHojeR.count     ?? 0,
+    mensagens7d:    msg7dR.count       ?? 0,
+    usuariosAtivos: totalAtivos,
+    usuariosTotal:  profilesR.count    ?? 0,
   };
 }
 
-// ─── Top 5 usuários que mais logam ───────────────────────────────────────────
-export async function getTopUsers(): Promise<TopUser[]> {
+// ─── Top 5 usuários que mais logam ─────────────────────────────────────────────────────────────
+export async function fetchTopUsers(): Promise<TopUser[]> {
   const { data, error } = await supabase
     .from('login_logs')
-    .select('user_id, user_name, user_email, user_role, logged_at');
+    .select('user_id, user_name, user_role');
 
   if (error || !data) return [];
 
-  // Agrega por user_id no cliente
-  const map = new Map<string, TopUser>();
+  const map = new Map<string, { user_name: string; logins: number; role: string }>();
   for (const row of data) {
-    if (!row.user_id) continue;
-    if (!map.has(row.user_id)) {
-      map.set(row.user_id, {
-        user_id:      row.user_id,
-        user_name:    row.user_name || 'Desconhecido',
-        user_email:   row.user_email || '',
-        user_role:    row.user_role || 'captador',
-        total_logins: 0,
-        ultimo_login: row.logged_at,
-      });
-    }
-    const entry = map.get(row.user_id)!;
-    entry.total_logins++;
-    if (new Date(row.logged_at) > new Date(entry.ultimo_login)) {
-      entry.ultimo_login = row.logged_at;
-    }
+    const prev = map.get(row.user_id);
+    if (prev) prev.logins++;
+    else map.set(row.user_id, { user_name: row.user_name, logins: 1, role: row.user_role });
   }
 
-  return Array.from(map.values())
-    .sort((a, b) => b.total_logins - a.total_logins)
+  return [...map.entries()]
+    .map(([user_id, v]) => ({ user_id, user_name: v.user_name, logins: v.logins, role: v.role }))
+    .sort((a, b) => b.logins - a.logins)
     .slice(0, 5);
 }
 
-// ─── Nuvem de palavras ────────────────────────────────────────────────────────
-export async function getWordCloud(): Promise<WordFreq[]> {
+// ─── Nuvem de palavras das perguntas ────────────────────────────────────────────────────────────
+const STOPWORDS = new Set([
+  'de','do','da','dos','das','em','no','na','nos','nas','o','a','os','as','e','é',
+  'que','para','com','um','uma','se','por','ao','aos','à','às','mais','me','meu','minha',
+  'seu','sua','mas','foi','como','ele','ela','tem','ter','ser','isso','este','esta',
+  'esse','essa','aqui','ja','nao','não','ou','até','eu','vc','você','qual','quais','onde','quando',
+]);
+
+export async function fetchWordCloud(): Promise<WordCount[]> {
   const { data, error } = await supabase
     .from('chat_logs')
-    .select('message')
-    .order('sent_at', { ascending: false })
+    .select('pergunta')
+    .order('created_at', { ascending: false })
     .limit(500);
 
-  if (error || !data || data.length === 0) return [];
+  if (error || !data) return [];
 
   const freq = new Map<string, number>();
-
   for (const row of data) {
-    const words = row.message
+    const words = (row.pergunta as string)
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
-      .split(/\s+/);
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !STOPWORDS.has(w));
 
-    for (const word of words) {
-      if (word.length < 4) continue;
-      if (STOP_WORDS.has(word)) continue;
-      freq.set(word, (freq.get(word) || 0) + 1);
+    for (const w of words) {
+      freq.set(w, (freq.get(w) ?? 0) + 1);
     }
   }
 
-  return Array.from(freq.entries())
+  return [...freq.entries()]
     .map(([word, count]) => ({ word, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 60);
+}
+
+// ─── Logins dos últimos 7 dias (para gráfico) ───────────────────────────────────────────────────
+export async function fetchLoginsPerDay(): Promise<{ label: string; value: number }[]> {
+  const d7 = new Date();
+  d7.setDate(d7.getDate() - 6);
+  d7.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('login_logs')
+    .select('created_at')
+    .gte('created_at', d7.toISOString());
+
+  if (error || !data) return [];
+
+  const map = new Map<string, number>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(d7);
+    d.setDate(d.getDate() + i);
+    const key = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
+    map.set(d.toISOString().slice(0, 10), 0);
+  }
+
+  for (const row of data) {
+    const key = (row.created_at as string).slice(0, 10);
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  return [...map.entries()].map(([date, value]) => ({
+    label: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
+    value,
+  }));
 }
