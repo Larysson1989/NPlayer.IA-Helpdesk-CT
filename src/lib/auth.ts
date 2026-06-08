@@ -1,9 +1,10 @@
 import type { UserRole, User } from '../App';
 import { supabase } from './supabase';
+import { registrarLogin } from '../services/metricsService';
 
 export type { User };
 
-// ─── Login via Supabase Auth ──────────────────────────────────────────────────
+// ─── Login via Supabase Auth ────────────────────────────────────────────────
 
 export async function login(email: string, password: string): Promise<User | null> {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -21,7 +22,7 @@ export async function login(email: string, password: string): Promise<User | nul
 
   if (!profile) return null;
 
-  return {
+  const user: User = {
     id:        profile.id,
     email:     profile.email,
     name:      profile.name,
@@ -29,6 +30,11 @@ export async function login(email: string, password: string): Promise<User | nul
     active:    profile.active ?? true,
     matricula: profile.matricula ?? '',
   };
+
+  // Registra login nas métricas (fire-and-forget)
+  registrarLogin(user.id, user.name, user.email, user.role).catch(() => {});
+
+  return user;
 }
 
 export async function logout(): Promise<void> {
@@ -57,7 +63,7 @@ export async function getStoredSession(): Promise<User | null> {
   };
 }
 
-// ─── Admin: listar todos os usuários ─────────────────────────────────────────
+// ─── Admin: listar todos os usuários ───────────────────────────────────────────────
 
 export async function getAllUsers(): Promise<User[]> {
   const { data, error } = await supabase
@@ -77,7 +83,7 @@ export async function getAllUsers(): Promise<User[]> {
   }));
 }
 
-// ─── Admin: ativar/desativar usuário ──────────────────────────────────────────
+// ─── Admin: ativar/desativar usuário ────────────────────────────────────────────────
 
 export async function updateUserActive(id: string, active: boolean): Promise<boolean> {
   const { error } = await supabase
@@ -88,7 +94,7 @@ export async function updateUserActive(id: string, active: boolean): Promise<boo
   return !error;
 }
 
-// ─── Usuário: atualizar nome e/ou senha ───────────────────────────────────────
+// ─── Usuário: atualizar nome e/ou senha ───────────────────────────────────────────────
 
 export async function updateUser(
   _email: string,
@@ -96,7 +102,6 @@ export async function updateUser(
 ): Promise<boolean> {
   let ok = true;
 
-  // Atualiza nome no profile
   if (updates.name) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -108,7 +113,6 @@ export async function updateUser(
     }
   }
 
-  // Atualiza senha via Supabase Auth
   if (updates.password) {
     const { error } = await supabase.auth.updateUser({ password: updates.password });
     if (error) ok = false;
@@ -117,8 +121,7 @@ export async function updateUser(
   return ok;
 }
 
-// ─── Helpers de permissão ─────────────────────────────────────────────────────
-
+// ─── Helpers de permissão ────────────────────────────────────────────────────────────────
 export function canAccessChat(role: UserRole | null): boolean {
   return role === 'captador' || role === 'supervisor' || role === 'administrador';
 }

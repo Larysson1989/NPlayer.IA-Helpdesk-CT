@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Edit2, ArrowLeft,
   LogOut, Filter, ChevronDown, ArrowUpAZ, ArrowDownAZ,
+  BarChart2,
 } from 'lucide-react';
 import { getAllUsers, updateUserActive } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
 import { UserProfilePage } from './UserProfilePage';
+import { MetricsDashboardPage } from './MetricsDashboardPage';
 import type { User, UserRole } from '../App';
 
 interface AdminPageProps {
@@ -56,12 +58,12 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
   const [filterOpen,    setFilterOpen]    = useState(false);
   const [sortOpen,      setSortOpen]      = useState(false);
   const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
+  const [showMetrics,   setShowMetrics]   = useState(false);
 
   useEffect(() => {
     getAllUsers().then(data => { setUsers(data); setLoading(false); });
   }, []);
 
-  // ── Todos os hooks devem vir ANTES de qualquer early return ──
   const visibleUsers = adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador');
 
   const filtered = useMemo(() => {
@@ -98,7 +100,17 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     administrador: visibleUsers.filter(u => u.role === 'administrador').length,
   }), [visibleUsers]);
 
-  // ── Early return APÓS todos os hooks ──
+  if (showMetrics) {
+    return (
+      <MetricsDashboardPage
+        adminName={adminName}
+        adminRole={adminRole}
+        onBack={() => setShowMetrics(false)}
+        onLogout={onLogout}
+      />
+    );
+  }
+
   if (selectedUser) {
     return (
       <UserProfilePage
@@ -149,6 +161,14 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* BOTÃO EQUIPES E MÉTRICAS */}
+          <button
+            onClick={() => setShowMetrics(true)}
+            className="flex items-center gap-1.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors shadow-sm"
+          >
+            <BarChart2 size={15} />
+            <span className="hidden sm:block">Equipes & Métricas</span>
+          </button>
           <button onClick={onBack}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
