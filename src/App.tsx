@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { getStoredSession, logout, canAccessMetrics, canAccessAdmin } from './lib/auth';
-import { supabase } from './lib/supabaseClient';
+import { supabase } from './lib/supabase';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -50,11 +50,23 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
   administrador: { label: 'Admin',      color: 'text-emerald-600 bg-emerald-50' },
 };
 
+/**
+ * Detecta se a URL atual contém um token de recovery do Supabase.
+ * O Supabase redireciona para: /...#access_token=...&type=recovery
+ * Funciona tanto no hash (#) quanto em query params (?type=recovery).
+ */
+function isRecoveryUrl(): boolean {
+  const hash   = window.location.hash;
+  const search = window.location.search;
+  return hash.includes('type=recovery') || search.includes('type=recovery');
+}
+
 // --- App ---
 export default function App() {
   const [user, setUser]                             = useState<User | null>(null);
   const [ready, setReady]                           = useState(false);
-  const [isRecovery, setIsRecovery]                 = useState(false);  // ← fluxo de reset
+  // Inicia já como true se a URL for de recovery — evita qualquer flash de login
+  const [isRecovery, setIsRecovery]                 = useState(() => isRecoveryUrl());
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery]               = useState('');
   const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
@@ -62,21 +74,26 @@ export default function App() {
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Detecta evento PASSWORD_RECOVERY emitido pelo Supabase
-    // quando o usuário abre o link de redefinição de senha.
+    // Listener do Supabase — confirma/captura o evento PASSWORD_RECOVERY
+    // mesmo que o hash já tenha sido processado pelo SDK
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === 'PASSWORD_RECOVERY') {
           setIsRecovery(true);
-          setUser(null);     // garante que nenhuma sessão "vaza" para o app
+          setUser(null);
           setReady(true);
         }
       }
     );
 
     async function restoreSession() {
+      // Se a URL é de recovery, NÃO restauramos sessão — exibimos ResetPasswordPage
+      if (isRecoveryUrl()) {
+        setReady(true);
+        return;
+      }
+
       const stored = await getStoredSession();
-      // Só restaura a sessão se NÃO estivermos no fluxo de recovery
       if (stored) {
         const avatarUrl = await getAvatarUrl(stored.email);
         setUser({ ...stored, avatar_url: avatarUrl ?? stored.avatar_url });
@@ -85,8 +102,8 @@ export default function App() {
     }
 
     restoreSession();
-
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogin = async (loggedUser: User) => {
@@ -138,11 +155,13 @@ export default function App() {
     );
   }
 
-  // ── Fluxo de redefinição de senha ──────────────────────────
+  // ── Fluxo de redefinição de senha ──────────────────────────────────────────
   if (isRecovery) {
     return (
       <ResetPasswordPage
         onDone={() => {
+          // Limpa o hash da URL para não re-disparar no próximo render
+          window.history.replaceState(null, '', window.location.pathname);
           setIsRecovery(false);
           setUser(null);
         }}
@@ -233,7 +252,6 @@ export default function App() {
       {/* -- Header -- */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-6">
-          {/* Logo + slogan empilhados */}
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">

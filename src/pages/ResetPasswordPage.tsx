@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import {
   Headphones,
   Lock,
@@ -13,41 +13,34 @@ import {
 } from 'lucide-react';
 
 interface Props {
-  onDone: () => void; // chamado após salvar → volta para login
+  onDone: () => void;
 }
 
 type Rule = { label: string; ok: boolean };
 
 function getRules(pwd: string): Rule[] {
   return [
-    { label: 'Mínimo 8 caracteres',           ok: pwd.length >= 8 },
-    { label: 'Pelo menos uma letra maiúscula', ok: /[A-Z]/.test(pwd) },
-    { label: 'Pelo menos uma letra minúscula', ok: /[a-z]/.test(pwd) },
-    { label: 'Pelo menos um número',           ok: /[0-9]/.test(pwd) },
+    { label: 'Mínimo 8 caracteres',            ok: pwd.length >= 8 },
+    { label: 'Pelo menos uma letra maiúscula',  ok: /[A-Z]/.test(pwd) },
+    { label: 'Pelo menos uma letra minúscula',  ok: /[a-z]/.test(pwd) },
+    { label: 'Pelo menos um número',            ok: /[0-9]/.test(pwd) },
     { label: 'Pelo menos um caractere especial (!@#$…)', ok: /[^A-Za-z0-9]/.test(pwd) },
   ];
 }
 
 export function ResetPasswordPage({ onDone }: Props) {
-  const [password,    setPassword]    = useState('');
-  const [confirm,     setConfirm]     = useState('');
-  const [showPwd,     setShowPwd]     = useState(false);
-  const [showConf,    setShowConf]    = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [success,     setSuccess]     = useState(false);
-  const [errorMsg,    setErrorMsg]    = useState<string | null>(null);
+  const [password,  setPassword]  = useState('');
+  const [confirm,   setConfirm]   = useState('');
+  const [showPwd,   setShowPwd]   = useState(false);
+  const [showConf,  setShowConf]  = useState(false);
+  const [loading,   setLoading]   = useState(false);
+  const [success,   setSuccess]   = useState(false);
+  const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
-  const rules       = getRules(password);
-  const allOk       = rules.every(r => r.ok);
-  const match       = password === confirm && confirm.length > 0;
-  const canSubmit   = allOk && match && !loading;
-
-  // Força sign-out de qualquer sessão automática criada pelo link
-  useEffect(() => {
-    // O Supabase cria uma sessão temporária ao clicar no link de recovery.
-    // Não fazemos logout aqui pois precisamos da sessão para chamar updateUser.
-    // Mas garantimos que nenhum outro estado de "user logado" persista.
-  }, []);
+  const rules     = getRules(password);
+  const allOk     = rules.every(r => r.ok);
+  const match     = password === confirm && confirm.length > 0;
+  const canSubmit = allOk && match && !loading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,15 +52,13 @@ export function ResetPasswordPage({ onDone }: Props) {
     setLoading(false);
 
     if (error) {
-      setErrorMsg(error.message ?? 'Erro ao salvar a senha. Tente novamente.');
+      setErrorMsg(error.message ?? 'Erro ao salvar. Tente novamente.');
       return;
     }
 
-    // Encerra a sessão de recovery para forçar novo login
+    // Encerra a sessão de recovery → força novo login
     await supabase.auth.signOut();
     setSuccess(true);
-
-    // Redireciona para login após 2.5s
     setTimeout(() => onDone(), 2500);
   };
 
@@ -96,9 +87,7 @@ export function ResetPasswordPage({ onDone }: Props) {
               style={{ fontFamily: "'Syne', sans-serif" }}
             >
               <span style={{ color: '#1064AE' }}>NPlayer</span>
-              <span
-                style={{ color: '#FBDB14', textShadow: '0 0 20px rgba(251,219,20,0.5)' }}
-              >
+              <span style={{ color: '#FBDB14', textShadow: '0 0 20px rgba(251,219,20,0.5)' }}>
                 .IA
               </span>
             </h1>
@@ -110,10 +99,7 @@ export function ResetPasswordPage({ onDone }: Props) {
           {/* Card */}
           <div
             className="bg-white/90 backdrop-blur-2xl p-7 sm:p-9 rounded-[28px] sm:rounded-[40px] border border-slate-200"
-            style={{
-              boxShadow:
-                '0 8px 40px rgba(16,100,174,0.10), 0 2px 8px rgba(0,0,0,0.06)',
-            }}
+            style={{ boxShadow: '0 8px 40px rgba(16,100,174,0.10), 0 2px 8px rgba(0,0,0,0.06)' }}
           >
             <AnimatePresence mode="wait">
               {success ? (
@@ -125,12 +111,8 @@ export function ResetPasswordPage({ onDone }: Props) {
                 >
                   <CheckCircle2 size={52} className="text-emerald-500" />
                   <div>
-                    <p className="text-lg font-black text-slate-800">
-                      Senha atualizada!
-                    </p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Redirecionando para o login…
-                    </p>
+                    <p className="text-lg font-black text-slate-800">Senha atualizada!</p>
+                    <p className="text-sm text-slate-500 mt-1">Redirecionando para o login…</p>
                   </div>
                 </motion.div>
               ) : (
@@ -145,7 +127,6 @@ export function ResetPasswordPage({ onDone }: Props) {
                     Crie sua nova senha
                   </p>
 
-                  {/* Erro */}
                   <AnimatePresence>
                     {errorMsg && (
                       <motion.div
@@ -166,10 +147,7 @@ export function ResetPasswordPage({ onDone }: Props) {
                       Nova Senha
                     </label>
                     <div className="relative">
-                      <Lock
-                        size={16}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type={showPwd ? 'text' : 'password'}
                         value={password}
@@ -177,11 +155,8 @@ export function ResetPasswordPage({ onDone }: Props) {
                         placeholder="••••••••"
                         required
                         className="w-full pl-11 pr-12 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
-                        onFocus={e =>
-                          (e.currentTarget.style.boxShadow =
-                            '0 0 0 4px rgba(16,100,174,0.10)')
-                        }
-                        onBlur={e => (e.currentTarget.style.boxShadow = '')}
+                        onFocus={e => (e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)')}
+                        onBlur={e  => (e.currentTarget.style.boxShadow = '')}
                       />
                       <button
                         type="button"
@@ -193,7 +168,7 @@ export function ResetPasswordPage({ onDone }: Props) {
                     </div>
                   </div>
 
-                  {/* Regras de senha */}
+                  {/* Regras */}
                   {password.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -205,33 +180,24 @@ export function ResetPasswordPage({ onDone }: Props) {
                       </p>
                       {rules.map(r => (
                         <div key={r.label} className="flex items-center gap-2">
-                          {r.ok ? (
-                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                          ) : (
-                            <XCircle size={14} className="text-slate-300 shrink-0" />
-                          )}
-                          <span
-                            className={`text-xs font-semibold transition-colors ${
-                              r.ok ? 'text-emerald-600' : 'text-slate-400'
-                            }`}
-                          >
-                            {r.label}
-                          </span>
+                          {r.ok
+                            ? <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            : <XCircle      size={14} className="text-slate-300  shrink-0" />}
+                          <span className={`text-xs font-semibold transition-colors ${
+                            r.ok ? 'text-emerald-600' : 'text-slate-400'
+                          }`}>{r.label}</span>
                         </div>
                       ))}
                     </motion.div>
                   )}
 
-                  {/* Confirmar senha */}
+                  {/* Confirmar */}
                   <div className="space-y-1.5">
                     <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
                       Confirmar Nova Senha
                     </label>
                     <div className="relative">
-                      <Lock
-                        size={16}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type={showConf ? 'text' : 'password'}
                         value={confirm}
@@ -240,16 +206,11 @@ export function ResetPasswordPage({ onDone }: Props) {
                         required
                         className={`w-full pl-11 pr-12 py-[15px] border rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all ${
                           confirm.length > 0
-                            ? match
-                              ? 'border-emerald-300'
-                              : 'border-red-300'
+                            ? match ? 'border-emerald-300' : 'border-red-300'
                             : 'border-slate-200'
                         }`}
-                        onFocus={e =>
-                          (e.currentTarget.style.boxShadow =
-                            '0 0 0 4px rgba(16,100,174,0.10)')
-                        }
-                        onBlur={e => (e.currentTarget.style.boxShadow = '')}
+                        onFocus={e => (e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)')}
+                        onBlur={e  => (e.currentTarget.style.boxShadow = '')}
                       />
                       <button
                         type="button"
@@ -260,27 +221,20 @@ export function ResetPasswordPage({ onDone }: Props) {
                       </button>
                     </div>
                     {confirm.length > 0 && !match && (
-                      <p className="text-[11px] text-red-500 font-bold ml-1">
-                        As senhas não coincidem.
-                      </p>
+                      <p className="text-[11px] text-red-500 font-bold ml-1">As senhas não coincidem.</p>
                     )}
                   </div>
 
-                  {/* Botão salvar */}
+                  {/* Botão */}
                   <button
                     type="submit"
                     disabled={!canSubmit}
                     className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-40"
-                    style={{
-                      background: '#1064AE',
-                      boxShadow: '0 4px 20px rgba(16,100,174,0.30)',
-                    }}
+                    style={{ background: '#1064AE', boxShadow: '0 4px 20px rgba(16,100,174,0.30)' }}
                   >
-                    {loading ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      'Salvar Nova Senha'
-                    )}
+                    {loading
+                      ? <Loader2 size={18} className="animate-spin" />
+                      : 'Salvar Nova Senha'}
                   </button>
                 </motion.form>
               )}
