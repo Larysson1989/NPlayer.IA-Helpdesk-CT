@@ -5,13 +5,13 @@ import { execSync } from 'child_process';
 import { defineConfig, loadEnv } from 'vite';
 
 function getCommitHash(): string {
-  // Vercel expõe via process.env (System Environment Variables)
-  const vercelSha =
+  // Vercel injeta automaticamente via System Environment Variables
+  const sha =
     process.env.VERCEL_GIT_COMMIT_SHA ||
-    process.env.CF_PAGES_COMMIT_SHA; // fallback para outros hosts
+    process.env.CF_PAGES_COMMIT_SHA;
 
-  if (vercelSha) {
-    return vercelSha.slice(0, 7);
+  if (sha && sha.length >= 7) {
+    return sha.slice(0, 7);
   }
 
   // Fallback local: lê do git
@@ -28,7 +28,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const commitHash = getCommitHash();
 
-  // Log para confirmar no build log da Vercel
   console.log(`[vite.config] COMMIT_HASH = ${commitHash}`);
   console.log(`[vite.config] VERCEL_GIT_COMMIT_SHA = ${process.env.VERCEL_GIT_COMMIT_SHA ?? '(não definido)'}`);
 
@@ -36,7 +35,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // injeta como global substituível no bundle
       '__COMMIT_HASH__': JSON.stringify(commitHash),
+      // também expõe via import.meta.env como fallback
+      'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(commitHash),
     },
     resolve: {
       alias: {
