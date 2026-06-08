@@ -61,19 +61,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     getAllUsers().then(data => { setUsers(data); setLoading(false); });
   }, []);
 
-  // Se um usuário está selecionado, exibe o perfil
-  if (selectedUser) {
-    return (
-      <UserProfilePage
-        profileUser={selectedUser}
-        adminName={adminName}
-        adminRole={adminRole}
-        onBack={() => setSelectedUser(null)}
-        onLogout={onLogout}
-      />
-    );
-  }
-
+  // ── Todos os hooks devem vir ANTES de qualquer early return ──
   const visibleUsers = adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador');
 
   const filtered = useMemo(() => {
@@ -109,6 +97,19 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     supervisor:    visibleUsers.filter(u => u.role === 'supervisor').length,
     administrador: visibleUsers.filter(u => u.role === 'administrador').length,
   }), [visibleUsers]);
+
+  // ── Early return APÓS todos os hooks ──
+  if (selectedUser) {
+    return (
+      <UserProfilePage
+        profileUser={selectedUser}
+        adminName={adminName}
+        adminRole={adminRole}
+        onBack={() => setSelectedUser(null)}
+        onLogout={onLogout}
+      />
+    );
+  }
 
   async function handleToggleActive(user: User) {
     setToggling(user.id);
