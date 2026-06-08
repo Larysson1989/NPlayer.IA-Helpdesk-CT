@@ -6,6 +6,7 @@ import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { MetricsDashboardPage } from './pages/MetricsDashboardPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
@@ -55,8 +56,6 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
 
 /**
  * Detecta se a URL atual contém um token de recovery do Supabase.
- * O Supabase redireciona para: /...#access_token=...&type=recovery
- * Funciona tanto no hash (#) quanto em query params (?type=recovery).
  */
 function isRecoveryUrl(): boolean {
   const hash   = window.location.hash;
@@ -68,7 +67,6 @@ function isRecoveryUrl(): boolean {
 export default function App() {
   const [user, setUser]                             = useState<User | null>(null);
   const [ready, setReady]                           = useState(false);
-  // Inicia já como true se a URL for de recovery — evita qualquer flash de login
   const [isRecovery, setIsRecovery]                 = useState(() => isRecoveryUrl());
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery]               = useState('');
@@ -77,8 +75,6 @@ export default function App() {
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Listener do Supabase — confirma/captura o evento PASSWORD_RECOVERY
-    // mesmo que o hash já tenha sido processado pelo SDK
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === 'PASSWORD_RECOVERY') {
@@ -90,12 +86,10 @@ export default function App() {
     );
 
     async function restoreSession() {
-      // Se a URL é de recovery, NÃO restauramos sessão — exibimos ResetPasswordPage
       if (isRecoveryUrl()) {
         setReady(true);
         return;
       }
-
       const stored = await getStoredSession();
       if (stored) {
         const avatarUrl = await getAvatarUrl(stored.email);
@@ -158,12 +152,10 @@ export default function App() {
     );
   }
 
-  // ── Fluxo de redefinição de senha ──────────────────────────────────────────
   if (isRecovery) {
     return (
       <ResetPasswordPage
         onDone={() => {
-          // Limpa o hash da URL para não re-disparar no próximo render
           window.history.replaceState(null, '', window.location.pathname);
           setIsRecovery(false);
           setUser(null);
@@ -176,6 +168,7 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
+  // ── Painel Admin ──────────────────────────────────────────────
   if (activeProfilePage === 'admin') {
     if (!canAccessAdmin(user.role)) {
       setActiveProfilePage(null);
@@ -191,6 +184,23 @@ export default function App() {
     );
   }
 
+  // ── Equipe & Métricas ─────────────────────────────────────────
+  if (activeProfilePage === 'metrics') {
+    if (!canAccessMetrics(user.role)) {
+      setActiveProfilePage(null);
+      return null;
+    }
+    return (
+      <MetricsDashboardPage
+        adminName={user.name}
+        adminRole={user.role ?? 'supervisor'}
+        onBack={() => setActiveProfilePage(null)}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // ── Configurações ─────────────────────────────────────────────
   if (activeProfilePage === 'settings') {
     return (
       <SettingsPage
@@ -206,13 +216,7 @@ export default function App() {
     );
   }
 
-  if (activeProfilePage === 'metrics') {
-    if (!canAccessMetrics(user.role)) {
-      setActiveProfilePage(null);
-      return null;
-    }
-  }
-
+  // ── Outras páginas (Em construção) ────────────────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -222,6 +226,7 @@ export default function App() {
     );
   }
 
+  // ── Chat ──────────────────────────────────────────────────────
   if (activeChatQuery !== null) {
     return (
       <ChatView
