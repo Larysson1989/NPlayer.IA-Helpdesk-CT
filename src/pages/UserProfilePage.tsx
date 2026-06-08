@@ -4,16 +4,13 @@ import {
   ArrowLeft, LogOut, Mail, Phone, MapPin, Calendar,
   Hash, Briefcase, Building2, CalendarCheck, ShieldCheck,
   UserCog, Edit2, KeyRound, Download, UserX, TrendingUp,
-  CheckCircle2, X, Save, Eye, EyeOff, AlertTriangle,
+  CheckCircle2, X, Save, AlertTriangle,
   UserCheck, Loader2,
 } from 'lucide-react';
 import { UserAvatar } from '../components/UserAvatar';
 import { supabase } from '../lib/supabase';
 import { updateUserActive } from '../lib/auth';
 import type { User, UserRole } from '../App';
-
-// URL de produção — link do e-mail sempre aponta para o Vercel
-const PRODUCTION_URL = 'https://n-player-ia.vercel.app';
 
 interface UserProfilePageProps {
   profileUser:  User;
@@ -115,12 +112,12 @@ export function UserProfilePage({
   const [toast, setToast]             = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const [saving, setSaving]           = useState(false);
 
-  // Editar Dados
+  // ── Editar Dados ──────────────────────────────────────────────────────────
   const [editName,     setEditName]   = useState(user.name);
   const [editEmail,    setEditEmail]  = useState(user.email);
   const [editTelefone, setEditTel]    = useState(user.telefone ?? '');
@@ -161,22 +158,26 @@ export function UserProfilePage({
     showToast('Dados atualizados com sucesso!');
   };
 
-  // Resetar Senha — envia e-mail com link apontando para o Vercel
-  const [showPass, setShowPass] = useState(false);
-  const openSenha = () => { setShowPass(false); setModal('senha'); };
+  // ── Resetar Senha ─────────────────────────────────────────────────────────
+  // Sem redirectTo: o Supabase usa a URL configurada no painel (Site URL)
+  // evitando o erro "redirect_uri_mismatch" / URL não permitida.
+  const openSenha = () => setModal('senha');
 
   const handleResetSenha = async () => {
     setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: PRODUCTION_URL,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
     setSaving(false);
-    if (error) { showToast('Erro ao enviar e-mail de redefinição.', 'error'); return; }
+
+    if (error) {
+      console.error('[resetPassword]', error);
+      showToast(`Erro: ${error.message}`, 'error');
+      return;
+    }
     closeModal();
     showToast(`E-mail de redefinição enviado para ${user.email}`);
   };
 
-  // Exportar Histórico
+  // ── Exportar Histórico ────────────────────────────────────────────────────
   const handleExportar = () => {
     const rows = [
       ['Campo', 'Valor'],
@@ -201,7 +202,7 @@ export function UserProfilePage({
     showToast('Histórico exportado!');
   };
 
-  // Desativar / Reativar
+  // ── Desativar / Reativar ──────────────────────────────────────────────────
   const handleToggleAtivo = async () => {
     setSaving(true);
     const ok = await updateUserActive(user.id, !user.active);
@@ -278,8 +279,7 @@ export function UserProfilePage({
               </p>
               <p className="text-sm font-black text-slate-900 mt-1 break-all">{user.email}</p>
               <p className="text-xs text-slate-400 mt-2">
-                O link no e-mail redirecionará para{' '}
-                <span className="font-semibold text-slate-600">n-player-ia.vercel.app</span>
+                O usuário receberá um link para criar uma nova senha.
               </p>
             </div>
             <div className="flex gap-3 w-full">
