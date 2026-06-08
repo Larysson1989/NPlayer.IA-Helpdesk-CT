@@ -12,6 +12,9 @@ import { supabase } from '../lib/supabase';
 import { updateUserActive } from '../lib/auth';
 import type { User, UserRole } from '../App';
 
+// URL de produção — link do e-mail sempre aponta para o Vercel
+const PRODUCTION_URL = 'https://n-player-ia.vercel.app';
+
 interface UserProfilePageProps {
   profileUser:  User;
   adminName:    string;
@@ -21,7 +24,6 @@ interface UserProfilePageProps {
   onUserUpdate?: (updated: User) => void;
 }
 
-// Sem JSX fora de componentes — apenas dados primitivos
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
   captador:      { label: 'Captador',      color: 'text-blue-700',    bg: 'bg-blue-50'    },
   supervisor:    { label: 'Supervisor',    color: 'text-purple-700',  bg: 'bg-purple-50'  },
@@ -40,7 +42,6 @@ const DEPT_BY_ROLE: Record<UserRole, string> = {
   administrador: 'Tecnologia da Informação',
 };
 
-// Ícone resolvido em runtime dentro de componente
 function RoleIcon({ role }: { role: UserRole }) {
   if (role === 'captador') return <UserCog size={16} />;
   return <ShieldCheck size={16} />;
@@ -160,23 +161,17 @@ export function UserProfilePage({
     showToast('Dados atualizados com sucesso!');
   };
 
-  // Resetar Senha
-  const [novaSenha,    setNovaSenha]  = useState('');
-  const [confirmSenha, setConfirm]   = useState('');
-  const [showPass,     setShowPass]  = useState(false);
-
-  const openSenha = () => { setNovaSenha(''); setConfirm(''); setShowPass(false); setModal('senha'); };
+  // Resetar Senha — envia e-mail com link apontando para o Vercel
+  const [showPass, setShowPass] = useState(false);
+  const openSenha = () => { setShowPass(false); setModal('senha'); };
 
   const handleResetSenha = async () => {
-    if (novaSenha.length < 6)       { showToast('Senha deve ter no mínimo 6 caracteres.', 'error'); return; }
-    if (novaSenha !== confirmSenha) { showToast('As senhas não coincidem.', 'error'); return; }
     setSaving(true);
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: window.location.origin,
+      redirectTo: PRODUCTION_URL,
     });
     setSaving(false);
     if (error) { showToast('Erro ao enviar e-mail de redefinição.', 'error'); return; }
-    setNovaSenha(''); setConfirm('');
     closeModal();
     showToast(`E-mail de redefinição enviado para ${user.email}`);
   };
@@ -273,53 +268,34 @@ export function UserProfilePage({
       {/* MODAL RESETAR SENHA */}
       {modal === 'senha' && (
         <Modal title="Resetar Senha" onClose={closeModal}>
-          <p className="text-sm text-slate-500 mb-4">
-            Um e-mail de redefinição será enviado para{' '}
-            <strong className="text-slate-800">{user.email}</strong>.
-          </p>
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Nova Senha</label>
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={novaSenha}
-                  onChange={e => setNovaSenha(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button type="button" onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
+          <div className="flex flex-col items-center text-center gap-5">
+            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+              <KeyRound size={24} />
             </div>
-            {novaSenha.length > 0 && (
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Confirmar Senha</label>
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={confirmSenha}
-                  onChange={e => setConfirm(e.target.value)}
-                  className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 transition ${
-                    confirmSenha && confirmSenha !== novaSenha
-                      ? 'border-red-300 focus:ring-red-400'
-                      : 'border-slate-200 focus:ring-blue-500'
-                  }`}
-                />
-                {confirmSenha && confirmSenha !== novaSenha && (
-                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem.</p>
-                )}
-              </div>
-            )}
-            <button
-              onClick={handleResetSenha}
-              disabled={saving || novaSenha.length < 6}
-              className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
-              {saving ? 'Enviando...' : 'Enviar Redefinição'}
-            </button>
+            <div>
+              <p className="text-sm font-semibold text-slate-700">
+                Será enviado um e-mail de redefinição para:
+              </p>
+              <p className="text-sm font-black text-slate-900 mt-1 break-all">{user.email}</p>
+              <p className="text-xs text-slate-400 mt-2">
+                O link no e-mail redirecionará para{' '}
+                <span className="font-semibold text-slate-600">n-player-ia.vercel.app</span>
+              </p>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button onClick={closeModal}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                Cancelar
+              </button>
+              <button
+                onClick={handleResetSenha}
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                {saving ? 'Enviando...' : 'Enviar E-mail'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}
