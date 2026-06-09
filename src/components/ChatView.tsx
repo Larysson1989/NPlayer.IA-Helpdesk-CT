@@ -10,6 +10,14 @@ import ReactMarkdown from 'react-markdown';
 
 const AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCPO-NmdE1NB9QeXLddpbN7LJi7gT0WnLtAewyoIkGBhO25w2gt8YMl2WIPGcwODMN_xMW7_Fa86YAroC26D1imVz8OXxPj7p1bNgJOcqEXjeP8acCAS3PJ4di_WN-w4aDLMi35hqR7gPHEqwTgZpUWFHPhCYPPjcwaYtSmeJv6Y2UgqHoV4EtCjqpJPswMuEXSNlqv3PQB68tD1qnGxyydoLBRpImaxsJDeIFhD21Ag1tcuXaRFX98jpIhTyeldqgL86V1Z1X3i8w';
 
+/** Gera um UUID v4 simples sem dependências externas */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 interface Message {
   role: 'user' | 'bot';
   text: string;
@@ -46,6 +54,9 @@ export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const didSendInitial = useRef(false);
 
+  // UUID fixo por sessão de conversa (gerado uma vez na montagem do componente)
+  const sessionId = useRef<string>(generateUUID());
+
   const SYSTEM_PROMPT = `Você é o "Príncipe", o assistente de IA do NPlayer.IA para a equipe de captação do Hospital Pequeno Príncipe (HPP).
 
 O usuário atual é **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
@@ -78,11 +89,6 @@ ${HPP_KNOWLEDGE}`;
     resetTextarea();
     setLoading(true);
 
-    // Registra a pergunta nas métricas (fire-and-forget)
-    if (user.id) {
-      registrarMensagem(user.id, user.name, text.trim()).catch(() => {});
-    }
-
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error('Chave de API não configurada.');
@@ -109,9 +115,24 @@ ${HPP_KNOWLEDGE}`;
           });
         }
       }
+
+      // Registra pergunta + resposta + session_id após o streaming completar
+      if (user.id) {
+        registrarMensagem(user.id, user.name, text.trim(), {
+          resposta:   fullResponse,
+          session_id: sessionId.current,
+        }).catch(() => {});
+      }
     } catch (err: any) {
       const errorMessage = parseGeminiError(err);
       setMessages(prev => [...prev, { role: 'bot', text: errorMessage, time: getTime() }]);
+
+      // Registra mesmo em caso de erro (sem resposta)
+      if (user.id) {
+        registrarMensagem(user.id, user.name, text.trim(), {
+          session_id: sessionId.current,
+        }).catch(() => {});
+      }
     } finally {
       setLoading(false);
     }

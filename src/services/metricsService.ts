@@ -127,11 +127,17 @@ export async function registrarMensagem(
   userId: string,
   userName: string,
   pergunta: string,
+  options?: {
+    resposta?:   string;
+    session_id?: string;
+  },
 ): Promise<void> {
   await supabase.from('chat_logs').insert({
-    user_id:   userId,
-    user_name: userName,
-    pergunta:  pergunta.slice(0, 1000),
+    user_id:    userId,
+    user_name:  userName,
+    pergunta:   pergunta.slice(0, 1000),
+    resposta:   options?.resposta   ? options.resposta.slice(0, 4000) : null,
+    session_id: options?.session_id ?? null,
   });
 }
 
