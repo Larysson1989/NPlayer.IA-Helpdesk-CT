@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Edit2, ArrowLeft,
   LogOut, Filter, ChevronDown, ArrowUpAZ, ArrowDownAZ,
-  BarChart2,
+  BarChart2, UserPlus, X, Eye, EyeOff, CheckCircle2, AlertCircle,
 } from 'lucide-react';
-import { getAllUsers, updateUserActive } from '../lib/auth';
+import { getAllUsers, updateUserActive, createUser } from '../lib/auth';
+import type { CreateUserPayload } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
 import { UserProfilePage } from './UserProfilePage';
 import { MetricsDashboardPage } from './MetricsDashboardPage';
@@ -47,6 +48,15 @@ const SORT_LABELS: Record<SortField, string> = {
   active:    'Status',
 };
 
+// ─── Estado inicial do formulário ───────────────────────────────────────────────────────
+const EMPTY_FORM: CreateUserPayload = {
+  email:     '',
+  password:  '',
+  name:      '',
+  role:      'captador',
+  matricula: '',
+};
+
 export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
   const [users,         setUsers]         = useState<User[]>([]);
   const [loading,       setLoading]       = useState(true);
@@ -59,6 +69,14 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
   const [sortOpen,      setSortOpen]      = useState(false);
   const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
   const [showMetrics,   setShowMetrics]   = useState(false);
+
+  // ─ Modal criar usuário
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [form,          setForm]          = useState<CreateUserPayload>(EMPTY_FORM);
+  const [showPassword,  setShowPassword]  = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [createError,   setCreateError]   = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     getAllUsers().then(data => { setUsers(data); setLoading(false); });
@@ -141,6 +159,58 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     setFilterOpen(false);
   }
 
+  function openCreateModal() {
+    setForm(EMPTY_FORM);
+    setShowPassword(false);
+    setCreateError(null);
+    setCreateSuccess(null);
+    setShowCreate(true);
+  }
+
+  function closeCreateModal() {
+    setShowCreate(false);
+    setCreateError(null);
+    setCreateSuccess(null);
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateSuccess(null);
+
+    // Validações básicas
+    if (!form.name.trim())                          return setCreateError('Nome é obrigatório.');
+    if (!form.email.trim() || !form.email.includes('@')) return setCreateError('E-mail inválido.');
+    if (form.password.length < 6)                   return setCreateError('Senha deve ter ao menos 6 caracteres.');
+
+    // Supervisor não pode criar Administrador
+    if (adminRole === 'supervisor' && form.role === 'administrador') {
+      return setCreateError('Supervisores não podem criar Administradores.');
+    }
+
+    setSaving(true);
+    const result = await createUser(form);
+    setSaving(false);
+
+    if (!result.ok) {
+      setCreateError(result.error ?? 'Erro desconhecido.');
+      return;
+    }
+
+    // Sucesso: recarrega lista e exibe feedback
+    setCreateSuccess(`Usuário "${form.name}" criado com sucesso!`);
+    const updated = await getAllUsers();
+    setUsers(updated);
+
+    // Fecha modal após 1.8s
+    setTimeout(closeCreateModal, 1800);
+  }
+
+  // Perfis que este admin pode criar
+  const CREATABLE_ROLES: UserRole[] = adminRole === 'administrador'
+    ? ['captador', 'supervisor', 'administrador']
+    : ['captador', 'supervisor'];
+
   const SORTABLE_FIELDS: SortField[] = ['name', 'email', 'matricula', 'role', 'active'];
   const FILTER_ROLES: FilterRole[] = adminRole === 'administrador'
     ? ['todos', 'captador', 'supervisor', 'administrador']
@@ -161,7 +231,6 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* BOTÃO EQUIPES E MÉTRICAS */}
           <button
             onClick={() => setShowMetrics(true)}
             className="flex items-center gap-1.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors shadow-sm"
@@ -191,13 +260,23 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
-            {adminRole === 'administrador'
-              ? 'Acesso total - ative ou desative qualquer usuario.'
-              : 'Voce pode gerenciar Captadores e Supervisores.'}
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Gestão de Usuários</h1>
+            <p className="text-sm text-slate-400 mt-0.5">
+              {adminRole === 'administrador'
+                ? 'Acesso total — ative, desative ou crie qualquer usuário.'
+                : 'Você pode gerenciar e criar Captadores e Supervisores.'}
+            </p>
+          </div>
+          {/* BOTÃO NOVO USUÁRIO */}
+          <button
+            onClick={e => { e.stopPropagation(); openCreateModal(); }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors shadow-sm shrink-0"
+          >
+            <UserPlus size={16} />
+            Novo Usuário
+          </button>
         </div>
 
         {/* BUSCA + FILTRO + ORDENAÇÃO */}
@@ -205,7 +284,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           <div className="relative flex-1 min-w-[220px]">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nome, e-mail ou matricula..."
+              placeholder="Buscar por nome, e-mail ou matrícula..."
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
 
@@ -290,9 +369,9 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
         {/* TABELA */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
           <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[860px]`}>
-            {(['Nome','E-mail','Matricula','Perfil','Status',''] as const).map((h, i) => {
+            {(['Nome','E-mail','Matrícula','Perfil','Status',''] as const).map((h, i) => {
               const fieldMap: Record<string, SortField> = {
-                'Nome': 'name', 'E-mail': 'email', 'Matricula': 'matricula',
+                'Nome': 'name', 'E-mail': 'email', 'Matrícula': 'matricula',
                  'Perfil': 'role', 'Status': 'active',
               };
               const field = fieldMap[h];
@@ -314,12 +393,12 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           {loading ? (
             <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
               <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-semibold">Carregando usuarios...</span>
+              <span className="text-sm font-semibold">Carregando usuários...</span>
             </div>
           ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-3">
               <Users size={48} strokeWidth={1} />
-              <p className="text-sm font-semibold">Nenhum usuario encontrado</p>
+              <p className="text-sm font-semibold">Nenhum usuário encontrado</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -359,7 +438,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                         <button
                           onClick={e => { e.stopPropagation(); canToggle && handleToggleActive(u); }}
                           disabled={!canToggle || isToggling}
-                          title={canToggle ? (u.active ? 'Desativar' : 'Ativar') : 'Sem permissao'}
+                          title={canToggle ? (u.active ? 'Desativar' : 'Ativar') : 'Sem permissão'}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
                             canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
@@ -411,12 +490,178 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
 
           <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-semibold">
-              {sorted.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
+              {sorted.length} de {visibleUsers.length} usuário{visibleUsers.length !== 1 ? 's' : ''}
             </span>
             <span className="text-xs text-slate-300 italic">Clique em uma linha para ver o perfil</span>
           </div>
         </div>
       </main>
+
+      {/* ═══════════════════════════════════════════════════════════════
+           MODAL — CRIAR NOVO USUÁRIO
+          ═══════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showCreate && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={closeCreateModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{   opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Cabeçalho */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <UserPlus size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800">Novo Usuário</h2>
+                    <p className="text-xs text-slate-400">Preencha os dados para criar a conta</p>
+                  </div>
+                </div>
+                <button onClick={closeCreateModal} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Formulário */}
+              <form onSubmit={handleCreateUser} className="px-6 py-5 space-y-4">
+
+                {/* Nome */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nome completo <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex: João da Silva"
+                    required
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* E-mail */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">E-mail <span className="text-red-400">*</span></label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="usuario@hpp.com.br"
+                    required
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* Senha */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Senha provisória <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      minLength={6}
+                      className="w-full h-11 px-4 pr-11 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">O usuário poderá alterar a senha após o primeiro acesso.</p>
+                </div>
+
+                {/* Linha: Perfil + Matrícula */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Perfil <span className="text-red-400">*</span></label>
+                    <select
+                      value={form.role}
+                      onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
+                      className="w-full h-11 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
+                    >
+                      {CREATABLE_ROLES.map(r => (
+                        <option key={r} value={r}>
+                          {ROLE_CONFIG[r].label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Matrícula</label>
+                    <input
+                      type="text"
+                      value={form.matricula}
+                      onChange={e => setForm(f => ({ ...f, matricula: e.target.value }))}
+                      placeholder="Opcional"
+                      className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Feedback de erro */}
+                {createError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium"
+                  >
+                    <AlertCircle size={15} className="shrink-0" />
+                    {createError}
+                  </motion.div>
+                )}
+
+                {/* Feedback de sucesso */}
+                {createSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-medium"
+                  >
+                    <CheckCircle2 size={15} className="shrink-0" />
+                    {createSuccess}
+                  </motion.div>
+                )}
+
+                {/* Botões */}
+                <div className="flex justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={closeCreateModal}
+                    disabled={saving}
+                    className="h-10 px-5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || !!createSuccess}
+                    className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Criando...</>
+                    ) : (
+                      <><UserPlus size={15} /> Criar Usuário</>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
