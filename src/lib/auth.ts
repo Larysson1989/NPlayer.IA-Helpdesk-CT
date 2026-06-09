@@ -94,6 +94,81 @@ export async function updateUserActive(id: string, active: boolean): Promise<boo
   return !error;
 }
 
+// ─── Admin/Supervisor: criar novo usuário ────────────────────────────────────────────
+// Usa signUp padrão. O projeto Supabase deve ter "Confirm email" DESABILITADO
+// (Authentication → Settings → Email → Enable email confirmations = OFF)
+// para que o usuário seja criado e ativado imediatamente sem e-mail de confirmação.
+// O perfil é inserido manualmente na tabela profiles após o signUp.
+
+export interface CreateUserPayload {
+  email:     string;
+  password:  string;
+  name:      string;
+  role:      UserRole;
+  matricula?: string;
+}
+
+export interface CreateUserResult {
+  ok:    boolean;
+  error?: string;
+}
+
+export async function createUser(payload: CreateUserPayload): Promise<CreateUserResult> {
+  const email = payload.email.trim().toLowerCase();
+
+  // 1. Verifica se o e-mail já existe na tabela profiles
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existing) {
+    return { ok: false, error: 'Este e-mail já está cadastrado.' };
+  }
+
+  // 2. Cria o usuário no Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password: payload.password,
+    options: {
+      // Não redireciona para confirmação de e-mail
+      emailRedirectTo: undefined,
+      data: {
+        name: payload.name,
+        role: payload.role,
+      },
+    },
+  });
+
+  if (authError || !authData.user) {
+    const msg = authError?.message ?? 'Erro ao criar usuário.';
+    // Mensagens comuns do Supabase traduzidas
+    if (msg.includes('already registered')) return { ok: false, error: 'Este e-mail já está cadastrado.' };
+    if (msg.includes('password')) return { ok: false, error: 'Senha inválida (mínimo 6 caracteres).' };
+    return { ok: false, error: msg };
+  }
+
+  // 3. Insere/atualiza o perfil na tabela profiles
+  //    (upsert cobre o caso de um trigger já ter criado o registro)
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id:        authData.user.id,
+      email,
+      name:      payload.name,
+      role:      payload.role,
+      matricula: payload.matricula?.trim() || null,
+      active:    true,
+    }, { onConflict: 'id' });
+
+  if (profileError) {
+    return { ok: false, error: 'Usuário criado no Auth, mas erro ao salvar perfil: ' + profileError.message };
+  }
+
+  return { ok: true };
+}
+
 // ─── Usuário: atualizar nome e/ou senha ───────────────────────────────────────────────
 
 export async function updateUser(
