@@ -15,8 +15,7 @@ export interface MetricsKPIs {
   mediaMsgPorUsuario: number;
   taxaRetorno7d:      number;
   totalCorrecoes:     number;
-  // novos
-  taxaAcertoIA:       number; // % msgs sem correção
+  taxaAcertoIA:       number;
   mediaCaracteresPergunta: number;
   mediaCorrecoesUsuario:   number;
 }
@@ -73,7 +72,6 @@ export interface RoleDistribution {
   msgs:  number;
 }
 
-// novos tipos
 export interface WeekdayCount {
   label: string;
   logins: number;
@@ -86,7 +84,7 @@ export interface UserCorrectionRate {
   role:      string;
   correcoes: number;
   msgs:      number;
-  taxa:      number; // correcoes / msgs * 100
+  taxa:      number;
 }
 
 export interface RoleTopWords {
@@ -98,7 +96,7 @@ export interface UserStreak {
   user_id:   string;
   user_name: string;
   role:      string;
-  streak:    number; // dias consecutivos até hoje
+  streak:    number;
   max_streak: number;
 }
 
@@ -123,6 +121,7 @@ export async function registrarLogin(
 }
 
 // ─── Registrar mensagem ───────────────────────────────────────────────────────
+// Retorna o ID do registro inserido para permitir avaliação posterior
 export async function registrarMensagem(
   userId: string,
   userName: string,
@@ -131,14 +130,33 @@ export async function registrarMensagem(
     resposta?:   string;
     session_id?: string;
   },
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('chat_logs')
+    .insert({
+      user_id:    userId,
+      user_name:  userName,
+      pergunta:   pergunta.slice(0, 1000),
+      resposta:   options?.resposta   ? options.resposta.slice(0, 4000) : null,
+      session_id: options?.session_id ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) return null;
+  return data.id as string;
+}
+
+// ─── Avaliar mensagem (satisfação) ────────────────────────────────────────────────
+// nota: 1 = Ruim (👎) | 3 = Ótimo (👍)
+export async function avaliarMensagem(
+  chatLogId: string,
+  nota: 1 | 3,
 ): Promise<void> {
-  await supabase.from('chat_logs').insert({
-    user_id:    userId,
-    user_name:  userName,
-    pergunta:   pergunta.slice(0, 1000),
-    resposta:   options?.resposta   ? options.resposta.slice(0, 4000) : null,
-    session_id: options?.session_id ?? null,
-  });
+  await supabase
+    .from('chat_logs')
+    .update({ satisfacao: nota })
+    .eq('id', chatLogId);
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -192,20 +210,17 @@ export async function fetchMetricsKPIs(): Promise<MetricsKPIs> {
     ? Math.round((msgTotalR.count ?? 0) / totalAtivos)
     : 0;
 
-  // taxa de acerto IA: (msgs - correções) / msgs * 100
   const totalMsgs = msgTotalR.count ?? 0;
   const totalCorr = correcoesR.count ?? 0;
   const taxaAcertoIA = totalMsgs > 0
     ? Math.round(((totalMsgs - totalCorr) / totalMsgs) * 100)
     : 100;
 
-  // comprimento médio das perguntas (últimas 200)
   const chatSample = chatSampleR.data ?? [];
   const mediaCaracteres = chatSample.length > 0
     ? Math.round(chatSample.reduce((acc: number, r: { pergunta: string }) => acc + (r.pergunta?.length ?? 0), 0) / chatSample.length)
     : 0;
 
-  // média de correções por usuário ativo
   const mediaCorrecoesUsuario = totalAtivos > 0 && totalCorr > 0
     ? Math.round((totalCorr / totalAtivos) * 10) / 10
     : 0;
@@ -229,7 +244,7 @@ export async function fetchMetricsKPIs(): Promise<MetricsKPIs> {
   };
 }
 
-// ─── Top usuários (logins + mensagens) ────────────────────────────────────────
+// ─── Top usuários ────────────────────────────────────────────────────────────────
 export async function fetchTopUsers(): Promise<TopUser[]> {
   const [loginsR, msgsR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_name, user_role, created_at'),
@@ -301,7 +316,7 @@ export async function fetchWordCloud(): Promise<WordCount[]> {
     .slice(0, 60);
 }
 
-// ─── Série temporal 14 dias (logins + msgs) ───────────────────────────────────
+// ─── Série temporal 14 dias ────────────────────────────────────────────────────────
 export async function fetchTimeSeries(): Promise<DayCount[]> {
   const d14 = isoDay(13);
 
@@ -358,7 +373,7 @@ export async function fetchPeakHours(): Promise<HourCount[]> {
   }));
 }
 
-// ─── Atividade individual (tabela de usuários) ────────────────────────────────
+// ─── Atividade individual ──────────────────────────────────────────────────────────
 export async function fetchUserActivity(): Promise<UserActivity[]> {
   const d3 = isoDay(3);
 
@@ -425,13 +440,11 @@ export async function fetchRoleDistribution(): Promise<RoleDistribution[]> {
   return [...roleMap.entries()].map(([role, v]) => ({ role, count: v.count, msgs: v.msgs }));
 }
 
-// ─── Logins por dia — mantido para compatibilidade ───────────────────────────
 export async function fetchLoginsPerDay(): Promise<{ label: string; value: number }[]> {
   const series = await fetchTimeSeries();
   return series.slice(-7).map(d => ({ label: d.label, value: d.logins }));
 }
 
-// ─── NOVO: Uso por dia da semana ─────────────────────────────────────────────
 export async function fetchWeekdayDistribution(): Promise<WeekdayCount[]> {
   const d30 = isoDay(30);
   const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -455,7 +468,6 @@ export async function fetchWeekdayDistribution(): Promise<WeekdayCount[]> {
   return result;
 }
 
-// ─── NOVO: Taxa de correção por usuário ──────────────────────────────────────
 export async function fetchUserCorrectionRates(): Promise<UserCorrectionRate[]> {
   const [loginsR, msgsR, correcoesR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_name, user_role'),
@@ -463,19 +475,16 @@ export async function fetchUserCorrectionRates(): Promise<UserCorrectionRate[]> 
     supabase.from('system_logs').select('user, metadata').eq('type', 'correction_feedback'),
   ]);
 
-  // mapa de role + nome por user_id
   const userMap = new Map<string, { name: string; role: string }>();
   for (const r of (loginsR.data ?? [])) {
     if (!userMap.has(r.user_id)) userMap.set(r.user_id, { name: r.user_name, role: r.user_role });
   }
 
-  // msgs por user
   const msgCount = new Map<string, number>();
   for (const r of (msgsR.data ?? [])) {
     msgCount.set(r.user_id, (msgCount.get(r.user_id) ?? 0) + 1);
   }
 
-  // correções por user_email → precisamos cruzar com user_name no metadata
   const corrByName = new Map<string, number>();
   for (const r of (correcoesR.data ?? [])) {
     const name = (r.metadata as { user_name?: string })?.user_name ?? r.user ?? '';
@@ -494,7 +503,6 @@ export async function fetchUserCorrectionRates(): Promise<UserCorrectionRate[]> 
     .slice(0, 10);
 }
 
-// ─── NOVO: Top palavras por role ─────────────────────────────────────────────
 export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
   const [loginsR, chatR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_role'),
@@ -530,7 +538,6 @@ export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
   }));
 }
 
-// ─── NOVO: Streak de dias consecutivos ───────────────────────────────────────
 export async function fetchUserStreaks(): Promise<UserStreak[]> {
   const [loginsR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_name, user_role, created_at'),
@@ -538,7 +545,6 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
 
   const logins = loginsR.data ?? [];
 
-  // agrupar dias de login por usuário
   const userDays = new Map<string, { name: string; role: string; days: Set<string> }>();
   for (const r of logins) {
     if (!userDays.has(r.user_id)) userDays.set(r.user_id, { name: r.user_name, role: r.user_role, days: new Set() });
@@ -551,7 +557,6 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
   return [...userDays.entries()].map(([user_id, v]) => {
     const sorted = [...v.days].sort().reverse();
 
-    // streak atual: dias consecutivos terminando hoje ou ontem
     let streak = 0;
     let cursor = new Date(today);
     for (let i = 0; i < 365; i++) {
@@ -559,7 +564,6 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
       if (v.days.has(key)) {
         streak++;
       } else if (streak === 0) {
-        // se não logou hoje, tenta ontem
         cursor.setDate(cursor.getDate() - 1);
         const yesterday = cursor.toISOString().slice(0, 10);
         if (v.days.has(yesterday)) { streak++; cursor.setDate(cursor.getDate() - 1); continue; }
@@ -570,7 +574,6 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
       cursor.setDate(cursor.getDate() - 1);
     }
 
-    // max streak histórico
     let maxStreak = 0;
     let currentRun = 1;
     for (let i = 1; i < sorted.length; i++) {
@@ -590,7 +593,6 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
   }).sort((a, b) => b.streak - a.streak).slice(0, 10);
 }
 
-// ─── NOVO: Comprimento médio de pergunta por role ─────────────────────────────
 export async function fetchMsgLengthByRole(): Promise<MsgLengthByRole[]> {
   const [loginsR, chatR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_role'),
