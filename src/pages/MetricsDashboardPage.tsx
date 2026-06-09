@@ -12,6 +12,8 @@ import {
   ResponsiveContainer, RadialBarChart, RadialBar,
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
+import { OnlineUsersWidget, OnlineUsersBadge } from '../components/OnlineUsersWidget';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
 import {
   fetchMetricsKPIs, fetchTopUsers, fetchWordCloud,
   fetchTimeSeries, fetchPeakHours, fetchUserActivity, fetchRoleDistribution,
@@ -27,6 +29,7 @@ import type { UserRole } from '../App';
 interface Props {
   adminName: string;
   adminRole: UserRole;
+  currentUserId: string;
   onBack:   () => void;
   onLogout: () => void;
 }
@@ -116,9 +119,7 @@ function KpiCard({
       animate={{ opacity: 1, y: 0 }}
       className={`${c.bg} ${alert ? 'ring-2 ring-red-300' : ''} rounded-2xl p-4 flex flex-col gap-2 relative`}
     >
-      {alert && (
-        <span className="absolute top-2 right-2 w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-      )}
+      {alert && <span className="absolute top-2 right-2 w-2 h-2 bg-red-400 rounded-full animate-pulse" />}
       <div className={`${c.icon} w-8 h-8 flex items-center justify-center`}>{icon}</div>
       <p className="text-xs font-semibold text-slate-500 leading-snug">{label}</p>
       <p className={`text-2xl font-black tabular-nums ${c.text}`}>
@@ -138,7 +139,7 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-// ─── Gráfico de Área (Série temporal) ────────────────────────────────────────
+// ─── Gráfico de Área ──────────────────────────────────────────────────────────
 function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -158,32 +159,22 @@ function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            iconType="circle" iconSize={8}
-            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>}
-          />
-          <Area type="monotone" dataKey="logins" name="Logins" stroke="#3b82f6" strokeWidth={2}
-            fill="url(#gradLogins)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#3b82f6' }} />
-          <Area type="monotone" dataKey="msgs" name="Mensagens" stroke="#8b5cf6" strokeWidth={2}
-            fill="url(#gradMsgs)" dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#8b5cf6' }} />
+          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Area type="monotone" dataKey="logins" name="Logins" stroke="#3b82f6" strokeWidth={2} fill="url(#gradLogins)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#3b82f6' }} />
+          <Area type="monotone" dataKey="msgs" name="Mensagens" stroke="#8b5cf6" strokeWidth={2} fill="url(#gradMsgs)" dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#8b5cf6' }} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-// ─── Gráfico de barras (Pico de Horas) ───────────────────────────────────────
 function PeakHoursBarChart({ data }: { data: HourCount[] }) {
   const workHours = data.filter(d => d.hour >= 7 && d.hour <= 21);
   const max = Math.max(...workHours.map(d => d.value), 1);
-
   const coloredData = workHours.map(d => ({
     ...d,
     fill: d.value / max > 0.7 ? '#f87171' : d.value / max > 0.4 ? '#fbbf24' : '#60a5fa',
   }));
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <p className="text-xs text-slate-400 font-semibold mb-3">Horários comerciais (07h–21h) · últimos 30 dias</p>
@@ -194,9 +185,7 @@ function PeakHoursBarChart({ data }: { data: HourCount[] }) {
           <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
           <Bar dataKey="value" name="Mensagens" radius={[4, 4, 0, 0]} maxBarSize={28}>
-            {coloredData.map((entry, index) => (
-              <Cell key={index} fill={entry.fill} />
-            ))}
+            {coloredData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -209,14 +198,10 @@ function PeakHoursBarChart({ data }: { data: HourCount[] }) {
   );
 }
 
-// ─── Donut de distribuição por role ──────────────────────────────────────────
 function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
-  const LABELS: Record<string, string> = {
-    captador: 'Captador', supervisor: 'Supervisor', administrador: 'Admin',
-  };
+  const LABELS: Record<string, string> = { captador: 'Captador', supervisor: 'Supervisor', administrador: 'Admin' };
   const pieData = data.map(d => ({ name: LABELS[d.role] ?? d.role, value: d.msgs, users: d.count }));
   const total = pieData.reduce((s, d) => s + d.value, 0);
-
   const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }: {
     cx: number; cy: number; midAngle: number; innerRadius: number; outerRadius: number; index: number;
   }) => {
@@ -226,24 +211,15 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     const pct = total > 0 ? Math.round((pieData[index].value / total) * 100) : 0;
     if (pct < 5) return null;
-    return (
-      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central"
-        className="text-[10px] font-black" style={{ fontSize: 11, fontWeight: 900 }}>
-        {pct}%
-      </text>
-    );
+    return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 11, fontWeight: 900 }}>{pct}%</text>;
   };
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <ResponsiveContainer width={180} height={180}>
           <PieChart>
-            <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-              dataKey="value" labelLine={false} label={CustomPieLabel as React.FC}>
-              {pieData.map((_, i) => (
-                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-              ))}
+            <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={CustomPieLabel as React.FC}>
+              {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: number, name: string) => [`${fmt(v)} msgs`, name]} />
           </PieChart>
@@ -256,9 +232,7 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
                 <span className="text-sm font-bold text-slate-700">{d.name}</span>
               </div>
               <div className="text-right">
-                <p className="text-sm font-black tabular-nums" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>
-                  {fmt(d.value)} msgs
-                </p>
+                <p className="text-sm font-black tabular-nums" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>{fmt(d.value)} msgs</p>
                 <p className="text-[10px] text-slate-400">{d.users} usuário{d.users !== 1 ? 's' : ''}</p>
               </div>
             </div>
@@ -269,24 +243,19 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
   );
 }
 
-// ─── Tabela de atividade individual ──────────────────────────────────────────
 function UserActivityTable({ data }: { data: UserActivity[] }) {
   const [filter, setFilter] = useState<'todos' | 'inativos'>('todos');
   const shown = filter === 'inativos' ? data.filter(u => u.inativo) : data;
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
         <p className="text-xs font-black uppercase tracking-wider text-slate-500">Atividade por usuário</p>
         <div className="flex gap-1">
           {(['todos', 'inativos'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
+            <button key={f} onClick={() => setFilter(f)}
               className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg transition-colors ${
                 filter === f ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-50'
-              }`}
-            >
+              }`}>
               {f === 'todos' ? 'Todos' : `⚠ Inativos (${data.filter(u => u.inativo).length})`}
             </button>
           ))}
@@ -325,13 +294,9 @@ function UserActivityTable({ data }: { data: UserActivity[] }) {
                   <td className="px-4 py-3 text-xs font-semibold text-slate-500">{relTime(u.ultimo_login)}</td>
                   <td className="px-4 py-3">
                     {u.inativo ? (
-                      <span className="flex items-center gap-1 text-[10px] font-black text-red-500">
-                        <AlertTriangle size={11} /> Inativo
-                      </span>
+                      <span className="flex items-center gap-1 text-[10px] font-black text-red-500"><AlertTriangle size={11} /> Inativo</span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600">
-                        <Activity size={11} /> Ativo
-                      </span>
+                      <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600"><Activity size={11} /> Ativo</span>
                     )}
                   </td>
                 </tr>
@@ -344,15 +309,8 @@ function UserActivityTable({ data }: { data: UserActivity[] }) {
   );
 }
 
-// ─── Ranking Top 10 com barras duplas ─────────────────────────────────────────
 function TopUsersChart({ data }: { data: TopUser[] }) {
-  const chartData = data.map(u => ({
-    name: u.user_name.split(' ')[0],
-    logins: u.logins,
-    mensagens: u.mensagens,
-    role: u.role,
-  }));
-
+  const chartData = data.map(u => ({ name: u.user_name.split(' ')[0], logins: u.logins, mensagens: u.mensagens, role: u.role }));
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <ResponsiveContainer width="100%" height={260}>
@@ -361,8 +319,7 @@ function TopUsersChart({ data }: { data: TopUser[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8}
-            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={14} />
           <Bar dataKey="mensagens" name="Mensagens" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={14} />
         </BarChart>
@@ -371,7 +328,6 @@ function TopUsersChart({ data }: { data: TopUser[] }) {
   );
 }
 
-// ─── NOVO: Uso por dia da semana ──────────────────────────────────────────────
 function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -382,8 +338,7 @@ function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8}
-            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
           <Bar dataKey="msgs" name="Mensagens" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={32} />
         </BarChart>
@@ -392,17 +347,8 @@ function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
   );
 }
 
-// ─── NOVO: Taxa de correção por usuário ───────────────────────────────────────
 function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
-  const chartData = data
-    .filter(u => u.correcoes > 0)
-    .map(u => ({
-      name: u.user_name.split(' ')[0],
-      correcoes: u.correcoes,
-      taxa: u.taxa,
-      role: u.role,
-    }));
-
+  const chartData = data.filter(u => u.correcoes > 0).map(u => ({ name: u.user_name.split(' ')[0], correcoes: u.correcoes, taxa: u.taxa, role: u.role }));
   if (chartData.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center py-12 gap-2">
@@ -412,7 +358,6 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
       </div>
     );
   }
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <ResponsiveContainer width="100%" height={220}>
@@ -421,8 +366,7 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8}
-            formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
           <Bar dataKey="correcoes" name="Correções" fill="#f87171" radius={[0, 4, 4, 0]} maxBarSize={18} />
         </BarChart>
       </ResponsiveContainer>
@@ -430,19 +374,16 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
   );
 }
 
-// ─── NOVO: Gauge de taxa de acerto IA ─────────────────────────────────────────
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const color = taxa >= 90 ? '#10b981' : taxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = taxa >= 90 ? 'Excelente' : taxa >= 70 ? 'Atenção' : 'Crítico';
   const gaugeData = [{ name: 'Taxa', value: taxa, fill: color }, { name: 'Resto', value: 100 - taxa, fill: '#f1f5f9' }];
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
       <div className="relative">
         <ResponsiveContainer width={180} height={120}>
-          <RadialBarChart cx="50%" cy="100%" innerRadius={60} outerRadius={90}
-            startAngle={180} endAngle={0} data={gaugeData}>
+          <RadialBarChart cx="50%" cy="100%" innerRadius={60} outerRadius={90} startAngle={180} endAngle={0} data={gaugeData}>
             <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f5f9' }}>
               {gaugeData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
             </RadialBar>
@@ -458,7 +399,6 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
-// ─── NOVO: Comprimento médio por role ─────────────────────────────────────────
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -470,9 +410,7 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
           <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={['#3b82f6', '#9333ea', '#059669'][i % 3]} fillOpacity={0.85} />
-            ))}
+            {data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#9333ea', '#059669'][i % 3]} fillOpacity={0.85} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -480,11 +418,9 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   );
 }
 
-// ─── NOVO: Streaks de uso ─────────────────────────────────────────────────────
 function StreakTable({ data }: { data: UserStreak[] }) {
   const shown = data.filter(u => u.streak > 0 || u.max_streak > 0).slice(0, 8);
   if (shown.length === 0) return <EmptyState label="Nenhum streak registrado ainda" />;
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -516,9 +452,7 @@ function StreakTable({ data }: { data: UserStreak[] }) {
                   }`}>{u.role}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="flex items-center gap-1.5 text-sm font-black text-orange-500">
-                    <Flame size={13} />{u.streak}d
-                  </span>
+                  <span className="flex items-center gap-1.5 text-sm font-black text-orange-500"><Flame size={13} />{u.streak}d</span>
                 </td>
                 <td className="px-4 py-3 text-sm font-bold text-slate-500 tabular-nums">{u.max_streak}d</td>
               </tr>
@@ -530,13 +464,10 @@ function StreakTable({ data }: { data: UserStreak[] }) {
   );
 }
 
-// ─── NOVO: Top palavras por role ──────────────────────────────────────────────
 function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
   const ROLE_LABELS: Record<string, string> = { captador: 'Captadores', supervisor: 'Supervisores', administrador: 'Admins' };
   const COLORS_BY_ROLE: Record<string, string> = { captador: '#3b82f6', supervisor: '#9333ea', administrador: '#059669' };
-
   if (data.length === 0) return <EmptyState label="Sem dados suficientes" />;
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {data.map(r => (
@@ -571,44 +502,36 @@ function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
-export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }: Props) {
-  const [kpis,           setKpis]           = useState<MetricsKPIs | null>(null);
-  const [topUsers,       setTopUsers]       = useState<TopUser[]>([]);
-  const [wordCloud,      setWordCloud]      = useState<WordCount[]>([]);
-  const [series,         setSeries]         = useState<DayCount[]>([]);
-  const [hours,          setHours]          = useState<HourCount[]>([]);
-  const [activity,       setActivity]       = useState<UserActivity[]>([]);
-  const [roles,          setRoles]          = useState<RoleDistribution[]>([]);
-  // novos
-  const [weekdays,       setWeekdays]       = useState<WeekdayCount[]>([]);
-  const [corrRates,      setCorrRates]      = useState<UserCorrectionRate[]>([]);
-  const [roleWords,      setRoleWords]      = useState<RoleTopWords[]>([]);
-  const [streaks,        setStreaks]        = useState<UserStreak[]>([]);
-  const [msgLengths,     setMsgLengths]     = useState<MsgLengthByRole[]>([]);
-
+export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onBack, onLogout }: Props) {
+  const [kpis,       setKpis]       = useState<MetricsKPIs | null>(null);
+  const [topUsers,   setTopUsers]   = useState<TopUser[]>([]);
+  const [wordCloud,  setWordCloud]  = useState<WordCount[]>([]);
+  const [series,     setSeries]     = useState<DayCount[]>([]);
+  const [hours,      setHours]      = useState<HourCount[]>([]);
+  const [activity,   setActivity]   = useState<UserActivity[]>([]);
+  const [roles,      setRoles]      = useState<RoleDistribution[]>([]);
+  const [weekdays,   setWeekdays]   = useState<WeekdayCount[]>([]);
+  const [corrRates,  setCorrRates]  = useState<UserCorrectionRate[]>([]);
+  const [roleWords,  setRoleWords]  = useState<RoleTopWords[]>([]);
+  const [streaks,    setStreaks]    = useState<UserStreak[]>([]);
+  const [msgLengths, setMsgLengths] = useState<MsgLengthByRole[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo' | 'qualidade'>('overview');
 
+  // ── Presence: usuários online em tempo real ────────────────────────────────
+  const presenceUser = { id: currentUserId, name: adminName, role: adminRole };
+  const { users: onlineUsers, count: onlineCount } = useOnlineUsers(presenceUser);
+
   const loadAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
-
     const [k, tu, wc, s, h, a, r, wd, cr, rw, st, ml] = await Promise.all([
-      fetchMetricsKPIs(),
-      fetchTopUsers(),
-      fetchWordCloud(),
-      fetchTimeSeries(),
-      fetchPeakHours(),
-      fetchUserActivity(),
-      fetchRoleDistribution(),
-      fetchWeekdayDistribution(),
-      fetchUserCorrectionRates(),
-      fetchTopWordsByRole(),
-      fetchUserStreaks(),
-      fetchMsgLengthByRole(),
+      fetchMetricsKPIs(), fetchTopUsers(), fetchWordCloud(),
+      fetchTimeSeries(), fetchPeakHours(), fetchUserActivity(), fetchRoleDistribution(),
+      fetchWeekdayDistribution(), fetchUserCorrectionRates(), fetchTopWordsByRole(),
+      fetchUserStreaks(), fetchMsgLengthByRole(),
     ]);
-
     setKpis(k); setTopUsers(tu); setWordCloud(wc);
     setSeries(s); setHours(h); setActivity(a); setRoles(r);
     setWeekdays(wd); setCorrRates(cr); setRoleWords(rw); setStreaks(st); setMsgLengths(ml);
@@ -625,10 +548,10 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
   const maxWord = wordCloud[0]?.count ?? 1;
 
   const TABS = [
-    { id: 'overview',   label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
-    { id: 'usuarios',   label: 'Usuários',       icon: <Users         size={14} /> },
-    { id: 'conteudo',   label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
-    { id: 'qualidade',  label: 'Qualidade IA',   icon: <Target        size={14} /> },
+    { id: 'overview',  label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
+    { id: 'usuarios',  label: 'Usuários',       icon: <Users         size={14} /> },
+    { id: 'conteudo',  label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
+    { id: 'qualidade', label: 'Qualidade IA',   icon: <Target        size={14} /> },
   ] as const;
 
   return (
@@ -638,21 +561,20 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
-          <span className="text-lg font-bold text-blue-600 tracking-tight hidden sm:block">
-            NPlayer.<span className="text-yellow-400">IA</span>
-          </span>
+          <span className="text-lg font-bold text-blue-600 tracking-tight hidden sm:block">NPlayer.<span className="text-yellow-400">IA</span></span>
           <span className="text-slate-200 hidden sm:block">/</span>
           <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
-            <BarChart2 size={14} /> Equipes & Métricas
+            <BarChart2 size={14} /> Equipes &amp; Métricas
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Badge de online ao vivo no header */}
+          <OnlineUsersBadge count={onlineCount} />
           <button onClick={() => loadAll(true)} disabled={refreshing} title="Atualizar"
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           </button>
-          <button onClick={onBack}
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
             <span className="hidden sm:block">Voltar</span>
           </button>
@@ -660,8 +582,7 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
             <UserAvatar name={adminName} size="sm" />
             <span className="text-sm font-semibold text-slate-700">{adminName}</span>
           </div>
-          <button onClick={onLogout} title="Sair"
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <button onClick={onLogout} title="Sair" className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
             <LogOut size={18} />
           </button>
         </div>
@@ -671,28 +592,21 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
       <div className="bg-white border-b border-slate-100 px-6 md:px-8 pt-5 pb-0">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Equipes & Métricas</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Equipes &amp; Métricas</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               Dados em tempo real do Supabase
               {lastUpdate && (
-                <span className="ml-2 text-slate-300">
-                  — atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </span>
+                <span className="ml-2 text-slate-300">— atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               )}
             </p>
           </div>
         </div>
         <div className="flex gap-1 -mb-px overflow-x-auto">
           {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-400 hover:text-slate-600'
-              }`}
-            >
+                activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}>
               {tab.icon}{tab.label}
             </button>
           ))}
@@ -708,13 +622,29 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
         ) : (
           <AnimatePresence mode="wait">
 
-            {/* ═══════════ ABA: VISÃO GERAL ═══════════ */}
+            {/* ═══ ABA: VISÃO GERAL ═══ */}
             {activeTab === 'overview' && (
-              <motion.div key="overview"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
+              <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
+
+                {/* KPI ONLINE EM TEMPO REAL */}
+                <section>
+                  <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="Presença em tempo real via WebSocket" />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="lg:col-span-1">
+                      <KpiCard
+                        label="Usuários online agora"
+                        value={onlineCount}
+                        icon={<Activity size={18} />}
+                        color="emerald"
+                        delta="Atualizado em tempo real"
+                      />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <OnlineUsersWidget users={onlineUsers} count={onlineCount} />
+                    </div>
+                  </div>
+                </section>
+
                 <section>
                   <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -730,151 +660,82 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <KpiCard label="Logins hoje" value={kpis!.loginsHoje} icon={<LogIn size={18}/>} color="emerald" />
                     <KpiCard label="Logins (7 dias)" value={kpis!.logins7d} icon={<LogIn size={18}/>} color="teal" />
-                    <KpiCard label="Taxa de retorno 7d" value={kpis!.taxaRetorno7d} icon={<Repeat2 size={18}/>} color="cyan" suffix="%"
-                      delta="% usuários que voltaram em 2+ dias" />
+                    <KpiCard label="Taxa de retorno 7d" value={kpis!.taxaRetorno7d} icon={<Repeat2 size={18}/>} color="cyan" suffix="%" delta="% usuários que voltaram em 2+ dias" />
                     <KpiCard label="Inativos (+3 dias)" value={kpis!.usuariosInativos3d} icon={<UserX size={18}/>}
                       color={kpis!.usuariosInativos3d > 0 ? 'red' : 'green'}
                       alert={kpis!.usuariosInativos3d > 0}
-                      delta={kpis!.usuariosInativos3d > 0 ? 'Precisam de atenção' : 'Todos ativos!'} />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                    <KpiCard label="Usuários ativos" value={kpis!.usuariosAtivos} icon={<Users size={18}/>} color="green"
-                      suffix={`/${kpis!.usuariosTotal}`} />
-                    <KpiCard label="Total de logins" value={kpis!.totalLogins} icon={<LogIn size={18}/>} color="slate" />
-                    <KpiCard label="Comprimento médio" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="orange"
-                      suffix=" chars" delta="Média das últimas 200 perguntas" />
-                    <KpiCard label="Total de usuários" value={kpis!.usuariosTotal} icon={<Users size={18}/>} color="indigo" />
+                      delta={kpis!.usuariosInativos3d > 0 ? 'Precisam de atenção' : 'Todos ativos 🎉'} />
                   </div>
                 </section>
 
                 <section>
-                  <SectionTitle icon={<TrendingUp size={15} />} title="Atividade nos últimos 14 dias" subtitle="Logins e mensagens por dia" />
-                  {series.length > 0 ? <TimeSeriesAreaChart data={series} /> : <EmptyState label="Sem dados" />}
+                  <SectionTitle icon={<TrendingUp size={15} />} title="Evolução 14 dias" subtitle="Logins e mensagens dia a dia" />
+                  <TimeSeriesAreaChart data={series} />
                 </section>
 
                 <section>
-                  <SectionTitle icon={<Calendar size={15} />} title="Uso por Dia da Semana" subtitle="Distribuição de logins e mensagens nos últimos 30 dias" />
-                  {weekdays.length > 0 ? <WeekdayBarChart data={weekdays} /> : <EmptyState label="Sem dados" />}
+                  <SectionTitle icon={<Clock size={15} />} title="Pico de horários" />
+                  <PeakHoursBarChart data={hours} />
                 </section>
 
-                <section>
-                  <SectionTitle icon={<Users size={15} />} title="Uso por Perfil" subtitle="Distribuição de mensagens por tipo de usuário" />
-                  {roles.length > 0 ? <RoleDonutChart data={roles} /> : <EmptyState label="Sem dados" />}
-                </section>
               </motion.div>
             )}
 
-            {/* ═══════════ ABA: USUÁRIOS ═══════════ */}
+            {/* ═══ ABA: USUÁRIOS ═══ */}
             {activeTab === 'usuarios' && (
-              <motion.div key="usuarios"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
+              <motion.div key="usuarios" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
+
+                {/* Online em tempo real também na aba Usuários */}
                 <section>
-                  <SectionTitle icon={<TrendingUp size={15} />} title="Ranking de Engajamento" subtitle="Top 10 usuários por logins e mensagens" />
-                  {topUsers.length === 0
-                    ? <EmptyState label="Nenhum login registrado ainda" />
-                    : <TopUsersChart data={topUsers} />}
+                  <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="WebSocket · atualização instantânea" />
+                  <OnlineUsersWidget users={onlineUsers} count={onlineCount} />
                 </section>
 
-                {topUsers.length > 0 && (
-                  <section>
-                    <SectionTitle icon={<Users size={15} />} title="Detalhes do Ranking" subtitle="Posição e métricas individuais" />
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                      {topUsers.map((u, i) => {
-                        const maxLogins = topUsers[0]?.logins ?? 1;
-                        const maxMsgs   = Math.max(...topUsers.map(x => x.mensagens), 1);
-                        return (
-                          <div key={u.user_id} className="flex items-center gap-4 px-5 py-3.5 border-b border-slate-50 last:border-0">
-                            <span className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-full text-xs font-black ${
-                              i === 0 ? 'bg-yellow-400 text-yellow-900'
-                              : i === 1 ? 'bg-slate-200 text-slate-600'
-                              : i === 2 ? 'bg-orange-200 text-orange-700'
-                              : 'bg-slate-100 text-slate-400'
-                            }`}>{i + 1}</span>
-                            <UserAvatar name={u.user_name} size="sm" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-800 truncate">{u.user_name}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                                  ROLE_COLOR[u.role]?.badge ?? 'text-slate-500 bg-slate-100'
-                                }`}>{u.role}</span>
-                                <span className="text-[10px] text-slate-400">{relTime(u.lastSeen)}</span>
-                              </div>
-                            </div>
-                            <div className="hidden md:flex flex-col gap-1.5 w-40">
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                                  <div className="h-1.5 bg-blue-500 rounded-full transition-all" style={{ width: `${(u.logins / maxLogins) * 100}%` }} />
-                                </div>
-                                <span className="text-xs font-black text-blue-600 tabular-nums w-8 text-right">{u.logins}</span>
-                                <span className="text-[9px] text-slate-400">login</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                                  <div className="h-1.5 bg-violet-500 rounded-full transition-all" style={{ width: `${(u.mensagens / maxMsgs) * 100}%` }} />
-                                </div>
-                                <span className="text-xs font-black text-violet-600 tabular-nums w-8 text-right">{fmt(u.mensagens)}</span>
-                                <span className="text-[9px] text-slate-400">msgs</span>
-                              </div>
-                            </div>
-                            <div className="md:hidden text-right">
-                              <p className="text-sm font-black text-blue-600">{u.logins}L</p>
-                              <p className="text-xs font-black text-violet-600">{fmt(u.mensagens)}M</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
+                <section>
+                  <SectionTitle icon={<BarChart2 size={15} />} title="Distribuição por perfil" />
+                  <RoleDonutChart data={roles} />
+                </section>
 
                 <section>
-                  <SectionTitle icon={<Flame size={15} />} title="Streaks de Uso" subtitle="Dias consecutivos de uso por usuário" />
+                  <SectionTitle icon={<TrendingUp size={15} />} title="Top 10 mais ativos" subtitle="Logins e perguntas acumulados" />
+                  <TopUsersChart data={topUsers} />
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Calendar size={15} />} title="Uso por dia da semana" />
+                  <WeekdayBarChart data={weekdays} />
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Activity size={15} />} title="Atividade individual" />
+                  <UserActivityTable data={activity} />
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Flame size={15} />} title="Streaks de acesso" subtitle="Dias consecutivos de uso" />
                   <StreakTable data={streaks} />
                 </section>
 
-                <section>
-                  <SectionTitle icon={<Activity size={15} />} title="Atividade Individual" subtitle="Histórico e status de cada usuário ativo" />
-                  {activity.length === 0 ? <EmptyState label="Sem dados de atividade" /> : (
-                    <UserActivityTable data={activity} />
-                  )}
-                </section>
               </motion.div>
             )}
 
-            {/* ═══════════ ABA: CONTEÚDO ═══════════ */}
+            {/* ═══ ABA: CONTEÚDO ═══ */}
             {activeTab === 'conteudo' && (
-              <motion.div key="conteudo"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
-                <section>
-                  <SectionTitle icon={<Clock size={15} />} title="Horários de Pico" subtitle="Quando a equipe mais usa o sistema" />
-                  {hours.length > 0 ? <PeakHoursBarChart data={hours} /> : <EmptyState label="Sem dados" />}
-                </section>
+              <motion.div key="conteudo" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
 
                 <section>
-                  <SectionTitle icon={<AlignLeft size={15} />} title="Profundidade das Perguntas" subtitle="Comprimento médio de pergunta por perfil" />
-                  {msgLengths.length > 0 ? <MsgLengthChart data={msgLengths} /> : <EmptyState label="Sem dados" />}
-                </section>
-
-                <section>
-                  <SectionTitle icon={<MessageSquare size={15} />} title="Temas mais Pesquisados" subtitle="Nuvem de palavras das últimas 500 perguntas" />
-                  {wordCloud.length === 0 ? <EmptyState label="Nenhuma mensagem registrada ainda" /> : (
+                  <SectionTitle icon={<AlignLeft size={15} />} title="Nuvem de palavras" subtitle="Termos mais usados nas perguntas (últimas 500 msgs)" />
+                  {wordCloud.length === 0 ? (
+                    <EmptyState label="Sem mensagens suficientes" />
+                  ) : (
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {wordCloud.map((w, i) => {
-                          const ratio   = w.count / maxWord;
-                          const size    = 11 + Math.round(ratio * 26);
-                          const opacity = 0.45 + ratio * 0.55;
+                      <div className="flex flex-wrap gap-2">
+                        {wordCloud.slice(0, 40).map((w, i) => {
+                          const size = Math.round(10 + ((w.count / maxWord) * 24));
                           return (
-                            <span
-                              key={w.word}
-                              className="font-bold cursor-default select-none transition-transform hover:scale-110"
-                              style={{ fontSize: size, color: WORD_COLORS[i % WORD_COLORS.length], opacity }}
+                            <span key={w.word}
+                              className="font-bold rounded-lg px-2 py-0.5 cursor-default transition-transform hover:scale-110"
+                              style={{ fontSize: size, color: WORD_COLORS[i % WORD_COLORS.length], opacity: 0.7 + (w.count / maxWord) * 0.3, background: `${WORD_COLORS[i % WORD_COLORS.length]}12` }}
                               title={`${w.word}: ${w.count}x`}
                             >
                               {w.word}
@@ -882,152 +743,47 @@ export function MetricsDashboardPage({ adminName, adminRole, onBack, onLogout }:
                           );
                         })}
                       </div>
-                      <p className="text-center text-xs text-slate-300 mt-4 font-semibold">Baseado nas últimas 500 perguntas</p>
                     </div>
                   )}
                 </section>
 
                 <section>
-                  <SectionTitle icon={<BarChart2 size={15} />} title="Top Temas por Frequência" subtitle="Palavras-chave mais repetidas (gráfico)" />
-                  {wordCloud.length === 0 ? <EmptyState label="Sem dados" /> : (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                      <ResponsiveContainer width="100%" height={260}>
-                        <BarChart
-                          data={wordCloud.slice(0, 15).map(w => ({ name: w.word, count: w.count }))}
-                          layout="vertical"
-                          margin={{ top: 0, right: 20, left: 20, bottom: 0 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                          <Bar dataKey="count" name="Ocorrências" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                            {wordCloud.slice(0, 15).map((_, i) => (
-                              <Cell key={i} fill={WORD_COLORS[i % WORD_COLORS.length]} fillOpacity={0.8} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </section>
-
-                <section>
-                  <SectionTitle icon={<Users size={15} />} title="Temas por Perfil" subtitle="O que cada grupo mais pergunta" />
+                  <SectionTitle icon={<MessageSquare size={15} />} title="Top palavras por perfil" subtitle="O que cada time mais pergunta" />
                   <TopWordsByRoleSection data={roleWords} />
                 </section>
+
+                <section>
+                  <SectionTitle icon={<AlignLeft size={15} />} title="Comprimento das perguntas" subtitle="Média de caracteres por perfil" />
+                  <MsgLengthChart data={msgLengths} />
+                </section>
+
               </motion.div>
             )}
 
-            {/* ═══════════ ABA: QUALIDADE IA ═══════════ */}
+            {/* ═══ ABA: QUALIDADE IA ═══ */}
             {activeTab === 'qualidade' && (
-              <motion.div key="qualidade"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
-                {/* KPIs de qualidade */}
+              <motion.div key="qualidade" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
+
                 <section>
-                  <SectionTitle icon={<Target size={15} />} title="Indicadores de Qualidade" subtitle="Precisão e comportamento de uso da IA" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <KpiCard label="Taxa de acerto IA" value={kpis!.taxaAcertoIA} icon={<Target size={18}/>}
-                      color={kpis!.taxaAcertoIA >= 90 ? 'emerald' : kpis!.taxaAcertoIA >= 70 ? 'amber' : 'red'}
-                      suffix="%" delta={kpis!.taxaAcertoIA >= 90 ? 'Excelente' : kpis!.taxaAcertoIA >= 70 ? 'Requer atenção' : 'Crítico'} />
-                    <KpiCard label="Total de correções" value={kpis!.totalCorrecoes} icon={<ThumbsDown size={18}/>}
-                      color={kpis!.totalCorrecoes === 0 ? 'green' : 'amber'}
-                      delta="Feedbacks negativos enviados" />
-                    <KpiCard label="Correções/usuário" value={kpis!.mediaCorrecoesUsuario} icon={<ThumbsDown size={18}/>}
-                      color={kpis!.mediaCorrecoesUsuario === 0 ? 'green' : kpis!.mediaCorrecoesUsuario < 1 ? 'amber' : 'red'}
-                      suffix=" /user" delta="Média de feedbacks negativos" />
-                    <KpiCard label="Comprimento médio" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>}
-                      color="blue" suffix=" chars"
-                      delta={kpis!.mediaCaracteresPergunta > 60 ? 'Perguntas elaboradas' : 'Perguntas curtas'} />
+                  <SectionTitle icon={<Target size={15} />} title="Performance da IA" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <KpiCard label="Total de correções" value={kpis!.totalCorrecoes} icon={<ThumbsDown size={18}/>} color={kpis!.totalCorrecoes > 0 ? 'amber' : 'emerald'} delta="Submissões pelo botão de feedback" />
+                    <KpiCard label="Correções por usuário" value={kpis!.mediaCorrecoesUsuario} icon={<Users size={18}/>} color="slate" suffix=" média" />
+                    <KpiCard label="Média de caracteres" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="indigo" suffix=" chars" delta="Por pergunta (últimas 200 msgs)" />
                   </div>
                 </section>
 
-                {/* Gauge de acerto */}
-                <section>
-                  <SectionTitle icon={<Zap size={15} />} title="Precisão da IA" subtitle="Visualização da taxa de acerto geral" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <SectionTitle icon={<Zap size={15} />} title="Taxa de acerto" />
                     <IaAccuracyGauge taxa={kpis!.taxaAcertoIA} />
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-center gap-4">
-                      <p className="text-xs font-black uppercase tracking-wider text-slate-500">Como interpretar</p>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                          <span className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">≥ 90% — Excelente</p>
-                            <p className="text-xs text-slate-400">Base de conhecimento muito bem calibrada</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0" />
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">70–89% — Atenção</p>
-                            <p className="text-xs text-slate-400">Revisar tópicos com mais correções</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="w-3 h-3 rounded-full bg-red-400 shrink-0" />
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">&lt; 70% — Crítico</p>
-                            <p className="text-xs text-slate-400">Base de conhecimento precisa de revisão urgente</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
+                  <div>
+                    <SectionTitle icon={<ThumbsDown size={15} />} title="Quem mais corrige a IA" subtitle="Top usuários por nº de correções" />
+                    <CorrectionRateChart data={corrRates} />
                   </div>
                 </section>
 
-                {/* Correções por usuário */}
-                <section>
-                  <SectionTitle icon={<ThumbsDown size={15} />} title="Correções por Usuário" subtitle="Quem mais enviou feedbacks negativos" />
-                  <CorrectionRateChart data={corrRates} />
-                </section>
-
-                {/* Tabela detalhada */}
-                {corrRates.filter(u => u.correcoes > 0).length > 0 && (
-                  <section>
-                    <SectionTitle icon={<Users size={15} />} title="Detalhes de Correção" subtitle="Taxa individual de feedback negativo" />
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-slate-50 bg-slate-50">
-                              {['Usuário', 'Perfil', 'Mensagens', 'Correções', 'Taxa'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {corrRates.filter(u => u.correcoes > 0).map((u, i) => (
-                              <tr key={u.user_id} className={`border-b border-slate-50 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-2">
-                                    <UserAvatar name={u.user_name} size="sm" />
-                                    <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">{u.user_name}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                    ROLE_COLOR[u.role]?.badge ?? 'text-slate-500 bg-slate-100'
-                                  }`}>{u.role}</span>
-                                </td>
-                                <td className="px-4 py-3 text-sm font-bold tabular-nums text-slate-700">{fmt(u.msgs)}</td>
-                                <td className="px-4 py-3 text-sm font-bold tabular-nums text-red-500">{u.correcoes}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`text-sm font-black tabular-nums ${
-                                    u.taxa > 10 ? 'text-red-500' : u.taxa > 5 ? 'text-amber-500' : 'text-emerald-600'
-                                  }`}>{u.taxa}%</span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </section>
-                )}
               </motion.div>
             )}
 

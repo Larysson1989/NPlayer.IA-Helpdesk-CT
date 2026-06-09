@@ -12,6 +12,7 @@ import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { getAvatarUrl } from './services/avatarService';
+import { useOnlineUsers } from './hooks/useOnlineUsers';
 
 // --- Tipos exportados ---
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
@@ -54,9 +55,6 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
   administrador: { label: 'Admin',      color: 'text-emerald-600 bg-emerald-50' },
 };
 
-/**
- * Detecta se a URL atual contém um token de recovery do Supabase.
- */
 function isRecoveryUrl(): boolean {
   const hash   = window.location.hash;
   const search = window.location.search;
@@ -73,6 +71,12 @@ export default function App() {
   const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
+
+  // Presence: rastreia o usuario logado no canal de online
+  const presenceUser = user
+    ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
+    : null;
+  useOnlineUsers(presenceUser);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -143,7 +147,6 @@ export default function App() {
   };
 
   // --- Roteamento ---
-
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -168,12 +171,8 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // ── Painel Admin ──────────────────────────────────────────────
   if (activeProfilePage === 'admin') {
-    if (!canAccessAdmin(user.role)) {
-      setActiveProfilePage(null);
-      return null;
-    }
+    if (!canAccessAdmin(user.role)) { setActiveProfilePage(null); return null; }
     return (
       <AdminPage
         adminName={user.name}
@@ -184,23 +183,19 @@ export default function App() {
     );
   }
 
-  // ── Equipe & Métricas ─────────────────────────────────────────
   if (activeProfilePage === 'metrics') {
-    if (!canAccessMetrics(user.role)) {
-      setActiveProfilePage(null);
-      return null;
-    }
+    if (!canAccessMetrics(user.role)) { setActiveProfilePage(null); return null; }
     return (
       <MetricsDashboardPage
         adminName={user.name}
         adminRole={user.role ?? 'supervisor'}
+        currentUserId={user.id}
         onBack={() => setActiveProfilePage(null)}
         onLogout={handleLogout}
       />
     );
   }
 
-  // ── Configurações ─────────────────────────────────────────────
   if (activeProfilePage === 'settings') {
     return (
       <SettingsPage
@@ -216,7 +211,6 @@ export default function App() {
     );
   }
 
-  // ── Outras páginas (Em construção) ────────────────────────────
   if (activeProfilePage !== null) {
     return (
       <UnderConstruction
@@ -226,7 +220,6 @@ export default function App() {
     );
   }
 
-  // ── Chat ──────────────────────────────────────────────────────
   if (activeChatQuery !== null) {
     return (
       <ChatView
@@ -262,19 +255,13 @@ export default function App() {
         <div className="flex items-center gap-6">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
-                N
-              </div>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
               <span className="text-xl font-bold text-blue-600 tracking-tight">
                 NPlayer.<span className="text-yellow-400">IA</span>
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 italic leading-none mt-0.5 pl-10">
-              Conhecimento certo, na hora certa
-            </p>
-            <p className="text-[9px] text-slate-300 leading-none mt-0.5 pl-10 font-mono">
-              Versão: #{COMMIT_HASH}
-            </p>
+            <p className="text-[10px] text-slate-400 italic leading-none mt-0.5 pl-10">Conhecimento certo, na hora certa</p>
+            <p className="text-[9px] text-slate-300 leading-none mt-0.5 pl-10 font-mono">Versão: #{COMMIT_HASH}</p>
           </div>
         </div>
 
@@ -299,21 +286,12 @@ export default function App() {
           )}
         </div>
 
-        <button
-          onClick={() => setIsProfileModalOpen(true)}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-        >
+        <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-bold text-slate-800">{user.name}</p>
-            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${badge.color}`}>
-              {badge.label}
-            </span>
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${badge.color}`}>{badge.label}</span>
           </div>
-          <img
-            src={user.avatar_url || user.avatar || DEFAULT_AVATAR}
-            alt={user.name}
-            className="w-10 h-10 rounded-full border-2 border-blue-200 object-cover"
-          />
+          <img src={user.avatar_url || user.avatar || DEFAULT_AVATAR} alt={user.name} className="w-10 h-10 rounded-full border-2 border-blue-200 object-cover" />
         </button>
       </header>
 
@@ -321,54 +299,29 @@ export default function App() {
       <main className="flex-1 overflow-y-auto flex flex-col items-center bg-white">
         <div className="max-w-4xl w-full px-6 py-12 md:py-24">
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-10 space-y-4"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10 space-y-4">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-800">
-              Ola, <span className="text-blue-600">{firstName}</span>.{' '}
-              Como posso apoiar sua captacao hoje?
+              Ola, <span className="text-blue-600">{firstName}</span>.{' '}Como posso apoiar sua captacao hoje?
             </h1>
-            <p className="text-slate-500 text-lg">
-              Faca uma pergunta ou selecione um dos topicos rapidos abaixo.
-            </p>
+            <p className="text-slate-500 text-lg">Faca uma pergunta ou selecione um dos topicos rapidos abaixo.</p>
           </motion.div>
 
           {(hasMetrics || hasAdmin) && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="mb-8 md:hidden flex flex-col gap-2"
-            >
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-8 md:hidden flex flex-col gap-2">
               {hasMetrics && (
-                <button
-                  onClick={() => navigateTo('metrics' as ProfilePage)}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors"
-                >
-                  <span className="material-icons-round text-[18px]">bar_chart</span>
-                  Equipe &amp; Metricas
+                <button onClick={() => navigateTo('metrics' as ProfilePage)} className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors">
+                  <span className="material-icons-round text-[18px]">bar_chart</span>Equipe &amp; Metricas
                 </button>
               )}
               {hasAdmin && (
-                <button
-                  onClick={() => navigateTo('admin' as ProfilePage)}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl hover:bg-emerald-100 transition-colors"
-                >
-                  <span className="material-icons-round text-[18px]">admin_panel_settings</span>
-                  Painel Admin
+                <button onClick={() => navigateTo('admin' as ProfilePage)} className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl hover:bg-emerald-100 transition-colors">
+                  <span className="material-icons-round text-[18px]">admin_panel_settings</span>Painel Admin
                 </button>
               )}
             </motion.div>
           )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-16"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-16">
             <div className="relative">
               <textarea
                 ref={textareaRef}
@@ -380,47 +333,26 @@ export default function App() {
                 placeholder="Escreva sua duvida aqui... (ex: Como lidar com doador sem tempo?)"
                 className="w-full bg-slate-100 border-none rounded-2xl py-5 pl-7 pr-16 focus:ring-2 focus:ring-blue-500 shadow-sm text-lg text-slate-800 resize-none transition-all placeholder:text-slate-400 outline-none"
               />
-              <button
-                onClick={() => openChat(searchQuery)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
-                aria-label="Enviar pergunta"
-              >
+              <button onClick={() => openChat(searchQuery)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg" aria-label="Enviar pergunta">
                 <span className="material-icons-round">send</span>
               </button>
             </div>
             <p className="text-[10px] text-center text-slate-400 mt-3 flex items-center justify-center gap-1">
-              <span className="material-icons-round text-[12px]">info</span>
-              O NPlayer.IA pode cometer erros. Verifique informacoes importantes.
+              <span className="material-icons-round text-[12px]">info</span>O NPlayer.IA pode cometer erros. Verifique informacoes importantes.
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {FAQ_CARDS.map((card) => (
-              <button
-                key={card.title}
-                onClick={() => openChat(card.title)}
-                className="p-5 border border-slate-200 rounded-2xl bg-white hover:border-blue-500 hover:shadow-xl transition-all text-left flex items-start gap-4 group"
-              >
-                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
-                  <span className="material-icons-round">{card.icon}</span>
-                </div>
+              <button key={card.title} onClick={() => openChat(card.title)} className="p-5 border border-slate-200 rounded-2xl bg-white hover:border-blue-500 hover:shadow-xl transition-all text-left flex items-start gap-4 group">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0"><span className="material-icons-round">{card.icon}</span></div>
                 <div>
-                  <p className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-                    {card.title}
-                  </p>
-                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                    {card.desc}
-                  </p>
+                  <p className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">{card.title}</p>
+                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">{card.desc}</p>
                 </div>
               </button>
             ))}
           </motion.div>
-
         </div>
       </main>
     </div>
