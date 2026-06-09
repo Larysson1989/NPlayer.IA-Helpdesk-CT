@@ -28,7 +28,7 @@ interface Message {
 }
 
 interface User {
-  id?: string;
+  id: string;
   email: string;
   name: string;
   matricula?: string;
@@ -119,30 +119,26 @@ ${HPP_KNOWLEDGE}`;
       }
 
       // Grava no banco e captura o ID para uso na avaliação
-      if (user.id) {
-        const chatLogId = await registrarMensagem(user.id, user.name, text.trim(), {
-          resposta:   fullResponse,
-          session_id: sessionId.current,
-        }).catch(() => null);
+      const chatLogId = await registrarMensagem(user.id, user.name, text.trim(), {
+        resposta:   fullResponse,
+        session_id: sessionId.current,
+      }).catch(() => null);
 
-        // Salva o chatLogId na última mensagem do bot
-        if (chatLogId) {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { ...updated[updated.length - 1], chatLogId };
-            return updated;
-          });
-        }
+      // Salva o chatLogId na última mensagem do bot
+      if (chatLogId) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], chatLogId };
+          return updated;
+        });
       }
     } catch (err: any) {
       const errorMessage = parseGeminiError(err);
       setMessages(prev => [...prev, { role: 'bot', text: errorMessage, time: getTime() }]);
 
-      if (user.id) {
-        registrarMensagem(user.id, user.name, text.trim(), {
-          session_id: sessionId.current,
-        }).catch(() => {});
-      }
+      registrarMensagem(user.id, user.name, text.trim(), {
+        session_id: sessionId.current,
+      }).catch(() => {});
     } finally {
       setLoading(false);
     }
