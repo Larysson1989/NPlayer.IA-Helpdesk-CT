@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
 import { OnlineUsersWidget, OnlineUsersBadge } from '../components/OnlineUsersWidget';
-import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import type { OnlineUser } from '../hooks/useOnlineUsers';
 import {
   fetchMetricsKPIs, fetchTopUsers, fetchWordCloud,
   fetchTimeSeries, fetchPeakHours, fetchUserActivity, fetchRoleDistribution,
@@ -30,6 +30,10 @@ interface Props {
   adminName: string;
   adminRole: UserRole;
   currentUserId: string;
+  /** Lista de usuários online — gerenciada pelo App.tsx via useOnlineUsers */
+  onlineUsers: OnlineUser[];
+  /** Contagem de usuários online */
+  onlineCount: number;
   onBack:   () => void;
   onLogout: () => void;
 }
@@ -502,7 +506,7 @@ function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
-export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onBack, onLogout }: Props) {
+export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout }: Props) {
   const [kpis,       setKpis]       = useState<MetricsKPIs | null>(null);
   const [topUsers,   setTopUsers]   = useState<TopUser[]>([]);
   const [wordCloud,  setWordCloud]  = useState<WordCount[]>([]);
@@ -520,9 +524,7 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onBa
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo' | 'qualidade'>('overview');
 
-  // ── Presence: usuários online em tempo real ────────────────────────────────
-  const presenceUser = { id: currentUserId, name: adminName, role: adminRole };
-  const { users: onlineUsers, count: onlineCount } = useOnlineUsers(presenceUser);
+  // onlineUsers e onlineCount chegam como props do App.tsx (canal único)
 
   const loadAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);

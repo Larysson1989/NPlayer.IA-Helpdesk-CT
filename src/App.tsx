@@ -72,11 +72,11 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
-  // ── Presence global: registra TODOS os usuários logados no canal ──────────
+  // ── Presence ÚNICO para toda a app ──────────────────────────────────────────
   const presenceUser = user
     ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
     : null;
-  useOnlineUsers(presenceUser);
+  const { users: onlineUsers, count: onlineCount } = useOnlineUsers(presenceUser);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -190,6 +190,8 @@ export default function App() {
         adminName={user.name}
         adminRole={user.role ?? 'supervisor'}
         currentUserId={user.id}
+        onlineUsers={onlineUsers}
+        onlineCount={onlineCount}
         onBack={() => setActiveProfilePage(null)}
         onLogout={handleLogout}
       />
