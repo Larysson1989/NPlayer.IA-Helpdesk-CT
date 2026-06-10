@@ -13,6 +13,7 @@ import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { getAvatarUrl } from './services/avatarService';
 import { useOnlineUsers } from './hooks/useOnlineUsers';
+import { PresenceDebugBadge } from './components/PresenceDebugBadge';
 
 // --- Tipos exportados ---
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
@@ -76,7 +77,7 @@ export default function App() {
   const presenceUser = user
     ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
     : null;
-  const { users: onlineUsers, count: onlineCount } = useOnlineUsers(presenceUser);
+  const { users: onlineUsers, count: onlineCount, presenceStatus } = useOnlineUsers(presenceUser);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -242,6 +243,9 @@ export default function App() {
 
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
+
+      {/* Badge de debug — remover após confirmar funcionamento */}
+      <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
 
       <UserModals
         isOpen={isProfileModalOpen}
