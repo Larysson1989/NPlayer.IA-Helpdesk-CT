@@ -12,8 +12,7 @@ import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
 import { getAvatarUrl } from './services/avatarService';
-// useOnlineUsers removido daqui — o canal 'online-users' é gerenciado exclusivamente
-// pelo MetricsDashboardPage para evitar o erro "presence callbacks after subscribe()".
+import { useOnlineUsers } from './hooks/useOnlineUsers';
 
 // --- Tipos exportados ---
 export type UserRole = 'captador' | 'supervisor' | 'administrador';
@@ -72,6 +71,12 @@ export default function App() {
   const [activeChatQuery, setActiveChatQuery]       = useState<string | null>(null);
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
+
+  // ── Presence global: registra TODOS os usuários logados no canal ──────────
+  const presenceUser = user
+    ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
+    : null;
+  useOnlineUsers(presenceUser);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
