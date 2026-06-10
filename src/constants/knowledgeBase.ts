@@ -425,7 +425,7 @@ Capacidade de recuperar-se de frustrações e manter desempenho consistente mesm
 EMPATIA:
 Compreender o ponto de vista do doador sem necessariamente concordar. Responder com respeito e cuidado.
 
-SCRUPULOSIDADE:
+ESCRUPULOSIDADE:
 Atenção aos detalhes, conformidade com processos, consistência na execução.
 
 AUTOGESTÃO:
@@ -450,5 +450,8 @@ O QUE EVITAR:
 
 Líderes de alta performance formam sucessores e inspiram confiança.
 `;
+
+// Alias para compatibilidade com imports existentes
+export const HPP_KNOWLEDGE = KNOWLEDGE_BASE;
 
 export default KNOWLEDGE_BASE;
