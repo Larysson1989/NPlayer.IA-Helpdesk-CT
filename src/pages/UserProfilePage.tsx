@@ -188,7 +188,7 @@ export function UserProfilePage({
     showToast(`E-mail de redefinição enviado para ${user.email}`);
   };
 
-  // Aba 2 — definir nova senha diretamente (Admin API)
+  // Aba 2 — definir nova senha via Edge Function (server-side com service_role)
   const handleDefinirSenha = async () => {
     if (novaSenha.length < 6) {
       showToast('A senha deve ter pelo menos 6 caracteres.', 'error');
@@ -199,15 +199,24 @@ export function UserProfilePage({
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.admin.updateUserById(user.id, { password: novaSenha });
-    setSaving(false);
-    if (error) {
-      console.error('[definirSenha]', error);
-      showToast(`Erro: ${error.message}`, 'error');
-      return;
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('set-user-password', {
+        body: { userId: user.id, password: novaSenha },
+      });
+      setSaving(false);
+      if (fnError || !data?.ok) {
+        const msg = data?.error ?? fnError?.message ?? 'Erro ao definir senha.';
+        console.error('[definirSenha]', msg);
+        showToast(`Erro: ${msg}`, 'error');
+        return;
+      }
+      closeModal();
+      showToast('Nova senha definida com sucesso!');
+    } catch (err) {
+      setSaving(false);
+      console.error('[definirSenha] exception', err);
+      showToast('Erro inesperado ao definir senha.', 'error');
     }
-    closeModal();
-    showToast('Nova senha definida com sucesso!');
   };
 
   // ── Exportar Histórico ────────────────────────────────────────────────────
