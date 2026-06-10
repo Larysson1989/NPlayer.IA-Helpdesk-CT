@@ -11,29 +11,39 @@ export interface OnlineUser {
 /**
  * Hook que retorna a lista de usuários online via Supabase Realtime Presence.
  *
- * FIX: usa nome de canal único por instância para evitar o erro
- * "cannot add presence callbacks after subscribe()" causado pelo React
- * StrictMode (dupla execução de useEffect) ou re-renders que reutilizariam
- * um canal já inscrito com o nome fixo 'online-users'.
+ * REGRA FUNDAMENTAL do Presence:
+ *   Todos os clientes DEVEM se inscrever no MESMO nome de canal para se verem.
+ *   O canal usa o nome FIXO 'room:online-users' — nunca dinâmico.
+ *
+ * ORDEM obrigatória: .on() → .subscribe() → channel.track()
+ *
+ * Cleanup no desmonte garante que o usuário suma da lista dos outros
+ * quando navegar para fora ou fechar a aba.
  */
+
+const CHANNEL_NAME = 'room:online-users';
+
 export function useOnlineUsers(
   currentUser?: { id: string; name: string; role: string } | null,
 ): { users: OnlineUser[]; count: number } {
   const [users, setUsers] = useState<OnlineUser[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  // ID estável por montagem do hook — garante nome único mesmo no StrictMode
-  const instanceId = useRef(`online-users-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
-    // Cleanup de canal anterior (StrictMode / re-render rápido)
+    // Remove canal anterior se existir (StrictMode / re-render)
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
-    // Cria canal com nome único — nunca reutiliza canal já inscrito
-    const channel = supabase.channel(instanceId.current, {
-      config: { presence: { key: currentUser?.id ?? 'anonymous' } },
+    // Cria canal com nome FIXO compartilhado — todos os usuários entram aqui
+    const channel = supabase.channel(CHANNEL_NAME, {
+      config: {
+        presence: {
+          // A key identifica ESTE cliente dentro do canal compartilhado
+          key: currentUser?.id ?? `anon-${Math.random().toString(36).slice(2)}`,
+        },
+      },
     });
 
     channelRef.current = channel;
@@ -42,9 +52,9 @@ export function useOnlineUsers(
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState<OnlineUser>();
       const flat: OnlineUser[] = [];
-      for (const key of Object.keys(state)) {
-        for (const presence of state[key]) {
-          flat.push(presence);
+      for (const presences of Object.values(state)) {
+        for (const p of presences) {
+          flat.push(p as OnlineUser);
         }
       }
       // Remove duplicatas — mantém entrada mais recente por user_id
@@ -69,10 +79,13 @@ export function useOnlineUsers(
     });
 
     return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
+      // untrack avisa os outros que este usuário saiu antes de remover o canal
+      channel.untrack().finally(() => {
+        supabase.removeChannel(channel);
+        channelRef.current = null;
+      });
     };
-  // Recria o canal apenas quando o user_id muda (login/logout)
+  // Recria apenas quando o user_id muda (login/logout)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 

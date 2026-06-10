@@ -19,9 +19,14 @@ export const supabase = createClient(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      // Necessário para processar o token de recovery/magic-link da URL
       detectSessionInUrl: true,
       storage: safeStorage,
+    },
+    // Necessário para ativar WebSocket Realtime (Presence / Broadcast)
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
     },
   }
 );
