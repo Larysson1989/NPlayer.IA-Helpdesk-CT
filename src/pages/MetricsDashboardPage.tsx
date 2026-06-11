@@ -378,23 +378,30 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
   );
 }
 
+// ─── Gauge de acerto da IA ────────────────────────────────────────────────────
+// FIX: RadialBar com <Cell> causa crash porque o Recharts tenta acessar
+// entry.color internamente. A solução correta é usar `fill` diretamente no
+// array de dados e NÃO usar <Cell> dentro de <RadialBar>.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
-  const color = taxa >= 90 ? '#10b981' : taxa >= 70 ? '#f59e0b' : '#ef4444';
-  const label = taxa >= 90 ? 'Excelente' : taxa >= 70 ? 'Atenção' : 'Crítico';
-  const gaugeData = [{ name: 'Taxa', value: taxa, fill: color }, { name: 'Resto', value: 100 - taxa, fill: '#f1f5f9' }];
+  const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
+  const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
+  const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
+  // fill deve estar no próprio objeto de dado — não usar <Cell> em <RadialBar>
+  const gaugeData = [
+    { name: 'Taxa', value: safeTaxa,          fill: color },
+    { name: 'Resto', value: 100 - safeTaxa,   fill: '#f1f5f9' },
+  ];
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
       <div className="relative">
         <ResponsiveContainer width={180} height={120}>
           <RadialBarChart cx="50%" cy="100%" innerRadius={60} outerRadius={90} startAngle={180} endAngle={0} data={gaugeData}>
-            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f5f9' }}>
-              {gaugeData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-            </RadialBar>
+            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f5f9' }} />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-          <p className="text-3xl font-black tabular-nums" style={{ color }}>{taxa}%</p>
+          <p className="text-3xl font-black tabular-nums" style={{ color }}>{safeTaxa}%</p>
           <p className="text-xs font-bold" style={{ color }}>{label}</p>
         </div>
       </div>
@@ -524,8 +531,6 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo' | 'qualidade'>('overview');
 
-  // onlineUsers e onlineCount chegam como props do App.tsx (canal único)
-
   const loadAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     const [k, tu, wc, s, h, a, r, wd, cr, rw, st, ml] = await Promise.all([
@@ -570,7 +575,6 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Badge de online ao vivo no header */}
           <OnlineUsersBadge count={onlineCount} />
           <button onClick={() => loadAll(true)} disabled={refreshing} title="Atualizar"
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
@@ -628,7 +632,6 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
 
-                {/* KPI ONLINE EM TEMPO REAL */}
                 <section>
                   <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="Presença em tempo real via WebSocket" />
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -647,28 +650,32 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
                   </div>
                 </section>
 
-                <section>
-                  <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <KpiCard label="Total de mensagens" value={kpis!.totalMensagens} icon={<MessageSquare size={18}/>} color="blue" />
-                    <KpiCard label="Mensagens hoje" value={kpis!.mensagensHoje} icon={<MessageSquare size={18}/>} color="indigo" />
-                    <KpiCard label="Últimos 7 dias" value={kpis!.mensagens7d} icon={<TrendingUp size={18}/>} color="violet" />
-                    <KpiCard label="Média por usuário" value={kpis!.mediaMsgPorUsuario} icon={<BarChart2 size={18}/>} color="sky" suffix=" msgs" />
-                  </div>
-                </section>
+                {kpis && (
+                  <>
+                    <section>
+                      <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <KpiCard label="Total de mensagens" value={kpis.totalMensagens} icon={<MessageSquare size={18}/>} color="blue" />
+                        <KpiCard label="Mensagens hoje" value={kpis.mensagensHoje} icon={<MessageSquare size={18}/>} color="indigo" />
+                        <KpiCard label="Últimos 7 dias" value={kpis.mensagens7d} icon={<TrendingUp size={18}/>} color="violet" />
+                        <KpiCard label="Média por usuário" value={kpis.mediaMsgPorUsuario} icon={<BarChart2 size={18}/>} color="sky" suffix=" msgs" />
+                      </div>
+                    </section>
 
-                <section>
-                  <SectionTitle icon={<Users size={15} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <KpiCard label="Logins hoje" value={kpis!.loginsHoje} icon={<LogIn size={18}/>} color="emerald" />
-                    <KpiCard label="Logins (7 dias)" value={kpis!.logins7d} icon={<LogIn size={18}/>} color="teal" />
-                    <KpiCard label="Taxa de retorno 7d" value={kpis!.taxaRetorno7d} icon={<Repeat2 size={18}/>} color="cyan" suffix="%" delta="% usuários que voltaram em 2+ dias" />
-                    <KpiCard label="Inativos (+3 dias)" value={kpis!.usuariosInativos3d} icon={<UserX size={18}/>}
-                      color={kpis!.usuariosInativos3d > 0 ? 'red' : 'green'}
-                      alert={kpis!.usuariosInativos3d > 0}
-                      delta={kpis!.usuariosInativos3d > 0 ? 'Precisam de atenção' : 'Todos ativos 🎉'} />
-                  </div>
-                </section>
+                    <section>
+                      <SectionTitle icon={<Users size={15} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <KpiCard label="Logins hoje" value={kpis.loginsHoje} icon={<LogIn size={18}/>} color="emerald" />
+                        <KpiCard label="Logins (7 dias)" value={kpis.logins7d} icon={<LogIn size={18}/>} color="teal" />
+                        <KpiCard label="Taxa de retorno 7d" value={kpis.taxaRetorno7d} icon={<Repeat2 size={18}/>} color="cyan" suffix="%" delta="% usuários que voltaram em 2+ dias" />
+                        <KpiCard label="Inativos (+3 dias)" value={kpis.usuariosInativos3d} icon={<UserX size={18}/>}
+                          color={kpis.usuariosInativos3d > 0 ? 'red' : 'green'}
+                          alert={kpis.usuariosInativos3d > 0}
+                          delta={kpis.usuariosInativos3d > 0 ? 'Precisam de atenção' : 'Todos ativos 🎉'} />
+                      </div>
+                    </section>
+                  </>
+                )}
 
                 <section>
                   <SectionTitle icon={<TrendingUp size={15} />} title="Evolução 14 dias" subtitle="Logins e mensagens dia a dia" />
@@ -687,7 +694,6 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
             {activeTab === 'usuarios' && (
               <motion.div key="usuarios" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
 
-                {/* Online em tempo real também na aba Usuários */}
                 <section>
                   <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="WebSocket · atualização instantânea" />
                   <OnlineUsersWidget users={onlineUsers} count={onlineCount} />
@@ -766,25 +772,29 @@ export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onli
             {activeTab === 'qualidade' && (
               <motion.div key="qualidade" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
 
-                <section>
-                  <SectionTitle icon={<Target size={15} />} title="Performance da IA" />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <KpiCard label="Total de correções" value={kpis!.totalCorrecoes} icon={<ThumbsDown size={18}/>} color={kpis!.totalCorrecoes > 0 ? 'amber' : 'emerald'} delta="Submissões pelo botão de feedback" />
-                    <KpiCard label="Correções por usuário" value={kpis!.mediaCorrecoesUsuario} icon={<Users size={18}/>} color="slate" suffix=" média" />
-                    <KpiCard label="Média de caracteres" value={kpis!.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="indigo" suffix=" chars" delta="Por pergunta (últimas 200 msgs)" />
-                  </div>
-                </section>
+                {kpis && (
+                  <>
+                    <section>
+                      <SectionTitle icon={<Target size={15} />} title="Performance da IA" />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <KpiCard label="Total de correções" value={kpis.totalCorrecoes} icon={<ThumbsDown size={18}/>} color={kpis.totalCorrecoes > 0 ? 'amber' : 'emerald'} delta="Submissões pelo botão de feedback" />
+                        <KpiCard label="Correções por usuário" value={kpis.mediaCorrecoesUsuario} icon={<Users size={18}/>} color="slate" suffix=" média" />
+                        <KpiCard label="Média de caracteres" value={kpis.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="indigo" suffix=" chars" delta="Por pergunta (últimas 200 msgs)" />
+                      </div>
+                    </section>
 
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <SectionTitle icon={<Zap size={15} />} title="Taxa de acerto" />
-                    <IaAccuracyGauge taxa={kpis!.taxaAcertoIA} />
-                  </div>
-                  <div>
-                    <SectionTitle icon={<ThumbsDown size={15} />} title="Quem mais corrige a IA" subtitle="Top usuários por nº de correções" />
-                    <CorrectionRateChart data={corrRates} />
-                  </div>
-                </section>
+                    <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <SectionTitle icon={<Zap size={15} />} title="Taxa de acerto" />
+                        <IaAccuracyGauge taxa={kpis.taxaAcertoIA} />
+                      </div>
+                      <div>
+                        <SectionTitle icon={<ThumbsDown size={15} />} title="Quem mais corrige a IA" subtitle="Top usuários por nº de correções" />
+                        <CorrectionRateChart data={corrRates} />
+                      </div>
+                    </section>
+                  </>
+                )}
 
               </motion.div>
             )}
