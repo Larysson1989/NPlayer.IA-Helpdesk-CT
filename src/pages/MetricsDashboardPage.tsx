@@ -379,25 +379,38 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
-// FIX: RadialBar com <Cell> causa crash porque o Recharts tenta acessar
-// entry.color internamente. A solução correta é usar `fill` diretamente no
-// array de dados e NÃO usar <Cell> dentro de <RadialBar>.
+// FIX: RadialBarChart com dados mistos (valor + fundo) causa crash
+// "Cannot read properties of undefined (reading 'color')" porque o Recharts
+// tenta acessar entry.color internamente em algumas versões.
+// Solução: usar apenas UMA barra de dados com fill no próprio objeto,
+// e definir background via prop do RadialBar — NÃO usar <Cell> aqui.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
-  // fill deve estar no próprio objeto de dado — não usar <Cell> em <RadialBar>
-  const gaugeData = [
-    { name: 'Taxa', value: safeTaxa,          fill: color },
-    { name: 'Resto', value: 100 - safeTaxa,   fill: '#f1f5f9' },
-  ];
+  // SOMENTE o segmento real — fill no objeto de dado, sem <Cell> e sem segmento "Resto"
+  const gaugeData = [{ name: 'Taxa', value: safeTaxa, fill: color }];
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
       <div className="relative">
         <ResponsiveContainer width={180} height={120}>
-          <RadialBarChart cx="50%" cy="100%" innerRadius={60} outerRadius={90} startAngle={180} endAngle={0} data={gaugeData}>
-            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f5f9' }} />
+          <RadialBarChart
+            cx="50%"
+            cy="100%"
+            innerRadius={60}
+            outerRadius={90}
+            startAngle={180}
+            endAngle={0}
+            data={gaugeData}
+          >
+            {/* background como prop do RadialBar — evita crash por entry undefined */}
+            <RadialBar
+              dataKey="value"
+              cornerRadius={6}
+              background={{ fill: '#f1f5f9' }}
+              isAnimationActive={true}
+            />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
@@ -410,19 +423,24 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
+// FIX: MsgLengthChart — <Cell> dentro de <Bar> pode crashar quando
+// o Recharts itera sobre células e tenta acessar propriedades de entrada
+// undefined. Substituído por cores fixadas diretamente nos dados.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
+  const BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
+  // injeta fill nos próprios dados para evitar uso de <Cell>
+  const coloredData = data.map((d, i) => ({ ...d, fill: BAR_COLORS[i % BAR_COLORS.length] }));
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <p className="text-xs text-slate-400 font-semibold mb-3">Caracteres médios por perfil · últimas 500 mensagens</p>
       <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+        <BarChart data={coloredData} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60}>
-            {data.map((_, i) => <Cell key={i} fill={['#3b82f6', '#9333ea', '#059669'][i % 3]} fillOpacity={0.85} />)}
-          </Bar>
+          {/* fill via dataKey no objeto — sem <Cell> para evitar crash */}
+          <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -486,25 +504,25 @@ function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
           <p className="text-xs font-black uppercase tracking-wider mb-3" style={{ color: COLORS_BY_ROLE[r.role] ?? '#64748b' }}>
             {ROLE_LABELS[r.role] ?? r.role}
           </p>
-          <div className="flex flex-col gap-2">
-            {r.words.slice(0, 8).map((w, i) => {
-              const max = r.words[0]?.count ?? 1;
-              const pct = Math.round((w.count / max) * 100);
-              return (
-                <div key={w.word} className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 w-4">{i + 1}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-bold text-slate-700">{w.word}</span>
-                      <span className="text-[10px] font-black text-slate-400">{w.count}x</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full">
-                      <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: COLORS_BY_ROLE[r.role] ?? '#64748b', opacity: 0.7 }} />
-                    </div>
+          <div className="flex flex-col gap-1.5">
+            {r.words.slice(0, 8).map((w, i) => (
+              <div key={w.word} className="flex items-center gap-2">
+                <span className="text-[10px] font-black w-4 text-slate-300 tabular-nums">{i + 1}</span>
+                <div className="flex-1 bg-slate-50 rounded-full h-5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full flex items-center px-2"
+                    style={{
+                      width: `${Math.max(20, (w.count / (r.words[0]?.count || 1)) * 100)}%`,
+                      background: COLORS_BY_ROLE[r.role] ?? '#3b82f6',
+                      opacity: 0.7 + (i === 0 ? 0.3 : 0),
+                    }}
+                  >
+                    <span className="text-[9px] font-black text-white truncate">{w.word}</span>
                   </div>
                 </div>
-              );
-            })}
+                <span className="text-[10px] font-bold text-slate-400 tabular-nums w-6 text-right">{w.count}</span>
+              </div>
+            ))}
           </div>
         </div>
       ))}
@@ -512,293 +530,291 @@ function TopWordsByRoleSection({ data }: { data: RoleTopWords[] }) {
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
-export function MetricsDashboardPage({ adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout }: Props) {
-  const [kpis,       setKpis]       = useState<MetricsKPIs | null>(null);
-  const [topUsers,   setTopUsers]   = useState<TopUser[]>([]);
-  const [wordCloud,  setWordCloud]  = useState<WordCount[]>([]);
-  const [series,     setSeries]     = useState<DayCount[]>([]);
-  const [hours,      setHours]      = useState<HourCount[]>([]);
-  const [activity,   setActivity]   = useState<UserActivity[]>([]);
-  const [roles,      setRoles]      = useState<RoleDistribution[]>([]);
-  const [weekdays,   setWeekdays]   = useState<WeekdayCount[]>([]);
-  const [corrRates,  setCorrRates]  = useState<UserCorrectionRate[]>([]);
-  const [roleWords,  setRoleWords]  = useState<RoleTopWords[]>([]);
-  const [streaks,    setStreaks]    = useState<UserStreak[]>([]);
-  const [msgLengths, setMsgLengths] = useState<MsgLengthByRole[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [activeTab,  setActiveTab]  = useState<'overview' | 'usuarios' | 'conteudo' | 'qualidade'>('overview');
+function WordCloudSection({ data }: { data: WordCount[] }) {
+  const max = Math.max(...data.map(w => w.count), 1);
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div className="flex flex-wrap gap-2 justify-center">
+        {data.slice(0, 40).map((w, i) => {
+          const ratio = w.count / max;
+          const size = 10 + Math.round(ratio * 18);
+          return (
+            <span
+              key={w.word}
+              style={{
+                fontSize: size,
+                color: WORD_COLORS[i % WORD_COLORS.length],
+                fontWeight: ratio > 0.6 ? 900 : ratio > 0.3 ? 700 : 600,
+                opacity: 0.6 + ratio * 0.4,
+                lineHeight: 1.6,
+              }}
+            >
+              {w.word}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-  const loadAll = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    const [k, tu, wc, s, h, a, r, wd, cr, rw, st, ml] = await Promise.all([
-      fetchMetricsKPIs(), fetchTopUsers(), fetchWordCloud(),
-      fetchTimeSeries(), fetchPeakHours(), fetchUserActivity(), fetchRoleDistribution(),
-      fetchWeekdayDistribution(), fetchUserCorrectionRates(), fetchTopWordsByRole(),
-      fetchUserStreaks(), fetchMsgLengthByRole(),
-    ]);
-    setKpis(k); setTopUsers(tu); setWordCloud(wc);
-    setSeries(s); setHours(h); setActivity(a); setRoles(r);
-    setWeekdays(wd); setCorrRates(cr); setRoleWords(rw); setStreaks(st); setMsgLengths(ml);
-    setLastUpdate(new Date());
-    setLoading(false); setRefreshing(false);
+// ─── Página principal ─────────────────────────────────────────────────────────
+export default function MetricsDashboardPage({
+  adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<'visao' | 'usuarios' | 'conteudo' | 'qualidade'>('visao');
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const [kpis, setKpis]             = useState<MetricsKPIs | null>(null);
+  const [topUsers, setTopUsers]     = useState<TopUser[]>([]);
+  const [wordCloud, setWordCloud]   = useState<WordCount[]>([]);
+  const [timeSeries, setTimeSeries] = useState<DayCount[]>([]);
+  const [peakHours, setPeakHours]   = useState<HourCount[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
+  const [roleDistribution, setRoleDistribution] = useState<RoleDistribution[]>([]);
+  const [weekdayDistribution, setWeekdayDistribution] = useState<WeekdayCount[]>([]);
+  const [correctionRates, setCorrectionRates] = useState<UserCorrectionRate[]>([]);
+  const [topWordsByRole, setTopWordsByRole] = useState<RoleTopWords[]>([]);
+  const [userStreaks, setUserStreaks] = useState<UserStreak[]>([]);
+  const [msgLengthByRole, setMsgLengthByRole] = useState<MsgLengthByRole[]>([]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [k, tu, wc, ts, ph, ua, rd, wd, cr, twr, us, ml] = await Promise.all([
+        fetchMetricsKPIs(),
+        fetchTopUsers(),
+        fetchWordCloud(),
+        fetchTimeSeries(),
+        fetchPeakHours(),
+        fetchUserActivity(),
+        fetchRoleDistribution(),
+        fetchWeekdayDistribution(),
+        fetchUserCorrectionRates(),
+        fetchTopWordsByRole(),
+        fetchUserStreaks(),
+        fetchMsgLengthByRole(),
+      ]);
+      setKpis(k);
+      setTopUsers(tu);
+      setWordCloud(wc);
+      setTimeSeries(ts);
+      setPeakHours(ph);
+      setUserActivity(ua);
+      setRoleDistribution(rd);
+      setWeekdayDistribution(wd);
+      setCorrectionRates(cr);
+      setTopWordsByRole(twr);
+      setUserStreaks(us);
+      setMsgLengthByRole(ml);
+      setLastUpdated(new Date());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
-  useEffect(() => {
-    const id = setInterval(() => loadAll(true), 60_000);
-    return () => clearInterval(id);
-  }, [loadAll]);
 
-  const maxWord = wordCloud[0]?.count ?? 1;
-
-  const TABS = [
-    { id: 'overview',  label: 'Visão Geral',   icon: <BarChart2     size={14} /> },
-    { id: 'usuarios',  label: 'Usuários',       icon: <Users         size={14} /> },
-    { id: 'conteudo',  label: 'Conteúdo & Uso', icon: <MessageSquare size={14} /> },
-    { id: 'qualidade', label: 'Qualidade IA',   icon: <Target        size={14} /> },
+  const tabs = [
+    { id: 'visao',    icon: <BarChart2 size={14} />,    label: 'Visão Geral' },
+    { id: 'usuarios', icon: <Users size={14} />,        label: 'Usuários' },
+    { id: 'conteudo', icon: <AlignLeft size={14} />,    label: 'Conteúdo & Uso' },
+    { id: 'qualidade',icon: <Target size={14} />,       label: 'Qualidade IA' },
   ] as const;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-
-      {/* HEADER */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
-          <span className="text-lg font-bold text-blue-600 tracking-tight hidden sm:block">NPlayer.<span className="text-yellow-400">IA</span></span>
-          <span className="text-slate-200 hidden sm:block">/</span>
-          <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
-            <BarChart2 size={14} /> Equipes &amp; Métricas
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <OnlineUsersBadge count={onlineCount} />
-          <button onClick={() => loadAll(true)} disabled={refreshing} title="Atualizar"
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            <ArrowLeft size={15} /> Voltar
           </button>
-          <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
-            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span className="hidden sm:block">Voltar</span>
-          </button>
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-            <UserAvatar name={adminName} size="sm" />
-            <span className="text-sm font-semibold text-slate-700">{adminName}</span>
+          <div className="flex items-center gap-2 ml-1">
+            <BarChart2 size={16} className="text-blue-500" />
+            <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Equipes & Métricas</span>
           </div>
-          <button onClick={onLogout} title="Sair" className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-            <LogOut size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* TÍTULO + TABS */}
-      <div className="bg-white border-b border-slate-100 px-6 md:px-8 pt-5 pb-0">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Equipes &amp; Métricas</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Dados em tempo real do Supabase
-              {lastUpdate && (
-                <span className="ml-2 text-slate-300">— atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-              )}
-            </p>
+          <div className="ml-auto flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-[10px] text-slate-400 font-semibold hidden sm:block">
+                — atualizado {lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <OnlineUsersBadge onlineUsers={onlineUsers} onlineCount={onlineCount} />
+            <button onClick={loadAll} disabled={loading}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors disabled:opacity-40">
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Atualizar
+            </button>
+            <div className="flex items-center gap-2">
+              <UserAvatar name={adminName} size="sm" />
+              <span className="text-xs font-bold text-slate-600 hidden sm:block">{adminName}</span>
+            </div>
+            <button onClick={onLogout} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">
+              <LogOut size={13} />
+            </button>
           </div>
         </div>
-        <div className="flex gap-1 -mb-px overflow-x-auto">
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-4 flex gap-1 pb-0">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors ${
+                activeTab === t.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}>
-              {tab.icon}{tab.label}
+              {t.icon}{t.label}
             </button>
           ))}
         </div>
-      </div>
+      </header>
 
-      <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full">
-        {loading ? (
-          <div className="flex items-center justify-center py-32 gap-3 text-slate-400">
-            <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-            <span className="font-semibold">Carregando métricas...</span>
+      {/* Content */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        {loading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <p className="text-sm text-slate-400 font-semibold">Carregando métricas…</p>
+            </div>
           </div>
-        ) : (
-          <AnimatePresence mode="wait">
+        )}
 
-            {/* ═══ ABA: VISÃO GERAL ═══ */}
-            {activeTab === 'overview' && (
-              <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
+        {!loading && (
+          <AnimatePresence mode="wait">
+            {/* ── ABA: VISÃO GERAL ── */}
+            {activeTab === 'visao' && (
+              <motion.div key="visao" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                {/* Online agora */}
+                <section>
+                  <SectionTitle icon={<Activity size={16} />} title="Online Agora" subtitle="Presença em tempo real via WebSocket" />
+                  <OnlineUsersWidget onlineUsers={onlineUsers} onlineCount={onlineCount} />
+                </section>
+
+                {/* KPIs de Mensagens */}
+                <section>
+                  <SectionTitle icon={<MessageSquare size={16} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <KpiCard label="Total de mensagens" value={kpis?.total_msgs ?? 0} icon={<MessageSquare size={20} />} color="blue" />
+                    <KpiCard label="Mensagens hoje" value={kpis?.msgs_today ?? 0} icon={<MessageSquare size={20} />} color="indigo" />
+                    <KpiCard label="Últimos 7 dias" value={kpis?.msgs_7d ?? 0} icon={<TrendingUp size={20} />} color="violet" />
+                    <KpiCard label="Média por usuário" value={kpis?.avg_msgs_per_user ?? 0} suffix="msgs" icon={<BarChart2 size={20} />} color="sky" />
+                  </div>
+                </section>
+
+                {/* KPIs de Usuários */}
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <KpiCard label="Logins hoje" value={kpis?.logins_today ?? 0} icon={<LogIn size={20} />} color="emerald" />
+                    <KpiCard label="Logins (7 dias)" value={kpis?.logins_7d ?? 0} icon={<LogIn size={20} />} color="teal" />
+                    <KpiCard label="Taxa de retorno 7d" value={kpis?.retention_rate ?? 0} suffix="%" icon={<Repeat2 size={20} />} color="cyan" />
+                    <KpiCard
+                      label="Inativos (+3 dias)"
+                      value={kpis?.inactive_users ?? 0}
+                      icon={<UserX size={20} />}
+                      color={((kpis?.inactive_users ?? 0) > 5) ? 'red' : 'amber'}
+                      alert={(kpis?.inactive_users ?? 0) > 5}
+                    />
+                  </div>
+                </section>
+
+                {/* Série temporal */}
+                <section>
+                  <SectionTitle icon={<TrendingUp size={16} />} title="Atividade Recente" subtitle="Últimos 14 dias" />
+                  {timeSeries.length > 0 ? <TimeSeriesAreaChart data={timeSeries} /> : <EmptyState label="Sem dados suficientes" />}
+                </section>
+
+                {/* Distribuição por papel */}
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Distribuição por Perfil" />
+                  {roleDistribution.length > 0 ? <RoleDonutChart data={roleDistribution} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: USUÁRIOS ── */}
+            {activeTab === 'usuarios' && (
+              <motion.div key="usuarios" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
 
                 <section>
-                  <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="Presença em tempo real via WebSocket" />
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-1">
-                      <KpiCard
-                        label="Usuários online agora"
-                        value={onlineCount}
-                        icon={<Activity size={18} />}
-                        color="emerald"
-                        delta="Atualizado em tempo real"
-                      />
-                    </div>
-                    <div className="lg:col-span-2">
-                      <OnlineUsersWidget users={onlineUsers} count={onlineCount} />
+                  <SectionTitle icon={<BarChart2 size={16} />} title="Top Usuários" subtitle="Por logins e mensagens" />
+                  {topUsers.length > 0 ? <TopUsersChart data={topUsers} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Calendar size={16} />} title="Por Dia da Semana" />
+                  {weekdayDistribution.length > 0 ? <WeekdayBarChart data={weekdayDistribution} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Clock size={16} />} title="Horários de Pico" />
+                  {peakHours.length > 0 ? <PeakHoursBarChart data={peakHours} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Activity size={16} />} title="Atividade por Usuário" />
+                  {userActivity.length > 0 ? <UserActivityTable data={userActivity} /> : <EmptyState label="Sem usuários registrados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Flame size={16} />} title="Sequências de Acesso" subtitle="Streaks diários de uso" />
+                  <StreakTable data={userStreaks} />
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: CONTEÚDO & USO ── */}
+            {activeTab === 'conteudo' && (
+              <motion.div key="conteudo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                <section>
+                  <SectionTitle icon={<AlignLeft size={16} />} title="Palavras mais usadas" subtitle="Nuvem das últimas 500 mensagens" />
+                  {wordCloud.length > 0 ? <WordCloudSection data={wordCloud} /> : <EmptyState label="Sem dados suficientes" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Termos por Perfil" subtitle="Top palavras de cada função" />
+                  <TopWordsByRoleSection data={topWordsByRole} />
+                </section>
+
+                <section>
+                  <SectionTitle icon={<AlignLeft size={16} />} title="Tamanho das mensagens" subtitle="Extensão média por perfil" />
+                  {msgLengthByRole.length > 0 ? <MsgLengthChart data={msgLengthByRole} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: QUALIDADE IA ── */}
+            {activeTab === 'qualidade' && (
+              <motion.div key="qualidade" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                <section>
+                  <SectionTitle icon={<Target size={16} />} title="Acerto da IA" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <IaAccuracyGauge taxa={kpis?.ia_accuracy ?? 0} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <KpiCard label="Total de correções" value={kpis?.total_corrections ?? 0} icon={<ThumbsDown size={20} />} color="rose" />
+                      <KpiCard label="Correções hoje" value={kpis?.corrections_today ?? 0} icon={<ThumbsDown size={20} />} color="orange" />
+                      <KpiCard label="Usuários que corrigiram" value={kpis?.users_corrected ?? 0} icon={<Users size={20} />} color="amber" />
+                      <KpiCard label="Acerto da IA" value={kpis?.ia_accuracy ?? 0} suffix="%" icon={<Zap size={20} />} color="emerald" />
                     </div>
                   </div>
                 </section>
 
-                {kpis && (
-                  <>
-                    <section>
-                      <SectionTitle icon={<MessageSquare size={15} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <KpiCard label="Total de mensagens" value={kpis.totalMensagens} icon={<MessageSquare size={18}/>} color="blue" />
-                        <KpiCard label="Mensagens hoje" value={kpis.mensagensHoje} icon={<MessageSquare size={18}/>} color="indigo" />
-                        <KpiCard label="Últimos 7 dias" value={kpis.mensagens7d} icon={<TrendingUp size={18}/>} color="violet" />
-                        <KpiCard label="Média por usuário" value={kpis.mediaMsgPorUsuario} icon={<BarChart2 size={18}/>} color="sky" suffix=" msgs" />
-                      </div>
-                    </section>
-
-                    <section>
-                      <SectionTitle icon={<Users size={15} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <KpiCard label="Logins hoje" value={kpis.loginsHoje} icon={<LogIn size={18}/>} color="emerald" />
-                        <KpiCard label="Logins (7 dias)" value={kpis.logins7d} icon={<LogIn size={18}/>} color="teal" />
-                        <KpiCard label="Taxa de retorno 7d" value={kpis.taxaRetorno7d} icon={<Repeat2 size={18}/>} color="cyan" suffix="%" delta="% usuários que voltaram em 2+ dias" />
-                        <KpiCard label="Inativos (+3 dias)" value={kpis.usuariosInativos3d} icon={<UserX size={18}/>}
-                          color={kpis.usuariosInativos3d > 0 ? 'red' : 'green'}
-                          alert={kpis.usuariosInativos3d > 0}
-                          delta={kpis.usuariosInativos3d > 0 ? 'Precisam de atenção' : 'Todos ativos 🎉'} />
-                      </div>
-                    </section>
-                  </>
-                )}
-
                 <section>
-                  <SectionTitle icon={<TrendingUp size={15} />} title="Evolução 14 dias" subtitle="Logins e mensagens dia a dia" />
-                  <TimeSeriesAreaChart data={series} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<Clock size={15} />} title="Pico de horários" />
-                  <PeakHoursBarChart data={hours} />
+                  <SectionTitle icon={<ThumbsDown size={16} />} title="Correções por Usuário" subtitle="Quem mais revisou respostas da IA" />
+                  <CorrectionRateChart data={correctionRates} />
                 </section>
 
               </motion.div>
             )}
-
-            {/* ═══ ABA: USUÁRIOS ═══ */}
-            {activeTab === 'usuarios' && (
-              <motion.div key="usuarios" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-
-                <section>
-                  <SectionTitle icon={<Activity size={15} />} title="Online agora" subtitle="WebSocket · atualização instantânea" />
-                  <OnlineUsersWidget users={onlineUsers} count={onlineCount} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<BarChart2 size={15} />} title="Distribuição por perfil" />
-                  <RoleDonutChart data={roles} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<TrendingUp size={15} />} title="Top 10 mais ativos" subtitle="Logins e perguntas acumulados" />
-                  <TopUsersChart data={topUsers} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<Calendar size={15} />} title="Uso por dia da semana" />
-                  <WeekdayBarChart data={weekdays} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<Activity size={15} />} title="Atividade individual" />
-                  <UserActivityTable data={activity} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<Flame size={15} />} title="Streaks de acesso" subtitle="Dias consecutivos de uso" />
-                  <StreakTable data={streaks} />
-                </section>
-
-              </motion.div>
-            )}
-
-            {/* ═══ ABA: CONTEÚDO ═══ */}
-            {activeTab === 'conteudo' && (
-              <motion.div key="conteudo" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-
-                <section>
-                  <SectionTitle icon={<AlignLeft size={15} />} title="Nuvem de palavras" subtitle="Termos mais usados nas perguntas (últimas 500 msgs)" />
-                  {wordCloud.length === 0 ? (
-                    <EmptyState label="Sem mensagens suficientes" />
-                  ) : (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                      <div className="flex flex-wrap gap-2">
-                        {wordCloud.slice(0, 40).map((w, i) => {
-                          const size = Math.round(10 + ((w.count / maxWord) * 24));
-                          return (
-                            <span key={w.word}
-                              className="font-bold rounded-lg px-2 py-0.5 cursor-default transition-transform hover:scale-110"
-                              style={{ fontSize: size, color: WORD_COLORS[i % WORD_COLORS.length], opacity: 0.7 + (w.count / maxWord) * 0.3, background: `${WORD_COLORS[i % WORD_COLORS.length]}12` }}
-                              title={`${w.word}: ${w.count}x`}
-                            >
-                              {w.word}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </section>
-
-                <section>
-                  <SectionTitle icon={<MessageSquare size={15} />} title="Top palavras por perfil" subtitle="O que cada time mais pergunta" />
-                  <TopWordsByRoleSection data={roleWords} />
-                </section>
-
-                <section>
-                  <SectionTitle icon={<AlignLeft size={15} />} title="Comprimento das perguntas" subtitle="Média de caracteres por perfil" />
-                  <MsgLengthChart data={msgLengths} />
-                </section>
-
-              </motion.div>
-            )}
-
-            {/* ═══ ABA: QUALIDADE IA ═══ */}
-            {activeTab === 'qualidade' && (
-              <motion.div key="qualidade" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-
-                {kpis && (
-                  <>
-                    <section>
-                      <SectionTitle icon={<Target size={15} />} title="Performance da IA" />
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <KpiCard label="Total de correções" value={kpis.totalCorrecoes} icon={<ThumbsDown size={18}/>} color={kpis.totalCorrecoes > 0 ? 'amber' : 'emerald'} delta="Submissões pelo botão de feedback" />
-                        <KpiCard label="Correções por usuário" value={kpis.mediaCorrecoesUsuario} icon={<Users size={18}/>} color="slate" suffix=" média" />
-                        <KpiCard label="Média de caracteres" value={kpis.mediaCaracteresPergunta} icon={<AlignLeft size={18}/>} color="indigo" suffix=" chars" delta="Por pergunta (últimas 200 msgs)" />
-                      </div>
-                    </section>
-
-                    <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <SectionTitle icon={<Zap size={15} />} title="Taxa de acerto" />
-                        <IaAccuracyGauge taxa={kpis.taxaAcertoIA} />
-                      </div>
-                      <div>
-                        <SectionTitle icon={<ThumbsDown size={15} />} title="Quem mais corrige a IA" subtitle="Top usuários por nº de correções" />
-                        <CorrectionRateChart data={corrRates} />
-                      </div>
-                    </section>
-                  </>
-                )}
-
-              </motion.div>
-            )}
-
           </AnimatePresence>
         )}
       </main>
