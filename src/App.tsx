@@ -73,7 +73,7 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
-  // ── Presence ÚNICO para toda a app ──────────────────────────────────────────
+  // ── Presence ÚNICO para toda a app — NUNCA desmontado enquanto user estiver logado ──
   const presenceUser = user
     ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
     : null;
@@ -147,7 +147,7 @@ export default function App() {
     setActiveProfilePage(page);
   };
 
-  // --- Roteamento ---
+  // --- Telas que não precisam do user ---
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -172,74 +172,97 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
+  // ── A partir daqui o user está logado.
+  // useOnlineUsers está ativo e NUNCA será desmontado pelo roteamento abaixo.
+  // Todas as "páginas" são renderizadas como sobreposição ou substituição de conteúdo
+  // DENTRO deste componente, sem desmontar o App.
+
+  const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  const firstName  = user.name.split(' ')[0];
+  const hasMetrics = canAccessMetrics(user.role);
+  const hasAdmin   = canAccessAdmin(user.role);
+
+  // --- Sub-páginas renderizadas como "overlay" (mantém App montado) ---
   if (activeProfilePage === 'admin') {
     if (!canAccessAdmin(user.role)) { setActiveProfilePage(null); return null; }
     return (
-      <AdminPage
-        adminName={user.name}
-        adminRole={user.role ?? 'supervisor'}
-        onLogout={handleLogout}
-        onBack={() => setActiveProfilePage(null)}
-      />
+      <>
+        {/* Presence mantido vivo — badge de debug visível */}
+        <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
+        <AdminPage
+          adminName={user.name}
+          adminRole={user.role ?? 'supervisor'}
+          onLogout={handleLogout}
+          onBack={() => setActiveProfilePage(null)}
+        />
+      </>
     );
   }
 
   if (activeProfilePage === 'metrics') {
     if (!canAccessMetrics(user.role)) { setActiveProfilePage(null); return null; }
     return (
-      <MetricsDashboardPage
-        adminName={user.name}
-        adminRole={user.role ?? 'supervisor'}
-        currentUserId={user.id}
-        onlineUsers={onlineUsers}
-        onlineCount={onlineCount}
-        onBack={() => setActiveProfilePage(null)}
-        onLogout={handleLogout}
-      />
+      <>
+        <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
+        <MetricsDashboardPage
+          adminName={user.name}
+          adminRole={user.role ?? 'supervisor'}
+          currentUserId={user.id}
+          onlineUsers={onlineUsers}
+          onlineCount={onlineCount}
+          onBack={() => setActiveProfilePage(null)}
+          onLogout={handleLogout}
+        />
+      </>
     );
   }
 
   if (activeProfilePage === 'settings') {
     return (
-      <SettingsPage
-        userEmail={user.email}
-        userName={user.name}
-        userRole={user.role ?? 'captador'}
-        userMatricula={user.matricula ?? ''}
-        avatarUrl={user.avatar_url}
-        onLogout={handleLogout}
-        onBack={() => setActiveProfilePage(null)}
-        onAvatarChange={(url) => setUser(u => u ? { ...u, avatar_url: url } : u)}
-      />
+      <>
+        <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
+        <SettingsPage
+          userEmail={user.email}
+          userName={user.name}
+          userRole={user.role ?? 'captador'}
+          userMatricula={user.matricula ?? ''}
+          avatarUrl={user.avatar_url}
+          onLogout={handleLogout}
+          onBack={() => setActiveProfilePage(null)}
+          onAvatarChange={(url) => setUser(u => u ? { ...u, avatar_url: url } : u)}
+        />
+      </>
     );
   }
 
   if (activeProfilePage !== null) {
     return (
-      <UnderConstruction
-        page={activeProfilePage}
-        onBack={() => setActiveProfilePage(null)}
-      />
+      <>
+        <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
+        <UnderConstruction
+          page={activeProfilePage}
+          onBack={() => setActiveProfilePage(null)}
+        />
+      </>
     );
   }
 
   if (activeChatQuery !== null) {
     return (
-      <ChatView
-        user={user}
-        initialQuery={activeChatQuery}
-        onBack={() => {
-          setActiveChatQuery(null);
-          setSearchQuery('');
-        }}
-      />
+      <>
+        {/* Presence MANTIDO ATIVO durante o chat — badge no canto */}
+        <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
+        <ChatView
+          user={user}
+          initialQuery={activeChatQuery}
+          onBack={() => {
+            setActiveChatQuery(null);
+            setSearchQuery('');
+          }}
+        />
+      </>
     );
   }
-
-  const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
-  const firstName  = user.name.split(' ')[0];
-  const hasMetrics = canAccessMetrics(user.role);
-  const hasAdmin   = canAccessAdmin(user.role);
 
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
