@@ -17,13 +17,12 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 interface Props {
-  users: OnlineUser[];
-  count: number;
-  /** se true mostra o card expandido; false mostra só o badge compacto */
+  onlineUsers: OnlineUser[];
+  onlineCount: number;
   expanded?: boolean;
 }
 
-export function OnlineUsersWidget({ users, count, expanded = true }: Props) {
+export function OnlineUsersWidget({ onlineUsers, onlineCount, expanded = true }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Cabeçalho */}
@@ -38,7 +37,7 @@ export function OnlineUsersWidget({ users, count, expanded = true }: Props) {
           </p>
         </div>
         <span className="text-xs font-black tabular-nums px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-          {count} {count === 1 ? 'usuário' : 'usuários'}
+          {onlineCount} {onlineCount === 1 ? 'usuário' : 'usuários'}
         </span>
       </div>
 
@@ -46,14 +45,14 @@ export function OnlineUsersWidget({ users, count, expanded = true }: Props) {
       {expanded && (
         <div className="divide-y divide-slate-50">
           <AnimatePresence initial={false}>
-            {users.length === 0 ? (
+            {onlineUsers.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                   <Wifi size={14} /> Nenhum usuário online
                 </p>
               </div>
             ) : (
-              users.map((u) => (
+              onlineUsers.map((u) => (
                 <motion.div
                   key={u.user_id}
                   initial={{ opacity: 0, x: -8 }}
@@ -91,7 +90,7 @@ export function OnlineUsersWidget({ users, count, expanded = true }: Props) {
 }
 
 /** Badge compacto para o header do dashboard */
-export function OnlineUsersBadge({ count }: { count: number }) {
+export function OnlineUsersBadge({ onlineUsers, onlineCount }: { onlineUsers: OnlineUser[]; onlineCount: number }) {
   return (
     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100">
       <span className="relative flex h-2 w-2">
@@ -99,7 +98,7 @@ export function OnlineUsersBadge({ count }: { count: number }) {
         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
       </span>
       <span className="text-[11px] font-black text-emerald-700 tabular-nums">
-        {count} online
+        {onlineCount} online
       </span>
     </div>
   );
