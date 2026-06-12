@@ -1,32 +1,31 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Users, Search, Edit2, Save, X, ArrowLeft,
-  LogOut, ShieldCheck, Eye, EyeOff,
-  ChevronDown, UserCog, Lock,
+  Users, Search, Edit2, ArrowLeft,
+  LogOut, Filter, ChevronDown, ArrowUpAZ, ArrowDownAZ,
+  BarChart2, UserPlus, X, Eye, EyeOff, CheckCircle2, AlertCircle,
 } from 'lucide-react';
-import { getAllUsers, updateUser } from '../lib/auth';
-import { uploadAvatar, saveAvatarUrl } from '../services/avatarService';
+import { getAllUsers, updateUserActive, createUser } from '../lib/auth';
+import type { CreateUserPayload } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
-import type { UserRole } from '../App';
-
-interface LocalUser {
-  email:      string;
-  name:       string;
-  matricula:  string;
-  password:   string;
-  role:       UserRole;
-  avatar_url?: string;
-}
+import { UserProfilePage } from './UserProfilePage';
+import { MetricsDashboardPage } from './MetricsDashboardPage';
+import type { User, UserRole } from '../App';
+import type { OnlineUser } from '../hooks/useOnlineUsers';
 
 interface AdminPageProps {
   adminName: string;
   adminRole: UserRole;
+  currentUserId: string;
+  onlineUsers: OnlineUser[];
+  onlineCount: number;
   onLogout:  () => void;
   onBack:    () => void;
 }
 
 type FilterRole = 'todos' | UserRole;
+type SortField  = 'name' | 'email' | 'matricula' | 'role' | 'active';
+type SortDir    = 'asc' | 'desc';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }> = {
   captador:      { label: 'Captador',      color: 'text-blue-600',    bg: 'bg-blue-50'    },
@@ -34,168 +33,87 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
-interface EditModalProps {
-  user:      LocalUser;
-  adminRole: UserRole;
-  onSave:    (email: string, data: Partial<LocalUser>) => void;
-  onClose:   () => void;
-}
+const ROLE_ORDER: Record<UserRole, number> = { captador: 0, supervisor: 1, administrador: 2 };
 
-function EditModal({ user, adminRole, onSave, onClose }: EditModalProps) {
-  const [name,      setName]      = useState(user.name);
-  const [matricula, setMatricula] = useState(user.matricula);
-  const [password,  setPassword]  = useState(user.password);
-  const [role,      setRole]      = useState<UserRole>(user.role);
-  const [showPass,  setShowPass]  = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar_url ?? null);
-  const [uploading, setUploading] = useState(false);
+const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_120px_44px]';
 
-  const canChangeRole = adminRole === 'administrador';
-  const availableRoles: UserRole[] = adminRole === 'administrador'
-    ? ['captador', 'supervisor', 'administrador']
-    : ['captador', 'supervisor'];
+const FILTER_LABELS: Record<FilterRole, string> = {
+  todos:         'Todos os perfis',
+  captador:      'Captadores',
+  supervisor:    'Supervisores',
+  administrador: 'Administradores',
+};
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const url = await uploadAvatar(user.email, file);
-    if (url) { await saveAvatarUrl(user.email, url); setAvatarUrl(url); }
-    setUploading(false);
-  }
+const SORT_LABELS: Record<SortField, string> = {
+  name:      'Nome',
+  email:     'E-mail',
+  matricula: 'Matrícula',
+  role:      'Perfil',
+  active:    'Status',
+};
 
-  function handleSave() {
-    setSaving(true);
-    onSave(user.email, { name, matricula, password, role });
-    setSaving(false);
-    onClose();
-  }
+// ─── Estado inicial do formulário ───────────────────────────────────────────────────────
+const EMPTY_FORM: CreateUserPayload = {
+  email:     '',
+  password:  '',
+  name:      '',
+  role:      'captador',
+  matricula: '',
+};
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.94, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.94, y: 16 }}
-        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-        className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Editar Usuario</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{user.email}</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
+export function AdminPage({ adminName, adminRole, currentUserId, onlineUsers, onlineCount, onLogout, onBack }: AdminPageProps) {
+  const [users,         setUsers]         = useState<User[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState('');
+  const [filterRole,    setFilterRole]    = useState<FilterRole>('todos');
+  const [toggling,      setToggling]      = useState<string | null>(null);
+  const [sortField,     setSortField]     = useState<SortField>('name');
+  const [sortDir,       setSortDir]       = useState<SortDir>('asc');
+  const [filterOpen,    setFilterOpen]    = useState(false);
+  const [sortOpen,      setSortOpen]      = useState(false);
+  const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
+  const [showMetrics,   setShowMetrics]   = useState(false);
 
-        <div className="px-6 pt-4 flex flex-col items-center gap-2">
-          <UserAvatar name={name} avatarUrl={avatarUrl} size="lg" />
-          <label className="cursor-pointer text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
-            {uploading ? <span className="animate-pulse">Enviando...</span> : 'Trocar foto'}
-            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-          </label>
-        </div>
+  // ─ Modal criar usuário
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [form,          setForm]          = useState<CreateUserPayload>(EMPTY_FORM);
+  const [showPassword,  setShowPassword]  = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [createError,   setCreateError]   = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
-        <div className="px-6 py-5 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nome completo</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="Nome do usuario"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Usuario (e-mail)</label>
-            <input type="text" value={user.email} readOnly
-              className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-400 outline-none cursor-not-allowed" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Matricula</label>
-            <input type="text" value={matricula} onChange={e => setMatricula(e.target.value)}
-              placeholder="Numero da matricula"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Senha</label>
-            <div className="relative">
-              <input
-                type={showPass ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Nova senha"
-                className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-              <button type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1">
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-              Perfil {!canChangeRole && (
-                <span className="text-amber-500 normal-case font-semibold tracking-normal">
-                  (somente Admin pode promover a Administrador)
-                </span>
-              )}
-            </label>
-            <div className="relative">
-              <select value={role} onChange={e => setRole(e.target.value as UserRole)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all">
-                {availableRoles.map(r => (
-                  <option key={r} value={r}>{ROLE_CONFIG[r].label}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-        </div>
+  useEffect(() => {
+    getAllUsers().then(data => { setUsers(data); setLoading(false); });
+  }, []);
 
-        <div className="px-6 pb-6 flex gap-2">
-          <button onClick={onClose}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
-            {saving
-              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : <Save size={15} />}
-            Salvar
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
+  const visibleUsers = adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador');
 
-const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_90px_44px]';
-
-export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
-  const [users,      setUsers]      = useState<LocalUser[]>(() => getAllUsers());
-  const [search,     setSearch]     = useState('');
-  const [filterRole, setFilterRole] = useState<FilterRole>('todos');
-  const [editUser,   setEditUser]   = useState<LocalUser | null>(null);
-
-  const visibleUsers = useMemo(() =>
-    adminRole === 'administrador' ? users : users.filter(u => u.role !== 'administrador'),
-    [users, adminRole]);
-
-  const filtered = useMemo(() =>
-    visibleUsers.filter(u => {
-      const q = search.toLowerCase();
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return visibleUsers.filter(u => {
       const matchSearch = !q ||
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        u.matricula.includes(q);
+        (u.matricula ?? '').includes(q);
       const matchRole = filterRole === 'todos' || u.role === filterRole;
       return matchSearch && matchRole;
-    }),
-    [visibleUsers, search, filterRole]);
+    });
+  }, [visibleUsers, search, filterRole]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let va: string | number = '';
+      let vb: string | number = '';
+      if (sortField === 'name')      { va = a.name.toLowerCase();      vb = b.name.toLowerCase(); }
+      if (sortField === 'email')     { va = a.email.toLowerCase();     vb = b.email.toLowerCase(); }
+      if (sortField === 'matricula') { va = (a.matricula ?? '');        vb = (b.matricula ?? ''); }
+      if (sortField === 'role')      { va = ROLE_ORDER[a.role] ?? 0;   vb = ROLE_ORDER[b.role] ?? 0; }
+      if (sortField === 'active')    { va = a.active ? 1 : 0;          vb = b.active ? 1 : 0; }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+  }, [filtered, sortField, sortDir]);
 
   const counts = useMemo(() => ({
     todos:         visibleUsers.length,
@@ -204,27 +122,110 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
     administrador: visibleUsers.filter(u => u.role === 'administrador').length,
   }), [visibleUsers]);
 
-  function handleSave(email: string, data: Partial<LocalUser>) {
-    updateUser(email, data);
-    setUsers(getAllUsers());
+  if (showMetrics) {
+    return (
+      <MetricsDashboardPage
+        adminName={adminName}
+        adminRole={adminRole}
+        currentUserId={currentUserId}
+        onlineUsers={onlineUsers}
+        onlineCount={onlineCount}
+        onBack={() => setShowMetrics(false)}
+        onLogout={onLogout}
+      />
+    );
   }
 
-  function canEdit(target: LocalUser): boolean {
-    if (adminRole === 'administrador') return true;
-    return target.role !== 'administrador';
+  if (selectedUser) {
+    return (
+      <UserProfilePage
+        profileUser={selectedUser}
+        adminName={adminName}
+        adminRole={adminRole}
+        onBack={() => setSelectedUser(null)}
+        onLogout={onLogout}
+      />
+    );
   }
 
-  const FILTER_TABS: { key: FilterRole; label: string; count: number }[] = [
-    { key: 'todos',      label: 'Todos',        count: counts.todos      },
-    { key: 'captador',   label: 'Captadores',   count: counts.captador   },
-    { key: 'supervisor', label: 'Supervisores', count: counts.supervisor },
-    ...(adminRole === 'administrador'
-      ? [{ key: 'administrador' as FilterRole, label: 'Administradores', count: counts.administrador }]
-      : []),
-  ];
+  async function handleToggleActive(user: User) {
+    setToggling(user.id);
+    const ok = await updateUserActive(user.id, !user.active);
+    if (ok) setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: !u.active } : u));
+    setToggling(null);
+  }
+
+  function handleSort(field: SortField) {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+    setSortOpen(false);
+  }
+
+  function handleFilter(role: FilterRole) {
+    setFilterRole(role);
+    setFilterOpen(false);
+  }
+
+  function openCreateModal() {
+    setForm(EMPTY_FORM);
+    setShowPassword(false);
+    setCreateError(null);
+    setCreateSuccess(null);
+    setShowCreate(true);
+  }
+
+  function closeCreateModal() {
+    setShowCreate(false);
+    setCreateError(null);
+    setCreateSuccess(null);
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateSuccess(null);
+
+    // Validações básicas
+    if (!form.name.trim())                          return setCreateError('Nome é obrigatório.');
+    if (!form.email.trim() || !form.email.includes('@')) return setCreateError('E-mail inválido.');
+    if (form.password.length < 6)                   return setCreateError('Senha deve ter ao menos 6 caracteres.');
+
+    // Supervisor não pode criar Administrador
+    if (adminRole === 'supervisor' && form.role === 'administrador') {
+      return setCreateError('Supervisores não podem criar Administradores.');
+    }
+
+    setSaving(true);
+    const result = await createUser(form);
+    setSaving(false);
+
+    if (!result.ok) {
+      setCreateError(result.error ?? 'Erro desconhecido.');
+      return;
+    }
+
+    // Sucesso: recarrega lista e exibe feedback
+    setCreateSuccess(`Usuário "${form.name}" criado com sucesso!`);
+    const updated = await getAllUsers();
+    setUsers(updated);
+
+    // Fecha modal após 1.8s
+    setTimeout(closeCreateModal, 1800);
+  }
+
+  // Perfis que este admin pode criar
+  const CREATABLE_ROLES: UserRole[] = adminRole === 'administrador'
+    ? ['captador', 'supervisor', 'administrador']
+    : ['captador', 'supervisor'];
+
+  const SORTABLE_FIELDS: SortField[] = ['name', 'email', 'matricula', 'role', 'active'];
+  const FILTER_ROLES: FilterRole[] = adminRole === 'administrador'
+    ? ['todos', 'captador', 'supervisor', 'administrador']
+    : ['todos', 'captador', 'supervisor'];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col" onClick={() => { setFilterOpen(false); setSortOpen(false); }}>
+      {/* HEADER */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">N</div>
@@ -237,6 +238,13 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMetrics(true)}
+            className="flex items-center gap-1.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors shadow-sm"
+          >
+            <BarChart2 size={15} />
+            <span className="hidden sm:block">Equipes & Métricas</span>
+          </button>
           <button onClick={onBack}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors group">
             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
@@ -259,93 +267,202 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-screen-xl mx-auto w-full space-y-5">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Gestao de Usuarios</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Gestão de Usuários</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               {adminRole === 'administrador'
-                ? 'Acesso total - edite qualquer usuario, perfil ou senha.'
-                : 'Voce pode editar Captadores e Supervisores. Administradores sao protegidos.'}
+                ? 'Acesso total — ative, desative ou crie qualquer usuário.'
+                : 'Você pode gerenciar e criar Captadores e Supervisores.'}
             </p>
           </div>
-          {adminRole === 'administrador'
-            ? <ShieldCheck size={22} className="text-emerald-500 mt-1" />
-            : <UserCog size={22} className="text-purple-400 mt-1" />}
+          {/* BOTÃO NOVO USUÁRIO */}
+          <button
+            onClick={e => { e.stopPropagation(); openCreateModal(); }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors shadow-sm shrink-0"
+          >
+            <UserPlus size={16} />
+            Novo Usuário
+          </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {FILTER_TABS.map(t => (
-            <button key={t.key} onClick={() => setFilterRole(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-xs font-bold uppercase tracking-wider transition-all ${
-                filterRole === t.key
-                  ? 'bg-white border-blue-500 text-blue-600 shadow-sm shadow-blue-100'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
-              }`}>
-              {t.label}
-              <span className={`text-xs font-black ${filterRole === t.key ? 'text-blue-600' : 'text-slate-400'}`}>{t.count}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="relative">
-          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou matricula..."
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-        </div>
-
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
-          <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[820px]`}>
-            {['Nome', 'Usuario (login)', 'Matricula', 'Perfil', 'Senha', ''].map((h, i) => (
-              <span key={i} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
-            ))}
+        {/* BUSCA + FILTRO + ORDENAÇÃO */}
+        <div className="flex gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nome, e-mail ou matrícula..."
+              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
           </div>
 
-          {filtered.length === 0 ? (
+          <div className="relative">
+            <button
+              onClick={() => { setFilterOpen(o => !o); setSortOpen(false); }}
+              className={`flex items-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                filterRole !== 'todos'
+                  ? 'bg-blue-50 border-blue-400 text-blue-600'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              <Filter size={15} />
+              <span className="hidden sm:inline">
+                {filterRole === 'todos' ? 'Filtrar' : FILTER_LABELS[filterRole]}
+              </span>
+              {filterRole !== 'todos' && (
+                <span className="ml-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">
+                  {counts[filterRole]}
+                </span>
+              )}
+              <ChevronDown size={14} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-lg z-20 overflow-hidden"
+                >
+                  {FILTER_ROLES.map(role => (
+                    <button key={role} onClick={() => handleFilter(role)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        filterRole === role ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{FILTER_LABELS[role]}</span>
+                      <span className="text-xs font-black text-slate-400">{counts[role]}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => { setSortOpen(o => !o); setFilterOpen(false); }}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 transition-all"
+            >
+              {sortDir === 'asc' ? <ArrowUpAZ size={15} /> : <ArrowDownAZ size={15} />}
+              <span className="hidden sm:inline">{SORT_LABELS[sortField]}</span>
+              <ChevronDown size={14} className={`transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {sortOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg z-20 overflow-hidden"
+                >
+                  {SORTABLE_FIELDS.map(field => (
+                    <button key={field} onClick={() => handleSort(field)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        sortField === field ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{SORT_LABELS[field]}</span>
+                      {sortField === field && (
+                        <span className="text-[10px] font-black text-blue-400">
+                          {sortDir === 'asc' ? 'A→Z' : 'Z→A'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* TABELA */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
+          <div className={`hidden sm:grid ${COL_GRID} gap-x-4 px-5 py-3 bg-slate-50 border-b border-slate-100 min-w-[860px]`}>
+            {(['Nome','E-mail','Matrícula','Perfil','Status',''] as const).map((h, i) => {
+              const fieldMap: Record<string, SortField> = {
+                'Nome': 'name', 'E-mail': 'email', 'Matrícula': 'matricula',
+                 'Perfil': 'role', 'Status': 'active',
+              };
+              const field = fieldMap[h];
+              return (
+                <button key={i} onClick={() => field && handleSort(field)}
+                  className={`text-[10px] font-black uppercase tracking-widest text-left flex items-center gap-1 transition-colors ${
+                    field ? 'text-slate-400 hover:text-blue-500 cursor-pointer' : 'text-slate-400 cursor-default'
+                  } ${sortField === field ? 'text-blue-500' : ''}`}
+                >
+                  {h}
+                  {sortField === field && (
+                    sortDir === 'asc' ? <ArrowUpAZ size={11} /> : <ArrowDownAZ size={11} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
+              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-semibold">Carregando usuários...</span>
+            </div>
+          ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-3">
               <Users size={48} strokeWidth={1} />
-              <p className="text-sm font-semibold">Nenhum usuario encontrado</p>
+              <p className="text-sm font-semibold">Nenhum usuário encontrado</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
               <AnimatePresence initial={false}>
-                {filtered.map(u => {
+                {sorted.map(u => {
                   const roleCfg = ROLE_CONFIG[u.role];
-                  const editable = canEdit(u);
+                  const isToggling = toggling === u.id;
+                  const canToggle = adminRole === 'administrador' || u.role !== 'administrador';
                   return (
-                    <motion.li key={u.email} layout
+                    <motion.li key={u.id} layout
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors min-w-[820px]`}>
+                      {/* Desktop */}
+                      <div
+                        className={`hidden sm:grid ${COL_GRID} gap-x-4 items-center px-5 py-3.5 hover:bg-blue-50 transition-colors min-w-[860px] cursor-pointer ${
+                          !u.active ? 'opacity-50' : ''
+                        }`}
+                        onClick={() => setSelectedUser(u)}
+                      >
                         <div className="flex items-center gap-3">
-                          <UserAvatar name={u.name} avatarUrl={u.avatar_url} size="sm" />
+                          <UserAvatar name={u.name} avatarUrl={u.avatar_url ?? u.avatar ?? null} size="sm" />
                           <span className="text-sm font-bold text-slate-800 leading-snug">{u.name}</span>
                         </div>
-                        <span className="text-xs text-slate-500 font-medium break-all leading-snug">{u.email}</span>
+                        <span className="text-xs text-slate-500 font-medium break-all">{u.email}</span>
                         <span className="text-xs font-bold text-slate-600 tabular-nums">
                           {u.matricula || <span className="text-slate-300 italic font-normal">-</span>}
                         </span>
                         <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                           {roleCfg.label}
                         </span>
-                        <span className="flex items-center gap-1 text-xs font-mono text-slate-400">
-                          <Lock size={10} className="text-slate-300 shrink-0" />
-                          {'*'.repeat(Math.min(u.password.length, 8))}
+                        <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                          u.active ? 'text-emerald-700 bg-emerald-50' : 'text-red-500 bg-red-50'
+                        }`}>
+                          {u.active ? 'Ativo' : 'Inativo'}
                         </span>
                         <button
-                          onClick={() => editable && setEditUser(u)}
-                          disabled={!editable}
-                          title={editable ? 'Editar' : 'Sem permissao'}
+                          onClick={e => { e.stopPropagation(); canToggle && handleToggleActive(u); }}
+                          disabled={!canToggle || isToggling}
+                          title={canToggle ? (u.active ? 'Desativar' : 'Ativar') : 'Sem permissão'}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-                            editable ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
+                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
-                          <Edit2 size={15} />
+                          {isToggling
+                            ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            : <Edit2 size={15} />}
                         </button>
                       </div>
 
-                      <div className="flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                        <UserAvatar name={u.name} avatarUrl={u.avatar_url} size="md" className="mt-0.5" />
+                      {/* Mobile */}
+                      <div
+                        className={`flex sm:hidden items-start gap-3 px-4 py-3.5 hover:bg-blue-50 transition-colors cursor-pointer ${
+                          !u.active ? 'opacity-50' : ''
+                        }`}
+                        onClick={() => setSelectedUser(u)}
+                      >
+                        <UserAvatar name={u.name} avatarUrl={u.avatar_url ?? u.avatar ?? null} size="md" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-800">{u.name}</p>
                           <p className="text-xs text-slate-400 break-all mt-0.5">{u.email}</p>
@@ -353,18 +470,22 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                             <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${roleCfg.color} ${roleCfg.bg}`}>
                               {roleCfg.label}
                             </span>
-                            {u.matricula && (
-                              <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                                #{u.matricula}
-                              </span>
-                            )}
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                              u.active ? 'text-emerald-700 bg-emerald-50' : 'text-red-500 bg-red-50'
+                            }`}>
+                              {u.active ? 'Ativo' : 'Inativo'}
+                            </span>
                           </div>
                         </div>
-                        <button onClick={() => editable && setEditUser(u)} disabled={!editable}
+                        <button
+                          onClick={e => { e.stopPropagation(); canToggle && handleToggleActive(u); }}
+                          disabled={!canToggle || isToggling}
                           className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors shrink-0 ${
-                            editable ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'
+                            canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
-                          <Edit2 size={15} />
+                          {isToggling
+                            ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            : <Edit2 size={15} />}
                         </button>
                       </div>
                     </motion.li>
@@ -373,22 +494,177 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
               </AnimatePresence>
             </ul>
           )}
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
+
+          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-semibold">
-              {filtered.length} de {visibleUsers.length} usuario{visibleUsers.length !== 1 ? 's' : ''}
+              {sorted.length} de {visibleUsers.length} usuário{visibleUsers.length !== 1 ? 's' : ''}
             </span>
+            <span className="text-xs text-slate-300 italic">Clique em uma linha para ver o perfil</span>
           </div>
         </div>
       </main>
 
+      {/* ═══════════════════════════════════════════════════════════════
+           MODAL — CRIAR NOVO USUÁRIO
+          ═══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {editUser && (
-          <EditModal
-            user={editUser}
-            adminRole={adminRole}
-            onSave={handleSave}
-            onClose={() => setEditUser(null)}
-          />
+        {showCreate && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={closeCreateModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{   opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Cabeçalho */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <UserPlus size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800">Novo Usuário</h2>
+                    <p className="text-xs text-slate-400">Preencha os dados para criar a conta</p>
+                  </div>
+                </div>
+                <button onClick={closeCreateModal} className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Formulário */}
+              <form onSubmit={handleCreateUser} className="px-6 py-5 space-y-4">
+
+                {/* Nome */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nome completo <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex: João da Silva"
+                    required
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* E-mail */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">E-mail <span className="text-red-400">*</span></label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="usuario@hpp.com.br"
+                    required
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* Senha */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Senha provisória <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      minLength={6}
+                      className="w-full h-11 px-4 pr-11 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Matrícula */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Matrícula <span className="text-slate-300 font-normal normal-case">(opcional)</span></label>
+                  <input
+                    type="text"
+                    value={form.matricula}
+                    onChange={e => setForm(f => ({ ...f, matricula: e.target.value }))}
+                    placeholder="Ex: 12345"
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* Perfil */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Perfil <span className="text-red-400">*</span></label>
+                  <div className="flex gap-2 flex-wrap">
+                    {CREATABLE_ROLES.map(role => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, role }))}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${
+                          form.role === role
+                            ? role === 'administrador'
+                              ? 'bg-emerald-500 text-white border-emerald-500'
+                              : role === 'supervisor'
+                              ? 'bg-purple-500 text-white border-purple-500'
+                              : 'bg-blue-500 text-white border-blue-500'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {ROLE_CONFIG[role].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                {createError && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600">
+                    <AlertCircle size={15} className="shrink-0" />
+                    {createError}
+                  </div>
+                )}
+                {createSuccess && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-semibold text-emerald-600">
+                    <CheckCircle2 size={15} className="shrink-0" />
+                    {createSuccess}
+                  </div>
+                )}
+
+                {/* Botões */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeCreateModal}
+                    className="flex-1 h-11 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {saving ? (
+                      <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Criando...</>
+                    ) : (
+                      <><UserPlus size={15} /> Criar Usuário</>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

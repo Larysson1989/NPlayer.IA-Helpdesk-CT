@@ -34,29 +34,33 @@ type FullscreenPage = 'edit' | 'password' | 'support' | 'improvements' | null;
 const DEFAULT_AVATAR =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDgdPkiT-wRtOnLWfj51Eko2A8FvPaNGJ9YfKsvfQJI7gKPON-2yvOWFMWgtFmRhEmichfWU3XbAz48qYC0PRqR9_chfQQZ2BbtesGE0Jy7gcgL_Ubv7TuyzPmPQkJg1-suxATPUgyhbrS6jrCV5ctYinBi9YlSQ0J9TMWcR2MOT0ZS54pLxrEOvLR2YzOMy1drxABvrpXtyhhg-aKC6gOd-u74J0RYJcOABpiFEDbcYv2RBPqwT57Mhqjm4adWnR1Li0ygdAc73X4';
 
-const PAGE_META: Record<
-  NonNullable<FullscreenPage>,
-  { title: string; description: string; icon: React.ReactNode }
-> = {
+// ─── Ícone de cada página (componente — nunca JSX no escopo de módulo) ────────
+function PageIcon({ page }: { page: NonNullable<FullscreenPage> }) {
+  const size = 40;
+  if (page === 'edit')         return <User         size={size} />;
+  if (page === 'password')     return <Lock         size={size} />;
+  if (page === 'support')      return <MessageSquare size={size} />;
+  if (page === 'improvements') return <Sparkles     size={size} />;
+  return null;
+}
+
+// ─── Meta de cada página (sem JSX) ───────────────────────────────────────────
+const PAGE_META: Record<NonNullable<FullscreenPage>, { title: string; description: string }> = {
   edit: {
     title: 'Meu Perfil',
     description: 'Edição de dados cadastrais, foto de perfil, matrícula e telefone.',
-    icon: <User size={40} />,
   },
   password: {
     title: 'Segurança & Senha',
     description: 'Alteração de senha, autenticação em dois fatores e histórico de acessos.',
-    icon: <Lock size={40} />,
   },
   support: {
     title: 'Central de Suporte',
     description: 'Abertura de chamados, acompanhamento de tickets e contato com a equipe técnica.',
-    icon: <MessageSquare size={40} />,
   },
   improvements: {
     title: 'Sugestão de Melhorias',
     description: 'Envio de ideias, votação em sugestões da comunidade e acompanhamento do roadmap.',
-    icon: <Sparkles size={40} />,
   },
 };
 
@@ -108,7 +112,7 @@ function FullscreenUnderConstruction({ page, onBack }: { page: NonNullable<Fulls
             animate={{ rotate: [0, -8, 8, -8, 0] }}
             transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
             className="w-28 h-28 rounded-[36px] bg-primary/5 flex items-center justify-center text-primary"
-          >{meta.icon}</motion.div>
+          ><PageIcon page={page} /></motion.div>
           <motion.div
             initial={{ scale: 0 }} animate={{ scale: 1 }}
             transition={{ delay: 0.3, type: 'spring', damping: 12 }}
@@ -204,15 +208,15 @@ export function UserModals({
 
   // Itens do menu filtrados por permissão
   const menuItems = [
-    { page: 'edit' as const,         icon: <User size={18} />,         label: 'Dados Cadastrais',     sub: 'Nome, telefone e matrícula',   show: true },
-    { page: 'password' as const,     icon: <Lock size={18} />,         label: 'Segurança & Senha',    sub: 'Gerencie sua segurança',       show: true },
-    { page: 'support' as const,      icon: <MessageSquare size={18} />, label: 'Central de Suporte',  sub: 'Dúvidas ou problemas',          show: true },
-    { page: 'improvements' as const, icon: <Sparkles size={18} />,     label: 'Sugestão de Melhorias', sub: 'Compartilhe suas ideias',      show: true },
+    { page: 'edit' as const,         icon: <User size={18} />,          label: 'Dados Cadastrais',      sub: 'Nome, telefone e matrícula',  show: true },
+    { page: 'password' as const,     icon: <Lock size={18} />,          label: 'Segurança & Senha',     sub: 'Gerencie sua segurança',      show: true },
+    { page: 'support' as const,      icon: <MessageSquare size={18} />, label: 'Central de Suporte',    sub: 'Dúvidas ou problemas',         show: true },
+    { page: 'improvements' as const, icon: <Sparkles size={18} />,      label: 'Sugestão de Melhorias', sub: 'Compartilhe suas ideias',     show: true },
   ].filter(item => item.show);
 
   // Itens de navegação protegidos (métricas e admin)
   const navItems = [
-    { page: 'metrics' as ProfilePage, icon: <BarChart2 size={18} />,   label: 'Equipe & Métricas',  sub: 'Visão geral da equipe',  show: hasMetrics, color: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
+    { page: 'metrics' as ProfilePage, icon: <BarChart2 size={18} />,   label: 'Equipe & Métricas',     sub: 'Visão geral da equipe', show: hasMetrics, color: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
     { page: 'admin'   as ProfilePage, icon: <ShieldCheck size={18} />, label: 'Painel Administrativo', sub: 'Gerenciar usuários',    show: hasAdmin,   color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
   ].filter(item => item.show);
 

@@ -38,7 +38,7 @@ export async function uploadAvatar(email: string, file: File): Promise<string> {
   const path = `avatars/${email.replace('@', '_')}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
-    .from('avatars') // crie este bucket no Supabase Storage
+    .from('avatars')
     .upload(path, file, { upsert: true });
 
   if (uploadError) throw uploadError;
@@ -54,7 +54,6 @@ export async function submitSupportTicket(payload: {
   category: string;
   description: string;
 }) {
-  // Salva em system_logs como registro de suporte
   const { error } = await supabase
     .from('system_logs')
     .insert({

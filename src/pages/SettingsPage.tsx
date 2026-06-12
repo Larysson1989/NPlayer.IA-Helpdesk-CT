@@ -10,13 +10,13 @@ import { UserAvatar } from '../components/UserAvatar';
 import type { UserRole } from '../App';
 
 interface SettingsPageProps {
-  userEmail:    string;
-  userName:     string;
-  userRole:     UserRole;
+  userEmail:     string;
+  userName:      string;
+  userRole:      UserRole;
   userMatricula: string;
-  avatarUrl?:   string | null;
-  onLogout:     () => void;
-  onBack:       () => void;
+  avatarUrl?:    string | null;
+  onLogout:      () => void;
+  onBack:        () => void;
   onAvatarChange?: (url: string) => void;
 }
 
@@ -81,10 +81,14 @@ export function SettingsPage({
       return;
     }
     setSaving(true);
-    const updates: Record<string, string> = { name };
+    const updates: { name?: string; password?: string } = { name };
     if (password) updates.password = password;
-    updateUser(userEmail, updates);
+    const ok = await updateUser(userEmail, updates);
     setSaving(false);
+    if (!ok) {
+      setError('Erro ao salvar. Tente novamente.');
+      return;
+    }
     setSaved(true);
     setPassword('');
     setConfirmPass('');
@@ -228,7 +232,7 @@ export function SettingsPage({
           </div>
         </motion.div>
 
-        {/* Perfil (somente leitura) */}
+        {/* Perfil somente leitura */}
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.15 }}
           className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
