@@ -9,7 +9,7 @@ import {
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
+  ResponsiveContainer, RadialBarChart, RadialBar,
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
 import { OnlineUsersWidget, OnlineUsersBadge } from '../components/OnlineUsersWidget';
@@ -247,30 +247,6 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
     if (pct < 5) return null;
     return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 11, fontWeight: 900 }}>{pct}%</text>;
   };
-
-  const PieTooltip = ({ active, payload }: {
-    active?: boolean;
-    payload?: Array<{ name?: string; value?: number; color?: string; fill?: string; payload?: { users?: number } } | undefined | null>;
-  }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-xs font-semibold text-slate-700">
-        {payload.map((p, i) => {
-          if (!p) return null;
-          const color = p.color ?? p.fill ?? PIE_COLORS[i % PIE_COLORS.length];
-          const users = p.payload?.users ?? 0;
-          return (
-            <div key={i}>
-              <p style={{ color }} className="font-black">{p.name ?? ''}</p>
-              <p className="text-slate-600">{fmt(p.value ?? 0)} msgs</p>
-              <p className="text-slate-400">{users} usuário{users !== 1 ? 's' : ''}</p>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -279,8 +255,7 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={CustomPieLabel as React.FC}>
               {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
-            {/* SEM <Legend> — usa legenda manual ao lado para evitar crash */}
-            <Tooltip content={<PieTooltip />} />
+            <Tooltip formatter={(v: number, name: string) => [`${fmt(v)} msgs`, name]} />
           </PieChart>
         </ResponsiveContainer>
         <div className="flex flex-col gap-3 flex-1">
@@ -378,7 +353,6 @@ function TopUsersChart({ data }: { data: TopUser[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* SEM <Legend> — usa ChartLegend HTML abaixo para evitar crash .color undefined */}
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={14} />
           <Bar dataKey="mensagens" name="Mensagens" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={14} />
         </BarChart>
@@ -398,7 +372,6 @@ function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* SEM <Legend> — usa ChartLegend HTML abaixo para evitar crash .color undefined */}
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
           <Bar dataKey="msgs" name="Mensagens" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={32} />
         </BarChart>
@@ -427,7 +400,6 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* SEM <Legend> — sem Cell dinâmico aqui, mas mantemos consistência */}
           <Bar dataKey="correcoes" name="Correções" fill="#f87171" radius={[0, 4, 4, 0]} maxBarSize={18} />
         </BarChart>
       </ResponsiveContainer>
@@ -440,34 +412,32 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
-
-  const cx = 90, cy = 90, r = 70;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const arcPath = (startDeg: number, endDeg: number) => {
-    const x1 = cx + r * Math.cos(toRad(startDeg));
-    const y1 = cy + r * Math.sin(toRad(startDeg));
-    const x2 = cx + r * Math.cos(toRad(endDeg));
-    const y2 = cy + r * Math.sin(toRad(endDeg));
-    const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-    return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
-  };
-  const bgPath = arcPath(180, 0);
-  const fillEndDeg = 180 + (safeTaxa / 100) * 180;
-  const fillPath = safeTaxa > 0 ? arcPath(180, Math.min(fillEndDeg, 359.9)) : null;
-
+  const gaugeData = [{ name: 'Taxa', value: safeTaxa, fill: color }];
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
-      <div className="relative" style={{ width: 180, height: 100 }}>
-        <svg width={180} height={100} viewBox="0 0 180 100" overflow="visible">
-          <path d={bgPath} fill="none" stroke="#e2e8f0" strokeWidth={14} strokeLinecap="round" />
-          {fillPath && (
-            <path d={fillPath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
-          )}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
-          <p className="text-3xl font-black tabular-nums leading-none" style={{ color }}>{safeTaxa}%</p>
-          <p className="text-xs font-bold mt-0.5" style={{ color }}>{label}</p>
+      <div className="relative">
+        <ResponsiveContainer width={180} height={120}>
+          <RadialBarChart
+            cx="50%"
+            cy="100%"
+            innerRadius={60}
+            outerRadius={90}
+            startAngle={180}
+            endAngle={0}
+            data={gaugeData}
+          >
+            <RadialBar
+              dataKey="value"
+              cornerRadius={6}
+              background={{ fill: '#f1f5f9' }}
+              isAnimationActive={true}
+            />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+          <p className="text-3xl font-black tabular-nums" style={{ color }}>{safeTaxa}%</p>
+          <p className="text-xs font-bold" style={{ color }}>{label}</p>
         </div>
       </div>
       <p className="text-xs text-slate-400 mt-3 text-center">Baseado em msgs vs. correções submetidas</p>
@@ -475,7 +445,6 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
-// FIX: <Legend> REMOVIDO — <Cell> dinâmico + Legend causa crash .color undefined
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -486,9 +455,8 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* SEM <Legend> — evita crash .color undefined com Cell dinâmico */}
-          <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60} isAnimationActive={false}>
-            {data.map((_entry, index) => (
+          <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60}>
+            {data.map((_, index) => (
               <Cell key={index} fill={MSG_BAR_COLORS[index % MSG_BAR_COLORS.length]} />
             ))}
           </Bar>
@@ -608,3 +576,269 @@ function WordCloudSection({ data }: { data: WordCount[] }) {
     </div>
   );
 }
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+export function MetricsDashboardPage({
+  adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<'visao' | 'usuarios' | 'conteudo' | 'qualidade'>('visao');
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const [kpis, setKpis]             = useState<MetricsKPIs | null>(null);
+  const [topUsers, setTopUsers]     = useState<TopUser[]>([]);
+  const [wordCloud, setWordCloud]   = useState<WordCount[]>([]);
+  const [timeSeries, setTimeSeries] = useState<DayCount[]>([]);
+  const [peakHours, setPeakHours]   = useState<HourCount[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
+  const [roleDistribution, setRoleDistribution] = useState<RoleDistribution[]>([]);
+  const [weekdayDistribution, setWeekdayDistribution] = useState<WeekdayCount[]>([]);
+  const [correctionRates, setCorrectionRates] = useState<UserCorrectionRate[]>([]);
+  const [topWordsByRole, setTopWordsByRole] = useState<RoleTopWords[]>([]);
+  const [userStreaks, setUserStreaks] = useState<UserStreak[]>([]);
+  const [msgLengthByRole, setMsgLengthByRole] = useState<MsgLengthByRole[]>([]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [k, tu, wc, ts, ph, ua, rd, wd, cr, twr, us, ml] = await Promise.all([
+        fetchMetricsKPIs(),
+        fetchTopUsers(),
+        fetchWordCloud(),
+        fetchTimeSeries(),
+        fetchPeakHours(),
+        fetchUserActivity(),
+        fetchRoleDistribution(),
+        fetchWeekdayDistribution(),
+        fetchUserCorrectionRates(),
+        fetchTopWordsByRole(),
+        fetchUserStreaks(),
+        fetchMsgLengthByRole(),
+      ]);
+      setKpis(k);
+      setTopUsers(tu);
+      setWordCloud(wc);
+      setTimeSeries(ts);
+      setPeakHours(ph);
+      setUserActivity(ua);
+      setRoleDistribution(rd);
+      setWeekdayDistribution(wd);
+      setCorrectionRates(cr);
+      setTopWordsByRole(twr);
+      setUserStreaks(us);
+      setMsgLengthByRole(ml);
+      setLastUpdated(new Date());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const tabs = [
+    { id: 'visao',    icon: <BarChart2 size={14} />,    label: 'Visão Geral' },
+    { id: 'usuarios', icon: <Users size={14} />,        label: 'Usuários' },
+    { id: 'conteudo', icon: <AlignLeft size={14} />,    label: 'Conteúdo & Uso' },
+    { id: 'qualidade',icon: <Target size={14} />,       label: 'Qualidade IA' },
+  ] as const;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            <ArrowLeft size={15} /> Voltar
+          </button>
+          <div className="flex items-center gap-2 ml-1">
+            <BarChart2 size={16} className="text-blue-500" />
+            <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Equipes & Métricas</span>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-[10px] text-slate-400 font-semibold hidden sm:block">
+                — atualizado {lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <OnlineUsersBadge onlineUsers={onlineUsers} onlineCount={onlineCount} />
+            <button onClick={loadAll} disabled={loading}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors disabled:opacity-40">
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Atualizar
+            </button>
+            <div className="flex items-center gap-2">
+              <UserAvatar name={adminName} size="sm" />
+              <span className="text-xs font-bold text-slate-600 hidden sm:block">{adminName}</span>
+            </div>
+            <button onClick={onLogout} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">
+              <LogOut size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-4 flex gap-1 pb-0">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-colors ${
+                activeTab === t.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}>
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        {loading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <p className="text-sm text-slate-400 font-semibold">Carregando métricas…</p>
+            </div>
+          </div>
+        )}
+
+        {!loading && (
+          <AnimatePresence mode="wait">
+            {/* ── ABA: VISÃO GERAL ── */}
+            {activeTab === 'visao' && (
+              <motion.div key="visao" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                {/* Online agora */}
+                <section>
+                  <SectionTitle icon={<Activity size={16} />} title="Online Agora" subtitle="Presença em tempo real via WebSocket" />
+                  <OnlineUsersWidget onlineUsers={onlineUsers} onlineCount={onlineCount} />
+                </section>
+
+                {/* KPIs de Mensagens */}
+                <section>
+                  <SectionTitle icon={<MessageSquare size={16} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <KpiCard label="Total de mensagens" value={kpis?.total_msgs ?? 0} icon={<MessageSquare size={20} />} color="blue" />
+                    <KpiCard label="Mensagens hoje" value={kpis?.msgs_today ?? 0} icon={<MessageSquare size={20} />} color="indigo" />
+                    <KpiCard label="Últimos 7 dias" value={kpis?.msgs_7d ?? 0} icon={<TrendingUp size={20} />} color="violet" />
+                    <KpiCard label="Média por usuário" value={kpis?.avg_msgs_per_user ?? 0} suffix="msgs" icon={<BarChart2 size={20} />} color="sky" />
+                  </div>
+                </section>
+
+                {/* KPIs de Usuários */}
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <KpiCard label="Logins hoje" value={kpis?.logins_today ?? 0} icon={<LogIn size={20} />} color="emerald" />
+                    <KpiCard label="Logins (7 dias)" value={kpis?.logins_7d ?? 0} icon={<LogIn size={20} />} color="teal" />
+                    <KpiCard label="Taxa de retorno 7d" value={kpis?.retention_rate ?? 0} suffix="%" icon={<Repeat2 size={20} />} color="cyan" />
+                    <KpiCard
+                      label="Inativos (+3 dias)"
+                      value={kpis?.inactive_users ?? 0}
+                      icon={<UserX size={20} />}
+                      color={((kpis?.inactive_users ?? 0) > 5) ? 'red' : 'amber'}
+                      alert={(kpis?.inactive_users ?? 0) > 5}
+                    />
+                  </div>
+                </section>
+
+                {/* Série temporal */}
+                <section>
+                  <SectionTitle icon={<TrendingUp size={16} />} title="Atividade Recente" subtitle="Últimos 14 dias" />
+                  {timeSeries.length > 0 ? <TimeSeriesAreaChart data={timeSeries} /> : <EmptyState label="Sem dados suficientes" />}
+                </section>
+
+                {/* Distribuição por papel */}
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Distribuição por Perfil" />
+                  {roleDistribution.length > 0 ? <RoleDonutChart data={roleDistribution} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: USUÁRIOS ── */}
+            {activeTab === 'usuarios' && (
+              <motion.div key="usuarios" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                <section>
+                  <SectionTitle icon={<BarChart2 size={16} />} title="Top Usuários" subtitle="Por logins e mensagens" />
+                  {topUsers.length > 0 ? <TopUsersChart data={topUsers} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Calendar size={16} />} title="Por Dia da Semana" />
+                  {weekdayDistribution.length > 0 ? <WeekdayBarChart data={weekdayDistribution} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Clock size={16} />} title="Horários de Pico" />
+                  {peakHours.length > 0 ? <PeakHoursBarChart data={peakHours} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Activity size={16} />} title="Atividade por Usuário" />
+                  {userActivity.length > 0 ? <UserActivityTable data={userActivity} /> : <EmptyState label="Sem usuários registrados" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Flame size={16} />} title="Sequências de Acesso" subtitle="Streaks diários de uso" />
+                  <StreakTable data={userStreaks} />
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: CONTEÚDO & USO ── */}
+            {activeTab === 'conteudo' && (
+              <motion.div key="conteudo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                <section>
+                  <SectionTitle icon={<AlignLeft size={16} />} title="Palavras mais usadas" subtitle="Nuvem das últimas 500 mensagens" />
+                  {wordCloud.length > 0 ? <WordCloudSection data={wordCloud} /> : <EmptyState label="Sem dados suficientes" />}
+                </section>
+
+                <section>
+                  <SectionTitle icon={<Users size={16} />} title="Termos por Perfil" subtitle="Top palavras de cada função" />
+                  <TopWordsByRoleSection data={topWordsByRole} />
+                </section>
+
+                <section>
+                  <SectionTitle icon={<AlignLeft size={16} />} title="Tamanho das mensagens" subtitle="Extensão média por perfil" />
+                  {msgLengthByRole.length > 0 ? <MsgLengthChart data={msgLengthByRole} /> : <EmptyState label="Sem dados" />}
+                </section>
+
+              </motion.div>
+            )}
+
+            {/* ── ABA: QUALIDADE IA ── */}
+            {activeTab === 'qualidade' && (
+              <motion.div key="qualidade" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                <section>
+                  <SectionTitle icon={<Target size={16} />} title="Acerto da IA" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <IaAccuracyGauge taxa={kpis?.ia_accuracy ?? 0} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <KpiCard label="Total de correções" value={kpis?.total_corrections ?? 0} icon={<ThumbsDown size={20} />} color="rose" />
+                      <KpiCard label="Correções hoje" value={kpis?.corrections_today ?? 0} icon={<ThumbsDown size={20} />} color="orange" />
+                      <KpiCard label="Usuários que corrigiram" value={kpis?.users_corrected ?? 0} icon={<Users size={20} />} color="amber" />
+                      <KpiCard label="Acerto da IA" value={kpis?.ia_accuracy ?? 0} suffix="%" icon={<Zap size={20} />} color="emerald" />
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <SectionTitle icon={<ThumbsDown size={16} />} title="Correções por Usuário" subtitle="Quem mais revisou respostas da IA" />
+                  <CorrectionRateChart data={correctionRates} />
+                </section>
+
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default MetricsDashboardPage;
