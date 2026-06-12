@@ -11,10 +11,14 @@ import { UserAvatar } from '../components/UserAvatar';
 import { UserProfilePage } from './UserProfilePage';
 import MetricsDashboardPage from './MetricsDashboardPage';
 import type { User, UserRole } from '../App';
+import type { OnlineUser } from '../hooks/useOnlineUsers';
 
 interface AdminPageProps {
   adminName: string;
   adminRole: UserRole;
+  currentUserId: string;
+  onlineUsers: OnlineUser[];
+  onlineCount: number;
   onLogout:  () => void;
   onBack:    () => void;
 }
@@ -57,7 +61,7 @@ const EMPTY_FORM: CreateUserPayload = {
   matricula: '',
 };
 
-export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageProps) {
+export function AdminPage({ adminName, adminRole, currentUserId, onlineUsers, onlineCount, onLogout, onBack }: AdminPageProps) {
   const [users,         setUsers]         = useState<User[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [search,        setSearch]        = useState('');
@@ -123,6 +127,9 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
       <MetricsDashboardPage
         adminName={adminName}
         adminRole={adminRole}
+        currentUserId={currentUserId}
+        onlineUsers={onlineUsers}
+        onlineCount={onlineCount}
         onBack={() => setShowMetrics(false)}
         onLogout={onLogout}
       />
@@ -477,7 +484,7 @@ export function AdminPage({ adminName, adminRole, onLogout, onBack }: AdminPageP
                             canToggle ? 'text-slate-300 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-200 cursor-not-allowed'
                           }`}>
                           {isToggling
-                            ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                             : <Edit2 size={15} />}
                         </button>
                       </div>
