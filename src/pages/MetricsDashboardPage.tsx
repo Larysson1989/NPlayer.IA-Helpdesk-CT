@@ -48,6 +48,13 @@ const ROLE_COLOR: Record<string, { badge: string; hex: string }> = {
 const PIE_COLORS = ['#3b82f6', '#9333ea', '#059669', '#f59e0b', '#ef4444'];
 const WORD_COLORS = ['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0284c7','#16a34a','#ca8a04'];
 
+// Paleta para PeakHours (sem guardar no objeto de dado — evita bug do Recharts v2)
+const PEAK_COLORS_FN = (ratio: number) =>
+  ratio > 0.7 ? '#f87171' : ratio > 0.4 ? '#fbbf24' : '#60a5fa';
+
+// Paleta para MsgLength (sem guardar no objeto de dado)
+const MSG_BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
+
 function fmt(n: number) { return n.toLocaleString('pt-BR'); }
 
 function relTime(iso: string): string {
@@ -63,11 +70,11 @@ function relTime(iso: string): string {
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
-// FIX: payload[].color pode ser undefined em gráficos com fill via dados
-// (ex: MsgLengthChart). Usando fallback '#64748b' para evitar crash.
+// Usado em TODOS os gráficos com <Cell> para evitar crash quando
+// payload[].color é undefined (bug do Recharts v2 com Cell+Legend).
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
-  payload?: { name: string; value: number; color?: string }[];
+  payload?: { name: string; value: number; color?: string; fill?: string }[];
   label?: string;
 }) => {
   if (!active || !payload?.length) return null;
@@ -75,7 +82,7 @@ const CustomTooltip = ({ active, payload, label }: {
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-xs font-semibold text-slate-700">
       {label && <p className="font-black text-slate-500 mb-1">{label}</p>}
       {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color ?? '#64748b' }}>
+        <p key={i} style={{ color: p.color ?? p.fill ?? '#64748b' }}>
           {p.name}: <span className="font-black">{fmt(p.value)}</span>
         </p>
       ))}
@@ -174,24 +181,25 @@ function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
   );
 }
 
+// FIX: não armazena a cor no objeto de dado (evita que o Recharts v2 injete
+// um payload item com .color=undefined ao passar fill via dados).
+// A cor é calculada no renderizador do <Cell> direto, sem poluir o array de dados.
 function PeakHoursBarChart({ data }: { data: HourCount[] }) {
-  const workHours = data.filter(d => d.hour >= 7 && d.hour <= 21);
+  const workHours = (data ?? []).filter(d => d.hour >= 7 && d.hour <= 21);
   const max = Math.max(...workHours.map(d => d.value), 1);
-  const coloredData = workHours.map(d => ({
-    ...d,
-    fill: d.value / max > 0.7 ? '#f87171' : d.value / max > 0.4 ? '#fbbf24' : '#60a5fa',
-  }));
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <p className="text-xs text-slate-400 font-semibold mb-3">Horários comerciais (07h–21h) · últimos 30 dias</p>
       <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={coloredData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+        <BarChart data={workHours} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Bar dataKey="value" name="Mensagens" radius={[4, 4, 0, 0]} maxBarSize={28}>
-            {coloredData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
+          <Bar dataKey="value" name="Mensagens" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false}>
+            {workHours.map((entry, index) => (
+              <Cell key={index} fill={PEAK_COLORS_FN(entry.value / max)} />
+            ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -381,15 +389,13 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
-// FIX: substituído RadialBarChart (causava crash "Cannot read .color of undefined"
-// por causa do prop background={{ fill }} injetar um item undefined no payload)
+// FIX: substituído RadialBarChart (causava crash "Cannot read .color of undefined")
 // por um gauge SVG puro, sem dependência do Recharts.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
 
-  // Arco semi-circular: centro (90,90), raio 70, de 180° a 0°
   const cx = 90, cy = 90, r = 70;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const arcPath = (startDeg: number, endDeg: number) => {
@@ -400,9 +406,7 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
     const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
     return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
   };
-  // 180° (esquerda) → 0° (direita) = semicírculo inferior
   const bgPath = arcPath(180, 0);
-  // Ângulo proporcional à taxa: 180° + (safeTaxa/100)*180°
   const fillEndDeg = 180 + (safeTaxa / 100) * 180;
   const fillPath = safeTaxa > 0 ? arcPath(180, Math.min(fillEndDeg, 359.9)) : null;
 
@@ -411,9 +415,7 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
       <div className="relative" style={{ width: 180, height: 100 }}>
         <svg width={180} height={100} viewBox="0 0 180 100" overflow="visible">
-          {/* Trilha de fundo */}
           <path d={bgPath} fill="none" stroke="#e2e8f0" strokeWidth={14} strokeLinecap="round" />
-          {/* Arco preenchido */}
           {fillPath && (
             <path d={fillPath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
           )}
@@ -428,21 +430,21 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
+// FIX: não armazena a cor no objeto de dado — mesmo padrão do PeakHoursBarChart.
+// O <Bar> tem fill de fallback explícito; <Cell> sobrescreve por índice.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
-  const BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
-  const coloredData = data.map((d, i) => ({ ...d, fill: BAR_COLORS[i % BAR_COLORS.length] }));
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <p className="text-xs text-slate-400 font-semibold mb-3">Caracteres médios por perfil · últimas 500 mensagens</p>
       <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={coloredData} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60}>
-            {coloredData.map((entry, index) => (
-              <Cell key={index} fill={entry.fill} />
+          <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60} isAnimationActive={false}>
+            {data.map((_entry, index) => (
+              <Cell key={index} fill={MSG_BAR_COLORS[index % MSG_BAR_COLORS.length]} />
             ))}
           </Bar>
         </BarChart>
@@ -692,13 +694,11 @@ export function MetricsDashboardPage({
             {activeTab === 'visao' && (
               <motion.div key="visao" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
 
-                {/* Online agora */}
                 <section>
                   <SectionTitle icon={<Activity size={16} />} title="Online Agora" subtitle="Presença em tempo real via WebSocket" />
                   <OnlineUsersWidget onlineUsers={onlineUsers} onlineCount={onlineCount} />
                 </section>
 
-                {/* KPIs de Mensagens */}
                 <section>
                   <SectionTitle icon={<MessageSquare size={16} />} title="Mensagens" subtitle="Volume total de interações com a IA" />
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -709,7 +709,6 @@ export function MetricsDashboardPage({
                   </div>
                 </section>
 
-                {/* KPIs de Usuários */}
                 <section>
                   <SectionTitle icon={<Users size={16} />} title="Usuários" subtitle="Engajamento e presença da equipe" />
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -726,13 +725,11 @@ export function MetricsDashboardPage({
                   </div>
                 </section>
 
-                {/* Série temporal */}
                 <section>
                   <SectionTitle icon={<TrendingUp size={16} />} title="Atividade Recente" subtitle="Últimos 14 dias" />
                   {timeSeries.length > 0 ? <TimeSeriesAreaChart data={timeSeries} /> : <EmptyState label="Sem dados suficientes" />}
                 </section>
 
-                {/* Distribuição por papel */}
                 <section>
                   <SectionTitle icon={<Users size={16} />} title="Distribuição por Perfil" />
                   {roleDistribution.length > 0 ? <RoleDonutChart data={roleDistribution} /> : <EmptyState label="Sem dados" />}
