@@ -56,6 +56,13 @@ const ROLE_BADGE: Record<UserRole, { label: string; color: string }> = {
   administrador: { label: 'Admin',      color: 'text-emerald-600 bg-emerald-50' },
 };
 
+const ROLE_BADGE_FALLBACK = { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+
+function getRoleBadge(role: UserRole | null | undefined) {
+  if (!role) return ROLE_BADGE_FALLBACK;
+  return ROLE_BADGE[role] ?? ROLE_BADGE_FALLBACK;
+}
+
 function isRecoveryUrl(): boolean {
   const hash   = window.location.hash;
   const search = window.location.search;
@@ -172,7 +179,7 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  const badge      = getRoleBadge(user.role);
   const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
   const hasAdmin   = canAccessAdmin(user.role);
