@@ -48,11 +48,11 @@ const ROLE_COLOR: Record<string, { badge: string; hex: string }> = {
 const PIE_COLORS = ['#3b82f6', '#9333ea', '#059669', '#f59e0b', '#ef4444'];
 const WORD_COLORS = ['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0284c7','#16a34a','#ca8a04'];
 
-// Paleta para PeakHours (sem guardar no objeto de dado — evita bug do Recharts v2)
+// Paleta para PeakHours (calculada no Cell, nunca armazenada no dado)
 const PEAK_COLORS_FN = (ratio: number) =>
   ratio > 0.7 ? '#f87171' : ratio > 0.4 ? '#fbbf24' : '#60a5fa';
 
-// Paleta para MsgLength (sem guardar no objeto de dado)
+// Paleta para MsgLength (calculada no Cell, nunca armazenada no dado)
 const MSG_BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
 
 function fmt(n: number) { return n.toLocaleString('pt-BR'); }
@@ -70,22 +70,27 @@ function relTime(iso: string): string {
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
-// Usado em TODOS os gráficos com <Cell> para evitar crash quando
-// payload[].color é undefined (bug do Recharts v2 com Cell+Legend).
+// Guarda-chuva contra o bug do Recharts v2: payload items gerados pelo Legend
+// chegam com .color === undefined quando se usa <Cell>. Aqui usamos ?? para
+// cair no fill ou num cinza neutro, sem jamais ler .color de undefined.
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
-  payload?: { name: string; value: number; color?: string; fill?: string }[];
+  payload?: Array<{ name?: string; value?: number; color?: string; fill?: string } | undefined | null>;
   label?: string;
 }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-xs font-semibold text-slate-700">
       {label && <p className="font-black text-slate-500 mb-1">{label}</p>}
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color ?? p.fill ?? '#64748b' }}>
-          {p.name}: <span className="font-black">{fmt(p.value)}</span>
-        </p>
-      ))}
+      {payload.map((p, i) => {
+        if (!p) return null;
+        const color = p.color ?? p.fill ?? '#64748b';
+        return (
+          <p key={i} style={{ color }}>
+            {p.name ?? ''}: <span className="font-black">{fmt(p.value ?? 0)}</span>
+          </p>
+        );
+      })}
     </div>
   );
 };
@@ -181,9 +186,9 @@ function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
   );
 }
 
-// FIX: não armazena a cor no objeto de dado (evita que o Recharts v2 injete
-// um payload item com .color=undefined ao passar fill via dados).
-// A cor é calculada no renderizador do <Cell> direto, sem poluir o array de dados.
+// FIX: <Legend> REMOVIDO — gráfico com <Cell> dinâmico causa crash no Recharts v2
+// porque o Legend injeta itens extras no payload com .color=undefined.
+// A legenda foi substituída por elementos HTML manuais abaixo do gráfico.
 function PeakHoursBarChart({ data }: { data: HourCount[] }) {
   const workHours = (data ?? []).filter(d => d.hour >= 7 && d.hour <= 21);
   const max = Math.max(...workHours.map(d => d.value), 1);
@@ -196,6 +201,7 @@ function PeakHoursBarChart({ data }: { data: HourCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          {/* SEM <Legend> — evita crash .color undefined com Cell dinâmico */}
           <Bar dataKey="value" name="Mensagens" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false}>
             {workHours.map((entry, index) => (
               <Cell key={index} fill={PEAK_COLORS_FN(entry.value / max)} />
@@ -235,6 +241,7 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={CustomPieLabel as React.FC}>
               {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
+            {/* SEM <Legend> — usa legenda manual ao lado para evitar crash */}
             <Tooltip formatter={(v: number, name: string) => [`${fmt(v)} msgs`, name]} />
           </PieChart>
         </ResponsiveContainer>
@@ -380,7 +387,7 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          {/* SEM <Legend> — sem Cell dinâmico aqui, mas mantemos consistência */}
           <Bar dataKey="correcoes" name="Correções" fill="#f87171" radius={[0, 4, 4, 0]} maxBarSize={18} />
         </BarChart>
       </ResponsiveContainer>
@@ -389,8 +396,7 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
-// FIX: substituído RadialBarChart (causava crash "Cannot read .color of undefined")
-// por um gauge SVG puro, sem dependência do Recharts.
+// SVG puro — sem Recharts, sem risco de crash de .color undefined.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
@@ -430,8 +436,8 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
-// FIX: não armazena a cor no objeto de dado — mesmo padrão do PeakHoursBarChart.
-// O <Bar> tem fill de fallback explícito; <Cell> sobrescreve por índice.
+// FIX: <Legend> REMOVIDO — <Cell> dinâmico + Legend causa crash .color undefined
+// no Recharts v2. A distinção de cores já é visual pelas próprias barras.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -442,6 +448,7 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+          {/* SEM <Legend> — evita crash .color undefined com Cell dinâmico */}
           <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60} isAnimationActive={false}>
             {data.map((_entry, index) => (
               <Cell key={index} fill={MSG_BAR_COLORS[index % MSG_BAR_COLORS.length]} />
