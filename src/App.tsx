@@ -6,7 +6,7 @@ import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import MetricsDashboardPage from './pages/MetricsDashboardPage';
+import { MetricsDashboardPage } from './pages/MetricsDashboardPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
