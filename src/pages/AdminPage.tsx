@@ -9,7 +9,7 @@ import { getAllUsers, updateUserActive, createUser } from '../lib/auth';
 import type { CreateUserPayload } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
 import { UserProfilePage } from './UserProfilePage';
-import { MetricsDashboardPage } from './MetricsDashboardPage';
+import MetricsDashboardPage from './MetricsDashboardPage';
 import type { User, UserRole } from '../App';
 import type { OnlineUser } from '../hooks/useOnlineUsers';
 
