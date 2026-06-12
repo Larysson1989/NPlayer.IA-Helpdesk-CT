@@ -6,7 +6,7 @@ import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { MetricsDashboardPage } from './pages/MetricsDashboardPage';
+import MetricsDashboardPage from './pages/MetricsDashboardPage';
 import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
@@ -73,7 +73,7 @@ export default function App() {
   const [activeProfilePage, setActiveProfilePage]   = useState<ProfilePage | null>(null);
   const textareaRef                                 = useRef<HTMLTextAreaElement>(null);
 
-  // ── Presence ÚNICO para toda a app — NUNCA desmontado enquanto user estiver logado ──
+  // ── Presence Único para toda a app — NUNCA desmontado enquanto user estiver logado ──
   const presenceUser = user
     ? { id: user.id, name: user.name, role: user.role ?? 'captador' }
     : null;
@@ -172,26 +172,23 @@ export default function App() {
     return <AuthPage onSuccess={handleLogin} />;
   }
 
-  // ── A partir daqui o user está logado.
-  // useOnlineUsers está ativo e NUNCA será desmontado pelo roteamento abaixo.
-  // Todas as "páginas" são renderizadas como sobreposição ou substituição de conteúdo
-  // DENTRO deste componente, sem desmontar o App.
-
   const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
   const hasAdmin   = canAccessAdmin(user.role);
 
-  // --- Sub-páginas renderizadas como "overlay" (mantém App montado) ---
+  // --- Sub-páginas ---
   if (activeProfilePage === 'admin') {
     if (!canAccessAdmin(user.role)) { setActiveProfilePage(null); return null; }
     return (
       <>
-        {/* Presence mantido vivo — badge de debug visível */}
         <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
         <AdminPage
           adminName={user.name}
           adminRole={user.role ?? 'supervisor'}
+          currentUserId={user.id}
+          onlineUsers={onlineUsers}
+          onlineCount={onlineCount}
           onLogout={handleLogout}
           onBack={() => setActiveProfilePage(null)}
         />
@@ -250,7 +247,6 @@ export default function App() {
   if (activeChatQuery !== null) {
     return (
       <>
-        {/* Presence MANTIDO ATIVO durante o chat — badge no canto */}
         <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
         <ChatView
           user={user}
@@ -267,7 +263,6 @@ export default function App() {
   return (
     <div className="bg-white text-slate-900 min-h-screen flex flex-col">
 
-      {/* Badge de debug — remover após confirmar funcionamento */}
       <PresenceDebugBadge status={presenceStatus} users={onlineUsers} />
 
       <UserModals
