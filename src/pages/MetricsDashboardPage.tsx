@@ -63,9 +63,11 @@ function relTime(iso: string): string {
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
+// FIX: payload[].color pode ser undefined em gráficos com fill via dados
+// (ex: MsgLengthChart). Usando fallback '#64748b' para evitar crash.
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
-  payload?: { name: string; value: number; color: string }[];
+  payload?: { name: string; value: number; color?: string }[];
   label?: string;
 }) => {
   if (!active || !payload?.length) return null;
@@ -73,7 +75,7 @@ const CustomTooltip = ({ active, payload, label }: {
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2.5 text-xs font-semibold text-slate-700">
       {label && <p className="font-black text-slate-500 mb-1">{label}</p>}
       {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }}>
+        <p key={i} style={{ color: p.color ?? '#64748b' }}>
           {p.name}: <span className="font-black">{fmt(p.value)}</span>
         </p>
       ))}
@@ -423,12 +425,12 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
-// FIX: MsgLengthChart — <Cell> dentro de <Bar> pode crashar quando
-// o Recharts itera sobre células e tenta acessar propriedades de entrada
-// undefined. Substituído por cores fixadas diretamente nos dados.
+// FIX: MsgLengthChart — <Bar> sem fill explícito faz o Recharts não propagar
+// a propriedade color para o payload do CustomTooltip, causando crash.
+// Solução: passar fill diretamente na prop do <Bar> e usar <Cell> com as cores
+// já injetadas nos dados para colorir cada barra individualmente.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   const BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
-  // injeta fill nos próprios dados para evitar uso de <Cell>
   const coloredData = data.map((d, i) => ({ ...d, fill: BAR_COLORS[i % BAR_COLORS.length] }));
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -439,8 +441,12 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* fill via dataKey no objeto — sem <Cell> para evitar crash */}
-          <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60} />
+          {/* fill="#3b82f6" como fallback + <Cell> para cores individuais por barra */}
+          <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60}>
+            {coloredData.map((entry, index) => (
+              <Cell key={index} fill={entry.fill} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
