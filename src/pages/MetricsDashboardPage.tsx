@@ -251,7 +251,7 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <ResponsiveContainer width={180} height={180}>
-          <PieChart>
+          <PieChart key={pieData.map(d => d.value).join("-")}>
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={CustomPieLabel as any}>
               {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
@@ -418,7 +418,7 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
       <div className="relative">
         <ResponsiveContainer width={180} height={120}>
-          <RadialBarChart
+          <RadialBarChart key={taxa}
             cx="50%"
             cy="100%"
             innerRadius={60}
