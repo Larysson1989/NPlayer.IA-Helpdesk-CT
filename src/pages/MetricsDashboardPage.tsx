@@ -9,7 +9,7 @@ import {
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, RadialBarChart, RadialBar,
+  ResponsiveContainer,
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
 import { OnlineUsersWidget, OnlineUsersBadge } from '../components/OnlineUsersWidget';
@@ -381,36 +381,46 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
+// FIX: substituído RadialBarChart (causava crash "Cannot read .color of undefined"
+// por causa do prop background={{ fill }} injetar um item undefined no payload)
+// por um gauge SVG puro, sem dependência do Recharts.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
-  const gaugeData = [{ name: 'Taxa', value: safeTaxa, fill: color }];
+
+  // Arco semi-circular: centro (90,90), raio 70, de 180° a 0°
+  const cx = 90, cy = 90, r = 70;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const arcPath = (startDeg: number, endDeg: number) => {
+    const x1 = cx + r * Math.cos(toRad(startDeg));
+    const y1 = cy + r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg));
+    const y2 = cy + r * Math.sin(toRad(endDeg));
+    const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+  // 180° (esquerda) → 0° (direita) = semicírculo inferior
+  const bgPath = arcPath(180, 0);
+  // Ângulo proporcional à taxa: 180° + (safeTaxa/100)*180°
+  const fillEndDeg = 180 + (safeTaxa / 100) * 180;
+  const fillPath = safeTaxa > 0 ? arcPath(180, Math.min(fillEndDeg, 359.9)) : null;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
       <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Taxa de Acerto da IA</p>
-      <div className="relative">
-        <ResponsiveContainer width={180} height={120}>
-          <RadialBarChart
-            cx="50%"
-            cy="100%"
-            innerRadius={60}
-            outerRadius={90}
-            startAngle={180}
-            endAngle={0}
-            data={gaugeData}
-          >
-            <RadialBar
-              dataKey="value"
-              cornerRadius={6}
-              background={{ fill: '#f1f5f9' }}
-              isAnimationActive={true}
-            />
-          </RadialBarChart>
-        </ResponsiveContainer>
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-          <p className="text-3xl font-black tabular-nums" style={{ color }}>{safeTaxa}%</p>
-          <p className="text-xs font-bold" style={{ color }}>{label}</p>
+      <div className="relative" style={{ width: 180, height: 100 }}>
+        <svg width={180} height={100} viewBox="0 0 180 100" overflow="visible">
+          {/* Trilha de fundo */}
+          <path d={bgPath} fill="none" stroke="#e2e8f0" strokeWidth={14} strokeLinecap="round" />
+          {/* Arco preenchido */}
+          {fillPath && (
+            <path d={fillPath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <p className="text-3xl font-black tabular-nums leading-none" style={{ color }}>{safeTaxa}%</p>
+          <p className="text-xs font-bold mt-0.5" style={{ color }}>{label}</p>
         </div>
       </div>
       <p className="text-xs text-slate-400 mt-3 text-center">Baseado em msgs vs. correções submetidas</p>
