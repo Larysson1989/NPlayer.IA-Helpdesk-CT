@@ -9,7 +9,7 @@ import { getAllUsers, updateUserActive, createUser } from '../lib/auth';
 import type { CreateUserPayload } from '../lib/auth';
 import { UserAvatar } from '../components/UserAvatar';
 import { UserProfilePage } from './UserProfilePage';
-import MetricsDashboardPage from './MetricsDashboardPage';
+import { MetricsDashboardPage } from './MetricsDashboardPage';
 import type { User, UserRole } from '../App';
 import type { OnlineUser } from '../hooks/useOnlineUsers';
 
@@ -584,78 +584,76 @@ export function AdminPage({ adminName, adminRole, currentUserId, onlineUsers, on
                       type="button"
                       onClick={() => setShowPassword(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      tabIndex={-1}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">O usuário poderá alterar a senha após o primeiro acesso.</p>
                 </div>
 
-                {/* Linha: Perfil + Matrícula */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Perfil <span className="text-red-400">*</span></label>
-                    <select
-                      value={form.role}
-                      onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
-                      className="w-full h-11 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-                    >
-                      {CREATABLE_ROLES.map(r => (
-                        <option key={r} value={r}>
-                          {ROLE_CONFIG[r].label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Matrícula</label>
-                    <input
-                      type="text"
-                      value={form.matricula}
-                      onChange={e => setForm(f => ({ ...f, matricula: e.target.value }))}
-                      placeholder="Opcional"
-                      className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
+                {/* Matrícula */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Matrícula <span className="text-slate-300 font-normal normal-case">(opcional)</span></label>
+                  <input
+                    type="text"
+                    value={form.matricula}
+                    onChange={e => setForm(f => ({ ...f, matricula: e.target.value }))}
+                    placeholder="Ex: 12345"
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                {/* Perfil */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Perfil <span className="text-red-400">*</span></label>
+                  <div className="flex gap-2 flex-wrap">
+                    {CREATABLE_ROLES.map(role => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, role }))}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${
+                          form.role === role
+                            ? role === 'administrador'
+                              ? 'bg-emerald-500 text-white border-emerald-500'
+                              : role === 'supervisor'
+                              ? 'bg-purple-500 text-white border-purple-500'
+                              : 'bg-blue-500 text-white border-blue-500'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {ROLE_CONFIG[role].label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Feedback de erro */}
+                {/* Feedback */}
                 {createError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium"
-                  >
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600">
                     <AlertCircle size={15} className="shrink-0" />
                     {createError}
-                  </motion.div>
+                  </div>
                 )}
-
-                {/* Feedback de sucesso */}
                 {createSuccess && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-medium"
-                  >
+                  <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-semibold text-emerald-600">
                     <CheckCircle2 size={15} className="shrink-0" />
                     {createSuccess}
-                  </motion.div>
+                  </div>
                 )}
 
                 {/* Botões */}
-                <div className="flex justify-end gap-3 pt-1">
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
                     onClick={closeCreateModal}
-                    disabled={saving}
-                    className="h-10 px-5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    className="flex-1 h-11 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    disabled={saving || !!createSuccess}
-                    className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    disabled={saving}
+                    className="flex-1 h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {saving ? (
                       <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Criando...</>
