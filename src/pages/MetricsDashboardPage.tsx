@@ -218,7 +218,7 @@ function PeakHoursBarChart({ data }: { data: HourCount[] }) {
           {/* SEM <Legend> — evita crash .color undefined com Cell dinâmico */}
           <Bar dataKey="value" name="Mensagens" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false}>
             {workHours.map((entry, index) => (
-              <Cell key={index} fill={PEAK_COLORS_FN(entry.value / max)} />
+              <Cell key={`cell-${index}`} fill={PEAK_COLORS_FN(entry.value / max)} />
             ))}
           </Bar>
         </BarChart>
@@ -253,7 +253,7 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
         <ResponsiveContainer width={180} height={180}>
           <PieChart key={pieData.map(d => d.value).join("-")}>
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={CustomPieLabel as any}>
-              {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+              {pieData.map((_, i) => <Cell key={`pie-cell-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: number, name: string) => [`${fmt(v)} msgs`, name]} />
           </PieChart>
@@ -457,7 +457,7 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
           <Bar dataKey="media" name="Caracteres médios" radius={[6, 6, 0, 0]} maxBarSize={60}>
             {data.map((_, index) => (
-              <Cell key={index} fill={MSG_BAR_COLORS[index % MSG_BAR_COLORS.length]} />
+              <Cell key={`cell-${index}`} fill={MSG_BAR_COLORS[index % MSG_BAR_COLORS.length]} />
             ))}
           </Bar>
         </BarChart>
