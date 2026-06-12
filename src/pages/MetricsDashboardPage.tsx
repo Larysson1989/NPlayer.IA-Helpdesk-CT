@@ -381,16 +381,10 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
-// FIX: RadialBarChart com dados mistos (valor + fundo) causa crash
-// "Cannot read properties of undefined (reading 'color')" porque o Recharts
-// tenta acessar entry.color internamente em algumas versões.
-// Solução: usar apenas UMA barra de dados com fill no próprio objeto,
-// e definir background via prop do RadialBar — NÃO usar <Cell> aqui.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
   const label = safeTaxa >= 90 ? 'Excelente' : safeTaxa >= 70 ? 'Atenção' : 'Crítico';
-  // SOMENTE o segmento real — fill no objeto de dado, sem <Cell> e sem segmento "Resto"
   const gaugeData = [{ name: 'Taxa', value: safeTaxa, fill: color }];
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col items-center">
@@ -406,7 +400,6 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
             endAngle={0}
             data={gaugeData}
           >
-            {/* background como prop do RadialBar — evita crash por entry undefined */}
             <RadialBar
               dataKey="value"
               cornerRadius={6}
@@ -425,10 +418,6 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
   );
 }
 
-// FIX: MsgLengthChart — <Bar> sem fill explícito faz o Recharts não propagar
-// a propriedade color para o payload do CustomTooltip, causando crash.
-// Solução: passar fill diretamente na prop do <Bar> e usar <Cell> com as cores
-// já injetadas nos dados para colorir cada barra individualmente.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   const BAR_COLORS = ['#3b82f6', '#9333ea', '#059669'];
   const coloredData = data.map((d, i) => ({ ...d, fill: BAR_COLORS[i % BAR_COLORS.length] }));
@@ -441,7 +430,6 @@ function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
           <XAxis dataKey="role" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          {/* fill="#3b82f6" como fallback + <Cell> para cores individuais por barra */}
           <Bar dataKey="media" name="Caracteres médios" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60}>
             {coloredData.map((entry, index) => (
               <Cell key={index} fill={entry.fill} />
@@ -565,7 +553,7 @@ function WordCloudSection({ data }: { data: WordCount[] }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
-export default function MetricsDashboardPage({
+export function MetricsDashboardPage({
   adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout,
 }: Props) {
   const [activeTab, setActiveTab] = useState<'visao' | 'usuarios' | 'conteudo' | 'qualidade'>('visao');
@@ -827,3 +815,5 @@ export default function MetricsDashboardPage({
     </div>
   );
 }
+
+export default MetricsDashboardPage;
