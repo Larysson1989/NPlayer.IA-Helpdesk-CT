@@ -189,7 +189,7 @@ export default function App() {
   }
 
   // Dashboard principal
-  const badge      = user.role ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
+  const badge      = user.role && ROLE_BADGE[user.role] ? ROLE_BADGE[user.role] : { label: 'Sem perfil', color: 'text-slate-400 bg-slate-100' };
   const firstName  = user.name.split(' ')[0];
   const hasMetrics = canAccessMetrics(user.role);
   const hasAdmin   = canAccessAdmin(user.role);
