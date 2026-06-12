@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts';
 import { UserAvatar } from '../components/UserAvatar';
@@ -70,9 +70,6 @@ function relTime(iso: string): string {
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
-// Guarda-chuva contra o bug do Recharts v2: payload items gerados pelo Legend
-// chegam com .color === undefined quando se usa <Cell>. Aqui usamos ?? para
-// cair no fill ou num cinza neutro, sem jamais ler .color de undefined.
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
   payload?: Array<{ name?: string; value?: number; color?: string; fill?: string } | undefined | null>;
@@ -157,6 +154,24 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
+// ─── Legenda manual reutilizável (substitui <Legend> do Recharts) ─────────────
+// FIX: <Legend> do Recharts v2 causa crash "Cannot read properties of undefined
+// (reading 'color')" quando usado junto com <Cell> dinâmico ou em certos
+// cenários de re-render. Substituído por este componente HTML puro em todos
+// os gráficos da página.
+function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2">
+      {items.map(item => (
+        <span key={item.label} className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+          <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ─── Gráfico de Área ──────────────────────────────────────────────────────────
 function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
   return (
@@ -177,18 +192,17 @@ function TimeSeriesAreaChart({ data }: { data: DayCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} />
-          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          {/* SEM <Legend> — usa ChartLegend HTML abaixo para evitar crash .color undefined */}
           <Area type="monotone" dataKey="logins" name="Logins" stroke="#3b82f6" strokeWidth={2} fill="url(#gradLogins)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#3b82f6' }} />
           <Area type="monotone" dataKey="msgs" name="Mensagens" stroke="#8b5cf6" strokeWidth={2} fill="url(#gradMsgs)" dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#8b5cf6' }} />
         </AreaChart>
       </ResponsiveContainer>
+      <ChartLegend items={[{ label: 'Logins', color: '#3b82f6' }, { label: 'Mensagens', color: '#8b5cf6' }]} />
     </div>
   );
 }
 
 // FIX: <Legend> REMOVIDO — gráfico com <Cell> dinâmico causa crash no Recharts v2
-// porque o Legend injeta itens extras no payload com .color=undefined.
-// A legenda foi substituída por elementos HTML manuais abaixo do gráfico.
 function PeakHoursBarChart({ data }: { data: HourCount[] }) {
   const workHours = (data ?? []).filter(d => d.hour >= 7 && d.hour <= 21);
   const max = Math.max(...workHours.map(d => d.value), 1);
@@ -234,11 +248,6 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
     return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 11, fontWeight: 900 }}>{pct}%</text>;
   };
 
-  // FIX: CustomTooltip substituindo o Tooltip padrão do Recharts.
-  // O Tooltip padrão chama internamente uma função que lê `.color` do payload
-  // gerado pelas <Cell>. Quando o item vem de um PieChart com Cell dinâmico,
-  // `.color` chega como undefined → TypeError crash.
-  // O CustomTooltip usa `p.color ?? p.fill ?? fallback` para nunca crashar.
   const PieTooltip = ({ active, payload }: {
     active?: boolean;
     payload?: Array<{ name?: string; value?: number; color?: string; fill?: string; payload?: { users?: number } } | undefined | null>;
@@ -271,7 +280,6 @@ function RoleDonutChart({ data }: { data: RoleDistribution[] }) {
               {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
             {/* SEM <Legend> — usa legenda manual ao lado para evitar crash */}
-            {/* FIX: usa PieTooltip customizado em vez do Tooltip padrão */}
             <Tooltip content={<PieTooltip />} />
           </PieChart>
         </ResponsiveContainer>
@@ -370,11 +378,12 @@ function TopUsersChart({ data }: { data: TopUser[] }) {
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          {/* SEM <Legend> — usa ChartLegend HTML abaixo para evitar crash .color undefined */}
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={14} />
           <Bar dataKey="mensagens" name="Mensagens" fill="#8b5cf6" radius={[0, 4, 4, 0]} maxBarSize={14} />
         </BarChart>
       </ResponsiveContainer>
+      <ChartLegend items={[{ label: 'Logins', color: '#3b82f6' }, { label: 'Mensagens', color: '#8b5cf6' }]} />
     </div>
   );
 }
@@ -389,11 +398,12 @@ function WeekdayBarChart({ data }: { data: WeekdayCount[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-          <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs font-bold text-slate-500">{v}</span>} />
+          {/* SEM <Legend> — usa ChartLegend HTML abaixo para evitar crash .color undefined */}
           <Bar dataKey="logins" name="Logins" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
           <Bar dataKey="msgs" name="Mensagens" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={32} />
         </BarChart>
       </ResponsiveContainer>
+      <ChartLegend items={[{ label: 'Logins', color: '#3b82f6' }, { label: 'Mensagens', color: '#8b5cf6' }]} />
     </div>
   );
 }
@@ -426,7 +436,6 @@ function CorrectionRateChart({ data }: { data: UserCorrectionRate[] }) {
 }
 
 // ─── Gauge de acerto da IA ────────────────────────────────────────────────────
-// SVG puro — sem Recharts, sem risco de crash de .color undefined.
 function IaAccuracyGauge({ taxa }: { taxa: number }) {
   const safeTaxa = Number.isFinite(taxa) ? Math.max(0, Math.min(100, taxa)) : 0;
   const color = safeTaxa >= 90 ? '#10b981' : safeTaxa >= 70 ? '#f59e0b' : '#ef4444';
@@ -467,7 +476,6 @@ function IaAccuracyGauge({ taxa }: { taxa: number }) {
 }
 
 // FIX: <Legend> REMOVIDO — <Cell> dinâmico + Legend causa crash .color undefined
-// no Recharts v2. A distinção de cores já é visual pelas próprias barras.
 function MsgLengthChart({ data }: { data: MsgLengthByRole[] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -597,257 +605,6 @@ function WordCloudSection({ data }: { data: WordCount[] }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// ─── Página principal ─────────────────────────────────────────────────────────
-export function MetricsDashboardPage({
-  adminName, adminRole, currentUserId, onlineUsers, onlineCount, onBack, onLogout,
-}: Props) {
-  const [activeTab, setActiveTab] = useState<'visao' | 'usuarios' | 'conteudo' | 'qualidade'>('visao');
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const [kpis, setKpis]             = useState<MetricsKPIs | null>(null);
-  const [topUsers, setTopUsers]     = useState<TopUser[]>([]);
-  const [wordCloud, setWordCloud]   = useState<WordCount[]>([]);
-  const [timeSeries, setTimeSeries] = useState<DayCount[]>([]);
-  const [peakHours, setPeakHours]   = useState<HourCount[]>([]);
-  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
-  const [roleDistribution, setRoleDistribution] = useState<RoleDistribution[]>([]);
-  const [weekdayDistribution, setWeekdayDistribution] = useState<WeekdayCount[]>([]);
-  const [correctionRates, setCorrectionRates] = useState<UserCorrectionRate[]>([]);
-  const [topWordsByRole, setTopWordsByRole] = useState<RoleTopWords[]>([]);
-  const [userStreaks, setUserStreaks] = useState<UserStreak[]>([]);
-  const [msgLengthByRole, setMsgLengthByRole] = useState<MsgLengthByRole[]>([]);
-
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [k, tu, wc, ts, ph, ua, rd, wd, cr, twr, us, ml] = await Promise.all([
-        fetchMetricsKPIs(),
-        fetchTopUsers(),
-        fetchWordCloud(),
-        fetchTimeSeries(),
-        fetchPeakHours(),
-        fetchUserActivity(),
-        fetchRoleDistribution(),
-        fetchWeekdayDistribution(),
-        fetchUserCorrectionRates(),
-        fetchTopWordsByRole(),
-        fetchUserStreaks(),
-        fetchMsgLengthByRole(),
-      ]);
-      setKpis(k);
-      setTopUsers(tu);
-      setWordCloud(wc);
-      setTimeSeries(ts);
-      setPeakHours(ph);
-      setUserActivity(ua);
-      setRoleDistribution(rd);
-      setWeekdayDistribution(wd);
-      setCorrectionRates(cr);
-      setTopWordsByRole(twr);
-      setUserStreaks(us);
-      setMsgLengthByRole(ml);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('[MetricsDashboard] loadAll error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadAll(); }, [loadAll]);
-
-  const iaAccuracy = (() => {
-    if (!kpis) return 0;
-    const total = kpis.total_msgs ?? 0;
-    const corr  = kpis.total_corrections ?? 0;
-    if (total === 0) return 100;
-    return Math.round(((total - corr) / total) * 100);
-  })();
-
-  const tabs = [
-    { id: 'visao',     label: 'Visão Geral',  icon: <BarChart2 size={14} /> },
-    { id: 'usuarios',  label: 'Usuários',     icon: <Users size={14} /> },
-    { id: 'conteudo',  label: 'Conteúdo',     icon: <AlignLeft size={14} /> },
-    { id: 'qualidade', label: 'Qualidade IA', icon: <Target size={14} /> },
-  ] as const;
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500">
-              <ArrowLeft size={18} />
-            </button>
-            <div className="flex items-center gap-2">
-              <BarChart2 size={18} className="text-blue-500" />
-              <span className="text-sm font-black text-slate-800 hidden sm:block">Dashboard de Métricas</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <OnlineUsersBadge count={onlineCount} />
-            {lastUpdated && (
-              <span className="text-[10px] text-slate-400 hidden md:block">
-                Atualizado {relTime(lastUpdated.toISOString())}
-              </span>
-            )}
-            <button onClick={loadAll} disabled={loading}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 disabled:opacity-50">
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <UserAvatar name={adminName} size="sm" />
-            <button onClick={onLogout} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-slate-400 hover:text-red-500">
-              <LogOut size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 flex gap-1 pb-2 overflow-x-auto">
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-colors whitespace-nowrap ${
-                activeTab === t.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-              }`}>
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      {/* Online Users Widget */}
-      {onlineUsers.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 pt-4">
-          <OnlineUsersWidget users={onlineUsers} />
-        </div>
-      )}
-
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <AnimatePresence mode="wait">
-          {loading ? (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-24 gap-3">
-              <RefreshCw size={28} className="text-blue-400 animate-spin" />
-              <p className="text-sm font-bold text-slate-400">Carregando métricas…</p>
-            </motion.div>
-          ) : (
-            <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-
-              {/* ── VISÃO GERAL ── */}
-              {activeTab === 'visao' && (
-                <div className="space-y-8">
-                  <section>
-                    <SectionTitle icon={<TrendingUp size={16} />} title="KPIs Principais" subtitle="Totais acumulados" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                      <KpiCard label="Usuários" value={kpis?.total_users ?? 0} icon={<Users size={18} />} color="blue" />
-                      <KpiCard label="Mensagens" value={kpis?.total_msgs ?? 0} icon={<MessageSquare size={18} />} color="violet" />
-                      <KpiCard label="Logins" value={kpis?.total_logins ?? 0} icon={<LogIn size={18} />} color="sky" />
-                      <KpiCard label="Dias ativos" value={kpis?.avg_active_days ?? 0} icon={<Calendar size={18} />} color="teal" suffix=" média" />
-                      <KpiCard label="Correções" value={kpis?.total_corrections ?? 0} icon={<Repeat2 size={18} />} color="amber" alert={(kpis?.total_corrections ?? 0) > 50} />
-                      <KpiCard label="Thumbs down" value={kpis?.total_thumbs_down ?? 0} icon={<ThumbsDown size={18} />} color="red" alert={(kpis?.total_thumbs_down ?? 0) > 20} />
-                    </div>
-                  </section>
-
-                  <section>
-                    <SectionTitle icon={<TrendingUp size={16} />} title="Evolução Diária" subtitle="Últimos 30 dias" />
-                    {timeSeries.length > 0 ? <TimeSeriesAreaChart data={timeSeries} /> : <EmptyState label="Sem dados de série temporal" />}
-                  </section>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <section>
-                      <SectionTitle icon={<Clock size={16} />} title="Horários de Pico" />
-                      {peakHours.length > 0 ? <PeakHoursBarChart data={peakHours} /> : <EmptyState label="Sem dados de horário" />}
-                    </section>
-                    <section>
-                      <SectionTitle icon={<Calendar size={16} />} title="Dias da Semana" />
-                      {weekdayDistribution.length > 0 ? <WeekdayBarChart data={weekdayDistribution} /> : <EmptyState label="Sem dados de dia da semana" />}
-                    </section>
-                  </div>
-                </div>
-              )}
-
-              {/* ── USUÁRIOS ── */}
-              {activeTab === 'usuarios' && (
-                <div className="space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <section>
-                      <SectionTitle icon={<Users size={16} />} title="Top Usuários" subtitle="Por logins e mensagens" />
-                      {topUsers.length > 0 ? <TopUsersChart data={topUsers} /> : <EmptyState label="Sem dados" />}
-                    </section>
-                    <section>
-                      <SectionTitle icon={<BarChart2 size={16} />} title="Distribuição por Perfil" />
-                      {roleDistribution.length > 0 ? <RoleDonutChart data={roleDistribution} /> : <EmptyState label="Sem dados de perfil" />}
-                    </section>
-                  </div>
-
-                  <section>
-                    <SectionTitle icon={<Activity size={16} />} title="Atividade Individual" subtitle="Todos os usuários cadastrados" />
-                    {userActivity.length > 0 ? <UserActivityTable data={userActivity} /> : <EmptyState label="Sem dados de atividade" />}
-                  </section>
-
-                  <section>
-                    <SectionTitle icon={<Flame size={16} />} title="Streaks de Uso" subtitle="Dias consecutivos de acesso" />
-                    <StreakTable data={userStreaks} />
-                  </section>
-                </div>
-              )}
-
-              {/* ── CONTEÚDO ── */}
-              {activeTab === 'conteudo' && (
-                <div className="space-y-8">
-                  <section>
-                    <SectionTitle icon={<AlignLeft size={16} />} title="Nuvem de Palavras" subtitle="Termos mais usados nas perguntas" />
-                    {wordCloud.length > 0 ? <WordCloudSection data={wordCloud} /> : <EmptyState label="Sem dados de palavras" />}
-                  </section>
-
-                  <section>
-                    <SectionTitle icon={<AlignLeft size={16} />} title="Top Palavras por Perfil" />
-                    <TopWordsByRoleSection data={topWordsByRole} />
-                  </section>
-
-                  <section>
-                    <SectionTitle icon={<AlignLeft size={16} />} title="Comprimento das Mensagens" subtitle="Média de caracteres por perfil" />
-                    {msgLengthByRole.length > 0 ? <MsgLengthChart data={msgLengthByRole} /> : <EmptyState label="Sem dados de comprimento" />}
-                  </section>
-                </div>
-              )}
-
-              {/* ── QUALIDADE IA ── */}
-              {activeTab === 'qualidade' && (
-                <div className="space-y-8">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <KpiCard label="Total correções" value={kpis?.total_corrections ?? 0} icon={<Repeat2 size={18} />} color="amber" />
-                    <KpiCard label="Thumbs down" value={kpis?.total_thumbs_down ?? 0} icon={<ThumbsDown size={18} />} color="red" />
-                    <KpiCard label="Usuários inativos" value={userActivity.filter(u => u.inativo).length} icon={<UserX size={18} />} color="slate" />
-                    <KpiCard label="Acerto IA" value={`${iaAccuracy}%`} icon={<Target size={18} />} color={iaAccuracy >= 90 ? 'emerald' : iaAccuracy >= 70 ? 'amber' : 'red'} />
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <section>
-                      <SectionTitle icon={<Target size={16} />} title="Gauge de Acerto" />
-                      <IaAccuracyGauge taxa={iaAccuracy} />
-                    </section>
-                    <section>
-                      <SectionTitle icon={<Repeat2 size={16} />} title="Correções por Usuário" />
-                      <CorrectionRateChart data={correctionRates} />
-                    </section>
-                  </div>
-                </div>
-              )}
-
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
     </div>
   );
 }
