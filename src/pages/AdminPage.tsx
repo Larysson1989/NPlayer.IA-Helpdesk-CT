@@ -33,6 +33,8 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }
   administrador: { label: 'Administrador', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
+const ROLE_CONFIG_FALLBACK = { label: 'Sem perfil', color: 'text-slate-500', bg: 'bg-slate-100' };
+
 const ROLE_ORDER: Record<UserRole, number> = { captador: 0, supervisor: 1, administrador: 2 };
 
 const COL_GRID = 'grid-cols-[minmax(200px,2fr)_minmax(220px,2.2fr)_90px_130px_120px_44px]';
@@ -411,7 +413,7 @@ export function AdminPage({ adminName, adminRole, currentUserId, onlineUsers, on
             <ul className="divide-y divide-slate-100">
               <AnimatePresence initial={false}>
                 {sorted.map(u => {
-                  const roleCfg = ROLE_CONFIG[u.role];
+                  const roleCfg = ROLE_CONFIG[u.role] ?? ROLE_CONFIG_FALLBACK;
                   const isToggling = toggling === u.id;
                   const canToggle = adminRole === 'administrador' || u.role !== 'administrador';
                   return (
