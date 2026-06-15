@@ -7,15 +7,18 @@ interface Props {
   users: OnlineUser[];
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<PresenceStatus, { color: string; label: string }> = {
+  idle:       { color: 'bg-slate-300',  label: 'Inativo' },
   connecting: { color: 'bg-yellow-400', label: 'Conectando...' },
   connected:  { color: 'bg-emerald-500', label: 'Conectado ✓' },
   error:      { color: 'bg-red-500',     label: 'ERRO de conexão' },
   timeout:    { color: 'bg-orange-500',  label: 'Timeout — sem resposta' },
 };
 
+const STATUS_FALLBACK = { color: 'bg-slate-300', label: 'Desconhecido' };
+
 export function PresenceDebugBadge({ status, users }: Props) {
-  const cfg = STATUS_CONFIG[status];
+  const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
   return (
     <div className="fixed bottom-4 right-4 z-50 bg-white border border-slate-200 shadow-xl rounded-2xl p-3 text-xs font-mono w-64">
       <p className="font-black text-slate-600 mb-2 text-[11px] uppercase tracking-wider">🔧 Debug Presence</p>
