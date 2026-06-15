@@ -32,6 +32,9 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    optimizeDeps: {
+      include: ['emoji-picker-react'],
+    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
