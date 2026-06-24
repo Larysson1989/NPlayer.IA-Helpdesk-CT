@@ -7,7 +7,10 @@ async function getGoogleAccessToken(serviceAccount: any): Promise<string> {
   const header  = { alg: 'RS256', typ: 'JWT' }
   const payload = {
     iss:   serviceAccount.client_email,
-    scope: 'https://www.googleapis.com/auth/drive.readonly',
+    scope: [
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/drive.file',
+    ].join(' '),
     aud:   'https://oauth2.googleapis.com/token',
     exp:   now + 3600,
     iat:   now,
@@ -22,6 +25,7 @@ async function getGoogleAccessToken(serviceAccount: any): Promise<string> {
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
     .replace(/\n/g, '')
+
   const binaryDer = Uint8Array.from(atob(pemContents), (c: string) => c.charCodeAt(0))
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8', binaryDer,
@@ -46,18 +50,17 @@ async function getGoogleAccessToken(serviceAccount: any): Promise<string> {
   return tokenData.access_token
 }
 
-// ─── Lista arquivos ───────────────────────────────────────────────────────────
+// ─── Lista arquivos no Drive ───────────────────────────────────────────────────
 async function listDriveFiles(folderId: string, token: string) {
   const mimeTypes = [
     'application/pdf',
     'text/plain',
-    'application/rtf',
-    'application/msword',
+    'application/vnd.google-apps.document',
+    'application/vnd.google-apps.presentation',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'image/png',
-    'image/jpeg',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
   ]
   const mimeQuery = mimeTypes.map(m => `mimeType='${m}'`).join(' or ')
   const q = encodeURIComponent(`'${folderId}' in parents and (${mimeQuery}) and trashed=false`)
@@ -69,125 +72,115 @@ async function listDriveFiles(folderId: string, token: string) {
   return data.files || []
 }
 
-// ─── Upload para Gemini File API ─────────────────────────────────────────────
-async function uploadToGemini(
-  driveUrl: string,
-  mimeType: string,
-  driveToken: string,
-  geminiKey: string
-): Promise<{ uri: string; name: string }> {
-  const driveRes = await fetch(driveUrl, { headers: { Authorization: `Bearer ${driveToken}` } })
-  if (!driveRes.ok) throw new Error(`Drive download falhou: ${driveRes.status}`)
+// ─── Extrai texto de Google Docs/Slides nativos ────────────────────────────────
+async function extractGoogleNativeText(fileId: string, mimeType: string, token: string): Promise<string> {
+  // Google Docs → exporta como texto plano
+  // Google Slides → exporta como texto plano
+  const exportMime = 'text/plain'
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportMime)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) {
+    console.log(`  ⚠️ Export falhou (${res.status}): ${await res.text()}`)
+    return ''
+  }
+  return await res.text()
+}
 
-  const fileSize = parseInt(driveRes.headers.get('content-length') || '0')
-
-  const uploadRes = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`,
+// ─── Extrai texto de PDF com texto digital ─────────────────────────────────────
+async function extractPdfAsText(fileId: string, token: string): Promise<string> {
+  // Tenta exportar o PDF como Google Doc (Drive faz OCR/extração automática)
+  // Passo 1: Copia o arquivo como Google Doc
+  const copyRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/copy`,
     {
       method: 'POST',
       headers: {
-        'X-Goog-Upload-Protocol': 'raw',
-        'X-Goog-Upload-Header-Content-Type': mimeType,
-        'X-Goog-Upload-Header-Content-Length': String(fileSize),
-        'Content-Type': mimeType,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      body: driveRes.body,
-    }
-  )
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text()
-    throw new Error(`Gemini upload falhou: ${err}`)
-  }
-
-  const uploadData = await uploadRes.json()
-  const uri = uploadData.file?.uri
-  const name = uploadData.file?.name
-  if (!uri) throw new Error(`URI do arquivo Gemini não retornado`)
-  return { uri, name }
-}
-
-// ─── Chama Gemini para gerar texto ───────────────────────────────────────────
-async function callGemini(
-  geminiKey: string,
-  prompt: string,
-  fileUri: string,
-  mimeType: string
-): Promise<string> {
-  const genRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { file_data: { mime_type: mimeType, file_uri: fileUri } }
-          ]
-        }]
-      })
+        mimeType: 'application/vnd.google-apps.document',
+        name: `_temp_extract_${fileId}`,
+      }),
     }
   )
-  const genData = await genRes.json()
-  return genData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-}
 
-// ─── Extrai texto via Gemini File API ────────────────────────────────────────
-async function extractTextViaGemini(
-  fileId: string,
-  mimeType: string,
-  fileName: string,
-  driveToken: string,
-  geminiKey: string
-): Promise<string> {
-  const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
-
-  // TXT: lê direto sem Gemini
-  if (mimeType === 'text/plain') {
-    const res = await fetch(driveUrl, { headers: { Authorization: `Bearer ${driveToken}` } })
-    return res.text()
+  if (!copyRes.ok) {
+    const err = await copyRes.text()
+    console.log(`  ⚠️ Copy para Doc falhou (${copyRes.status}): ${err}`)
+    return ''
   }
 
-  // Upload do arquivo para Gemini
-  const { uri: geminiFileUri, name: geminiFileName } = await uploadToGemini(
-    driveUrl, mimeType, driveToken, geminiKey
-  )
+  const copyData = await copyRes.json()
+  const docId = copyData.id
 
   try {
-    // Prompt inicial — extração de texto padrão
-    const isImage = mimeType.startsWith('image/')
-    const promptPadrao = isImage
-      ? 'Extraia todo o texto visível nesta imagem. Retorne apenas o texto, sem comentários.'
-      : 'Extraia todo o texto deste documento. Retorne apenas o texto puro, sem formatação markdown, sem comentários adicionais.'
+    // Passo 2: Exporta o Doc como texto plano
+    const exportRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text/plain`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
 
-    let text = await callGemini(geminiKey, promptPadrao, geminiFileUri, mimeType)
-    console.log(`  → Texto extraído (${text.length} chars)`)
-
-    // Se texto muito curto → tenta OCR forçado (PDF escaneado / imagem embutida)
-    if (text.length < 50 && !isImage) {
-      console.log(`  ⚠️ Texto curto, tentando OCR forçado...`)
-      const promptOCR = `Este documento pode ser um PDF escaneado ou conter páginas como imagens.
-Por favor, aplique OCR e extraia TODO o texto visível em todas as páginas.
-Inclua títulos, parágrafos, listas, tabelas e qualquer texto impresso.
-Retorne apenas o texto extraído, sem comentários ou explicações.`
-      text = await callGemini(geminiKey, promptOCR, geminiFileUri, mimeType)
-      console.log(`  → OCR forçado: ${text.length} chars`)
+    if (!exportRes.ok) {
+      console.log(`  ⚠️ Export do Doc temporário falhou (${exportRes.status})`)
+      return ''
     }
 
+    const text = await exportRes.text()
     return text
   } finally {
-    // Sempre deleta o arquivo do Gemini após uso
-    if (geminiFileName) {
-      await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/${geminiFileName}?key=${geminiKey}`,
-        { method: 'DELETE' }
-      ).catch(() => {})
-    }
+    // Passo 3: Sempre deleta o Doc temporário
+    await fetch(
+      `https://www.googleapis.com/drive/v3/files/${docId}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    ).catch(() => {})
+    console.log(`  🗑️ Doc temporário deletado`)
   }
 }
 
-// ─── Divide texto em chunks ─────────────────────────────────────────────────
+// ─── Extrai texto de DOCX/PPTX ────────────────────────────────────────────────
+async function extractOfficeText(fileId: string, token: string): Promise<string> {
+  // Mesmo processo: copia como Google Doc e exporta como texto
+  return await extractPdfAsText(fileId, token)
+}
+
+// ─── Extrai texto de arquivo TXT ──────────────────────────────────────────────
+async function extractTxtText(fileId: string, token: string): Promise<string> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) return ''
+  return await res.text()
+}
+
+// ─── Router de extração por tipo ──────────────────────────────────────────────
+async function extractText(file: any, token: string): Promise<string> {
+  const { id, mimeType } = file
+
+  // Google Docs/Slides nativos
+  if (
+    mimeType === 'application/vnd.google-apps.document' ||
+    mimeType === 'application/vnd.google-apps.presentation'
+  ) {
+    return await extractGoogleNativeText(id, mimeType, token)
+  }
+
+  // Texto plano
+  if (mimeType === 'text/plain') {
+    return await extractTxtText(id, token)
+  }
+
+  // PDF, DOCX, PPTX — todos pelo mesmo caminho: copia como Google Doc → exporta texto
+  return await extractPdfAsText(id, token)
+}
+
+// ─── Divide texto em chunks ────────────────────────────────────────────────────
 function chunkText(text: string, maxChars = 1500): string[] {
   const chunks: string[] = []
   const paragraphs = text.split(/\n{2,}/)
@@ -204,18 +197,17 @@ function chunkText(text: string, maxChars = 1500): string[] {
   return chunks.filter(c => c.length > 20)
 }
 
-// ─── Handler principal ─────────────────────────────────────────────────────
+// ─── Handler principal ─────────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   try {
     const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     const folderId           = Deno.env.get('GOOGLE_FOLDER_ID')
-    const geminiKey          = Deno.env.get('GEMINI_API_KEY')
     const supabaseUrl        = Deno.env.get('SUPABASE_URL')!
     const supabaseKey        = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    if (!serviceAccountJson || !folderId || !geminiKey) {
+    if (!serviceAccountJson || !folderId) {
       return new Response(JSON.stringify({ error: 'Secrets não configurados' }), { status: 500 })
     }
 
@@ -235,19 +227,19 @@ serve(async (req) => {
       try {
         console.log(`⏳ Processando: ${file.name} (${file.mimeType})`)
 
-        const text = await extractTextViaGemini(
-          file.id, file.mimeType, file.name, token, geminiKey
-        )
+        const text = await extractText(file, token)
+        console.log(`  → Texto extraído: ${text.length} chars`)
 
-        if (!text || text.length < 20) {
-          console.log(`  ⛔ Skipped: texto insuficiente mesmo após OCR (${text?.length || 0} chars)`)
-          results.push({ file: file.name, status: 'skipped', reason: 'texto insuficiente mesmo após OCR' })
+        if (!text || text.length < 30) {
+          console.log(`  ⛔ Skipped: texto insuficiente (${text?.length || 0} chars)`)
+          results.push({ file: file.name, status: 'skipped', reason: 'texto insuficiente' })
           continue
         }
 
         const chunks = chunkText(text)
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'unknown'
+        const ext = file.name.split('.').pop()?.toLowerCase() || file.mimeType
 
+        // Remove chunks antigos deste arquivo
         await supabase.from('knowledge_base').delete().eq('file_id', file.id)
 
         const rows = chunks.map((content, i) => ({
