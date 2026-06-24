@@ -7,10 +7,7 @@ async function getGoogleAccessToken(serviceAccount: any): Promise<string> {
   const header  = { alg: 'RS256', typ: 'JWT' }
   const payload = {
     iss:   serviceAccount.client_email,
-    scope: [
-      'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/drive.file',
-    ].join(' '),
+    scope: 'https://www.googleapis.com/auth/drive.readonly',
     aud:   'https://oauth2.googleapis.com/token',
     exp:   now + 3600,
     iat:   now,
@@ -55,12 +52,12 @@ async function listDriveFiles(folderId: string, token: string) {
   const mimeTypes = [
     'application/pdf',
     'text/plain',
+    'application/rtf',
+    'application/msword',
     'application/vnd.google-apps.document',
     'application/vnd.google-apps.presentation',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/msword',
-    'application/vnd.ms-powerpoint',
   ]
   const mimeQuery = mimeTypes.map(m => `mimeType='${m}'`).join(' or ')
   const q = encodeURIComponent(`'${folderId}' in parents and (${mimeQuery}) and trashed=false`)
@@ -69,88 +66,24 @@ async function listDriveFiles(folderId: string, token: string) {
     { headers: { Authorization: `Bearer ${token}` } }
   )
   const data = await res.json()
-  return data.files || []
+  return (data.files || []) as Array<{ id: string; name: string; mimeType: string; size?: string }>
 }
 
-// ─── Extrai texto de Google Docs/Slides nativos ────────────────────────────────
-async function extractGoogleNativeText(fileId: string, mimeType: string, token: string): Promise<string> {
-  // Google Docs → exporta como texto plano
-  // Google Slides → exporta como texto plano
-  const exportMime = 'text/plain'
+// ─── Extrai texto de Google Docs/Slides nativos (export direto) ───────────────
+async function extractGoogleNative(fileId: string, token: string): Promise<string> {
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportMime)}`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
   if (!res.ok) {
-    console.log(`  ⚠️ Export falhou (${res.status}): ${await res.text()}`)
+    console.log(`  ⚠️ Export nativo falhou (${res.status})`)
     return ''
   }
   return await res.text()
 }
 
-// ─── Extrai texto de PDF com texto digital ─────────────────────────────────────
-async function extractPdfAsText(fileId: string, token: string): Promise<string> {
-  // Tenta exportar o PDF como Google Doc (Drive faz OCR/extração automática)
-  // Passo 1: Copia o arquivo como Google Doc
-  const copyRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}/copy`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        mimeType: 'application/vnd.google-apps.document',
-        name: `_temp_extract_${fileId}`,
-      }),
-    }
-  )
-
-  if (!copyRes.ok) {
-    const err = await copyRes.text()
-    console.log(`  ⚠️ Copy para Doc falhou (${copyRes.status}): ${err}`)
-    return ''
-  }
-
-  const copyData = await copyRes.json()
-  const docId = copyData.id
-
-  try {
-    // Passo 2: Exporta o Doc como texto plano
-    const exportRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text/plain`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    if (!exportRes.ok) {
-      console.log(`  ⚠️ Export do Doc temporário falhou (${exportRes.status})`)
-      return ''
-    }
-
-    const text = await exportRes.text()
-    return text
-  } finally {
-    // Passo 3: Sempre deleta o Doc temporário
-    await fetch(
-      `https://www.googleapis.com/drive/v3/files/${docId}`,
-      {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    ).catch(() => {})
-    console.log(`  🗑️ Doc temporário deletado`)
-  }
-}
-
-// ─── Extrai texto de DOCX/PPTX ────────────────────────────────────────────────
-async function extractOfficeText(fileId: string, token: string): Promise<string> {
-  // Mesmo processo: copia como Google Doc e exporta como texto
-  return await extractPdfAsText(fileId, token)
-}
-
-// ─── Extrai texto de arquivo TXT ──────────────────────────────────────────────
-async function extractTxtText(fileId: string, token: string): Promise<string> {
+// ─── Extrai texto de TXT/RTF (download direto) ────────────────────────────────
+async function extractPlainText(fileId: string, token: string): Promise<string> {
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -159,25 +92,147 @@ async function extractTxtText(fileId: string, token: string): Promise<string> {
   return await res.text()
 }
 
-// ─── Router de extração por tipo ──────────────────────────────────────────────
-async function extractText(file: any, token: string): Promise<string> {
-  const { id, mimeType } = file
+// ─── Extrai texto de PDF/DOCX/PPTX via upload multipart + export ──────────────
+// Faz upload do arquivo para o Drive como Google Doc (sem salvar permanentemente
+// usando upload session) e exporta o texto. 
+// Para arquivos grandes (>= 10MB), usa apenas as primeiras páginas.
+async function extractViaDriveImport(
+  fileId: string,
+  fileName: string,
+  mimeType: string,
+  fileSize: number,
+  token: string
+): Promise<string> {
 
-  // Google Docs/Slides nativos
+  // Limite de 10MB para evitar timeout e 413
+  const MAX_BYTES = 10 * 1024 * 1024
+
+  // Passo 1: Baixa o arquivo do Drive (limitado a MAX_BYTES)
+  const rangeHeader = fileSize > MAX_BYTES
+    ? { 'Range': `bytes=0-${MAX_BYTES - 1}` }
+    : {}
+
+  const downloadRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}`, ...rangeHeader } }
+  )
+
+  if (!downloadRes.ok && downloadRes.status !== 206) {
+    console.log(`  ⚠️ Download falhou (${downloadRes.status})`)
+    return ''
+  }
+
+  const fileBytes = new Uint8Array(await downloadRes.arrayBuffer())
+  console.log(`  → Baixado: ${fileBytes.length} bytes`)
+
+  // Passo 2: Faz upload multipart para o Drive convertendo para Google Doc
+  // Isso cria um arquivo temporário que precisamos deletar depois
+  const boundary = `boundary_${Date.now()}`
+  const metadata = JSON.stringify({
+    name: `_tmp_${fileId}`,
+    mimeType: 'application/vnd.google-apps.document',
+    parents: [], // sem pasta — vai para root da service account
+  })
+
+  const metaPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`
+  const filePart = `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`
+  const closing  = `\r\n--${boundary}--`
+
+  const metaBytes  = new TextEncoder().encode(metaPart)
+  const fileHeader = new TextEncoder().encode(filePart)
+  const closeBytes = new TextEncoder().encode(closing)
+
+  const body = new Uint8Array(metaBytes.length + fileHeader.length + fileBytes.length + closeBytes.length)
+  body.set(metaBytes,  0)
+  body.set(fileHeader, metaBytes.length)
+  body.set(fileBytes,  metaBytes.length + fileHeader.length)
+  body.set(closeBytes, metaBytes.length + fileHeader.length + fileBytes.length)
+
+  const uploadRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  )
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text()
+    console.log(`  ⚠️ Upload multipart falhou (${uploadRes.status}): ${err.slice(0, 200)}`)
+    return ''
+  }
+
+  const uploadData = await uploadRes.json()
+  const docId = uploadData.id
+
+  try {
+    // Passo 3: Exporta o Doc temporário como texto plano
+    const exportRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text/plain`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (!exportRes.ok) {
+      console.log(`  ⚠️ Export falhou (${exportRes.status})`)
+      return ''
+    }
+
+    const text = await exportRes.text()
+    return text
+
+  } finally {
+    // Passo 4: Sempre deleta o Doc temporário (mesmo que export falhe)
+    fetch(
+      `https://www.googleapis.com/drive/v3/files/${docId}`,
+      { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+    ).catch(() => {})
+    console.log(`  🗑️ Doc temporário deletado`)
+  }
+}
+
+// ─── Router de extração por tipo ──────────────────────────────────────────────
+async function extractText(
+  file: { id: string; name: string; mimeType: string; size?: string },
+  token: string
+): Promise<string> {
+  const { id, mimeType, size } = file
+  const fileSize = size ? parseInt(size) : 0
+
+  // Google Docs/Slides nativos — export direto, sem upload
   if (
     mimeType === 'application/vnd.google-apps.document' ||
     mimeType === 'application/vnd.google-apps.presentation'
   ) {
-    return await extractGoogleNativeText(id, mimeType, token)
+    return await extractGoogleNative(id, token)
   }
 
-  // Texto plano
+  // TXT puro — download direto
   if (mimeType === 'text/plain') {
-    return await extractTxtText(id, token)
+    return await extractPlainText(id, token)
   }
 
-  // PDF, DOCX, PPTX — todos pelo mesmo caminho: copia como Google Doc → exporta texto
-  return await extractPdfAsText(id, token)
+  // RTF — tenta como texto puro primeiro
+  if (mimeType === 'application/rtf' || mimeType === 'application/msword') {
+    const txt = await extractPlainText(id, token)
+    if (txt.length > 50) return txt
+  }
+
+  // PDF, DOCX, PPTX — upload multipart + export
+  return await extractViaDriveImport(id, file.name, mimeType, fileSize, token)
+}
+
+// ─── Limpa texto (remove encoding lixo e espaços excessivos) ─────────────────
+function cleanText(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .replace(/[ \t]{3,}/g, ' ')
+    .trim()
 }
 
 // ─── Divide texto em chunks ────────────────────────────────────────────────────
@@ -225,21 +280,21 @@ serve(async (req) => {
 
     for (const file of files) {
       try {
-        console.log(`⏳ Processando: ${file.name} (${file.mimeType})`)
+        console.log(`⏳ Processando: ${file.name} (${file.mimeType}) [${file.size ? Math.round(parseInt(file.size)/1024) + 'KB' : 'tamanho desconhecido'}]`)
 
-        const text = await extractText(file, token)
+        const rawText = await extractText(file, token)
+        const text    = cleanText(rawText)
         console.log(`  → Texto extraído: ${text.length} chars`)
 
-        if (!text || text.length < 30) {
-          console.log(`  ⛔ Skipped: texto insuficiente (${text?.length || 0} chars)`)
+        if (text.length < 30) {
+          console.log(`  ⛔ Skipped: texto insuficiente`)
           results.push({ file: file.name, status: 'skipped', reason: 'texto insuficiente' })
           continue
         }
 
         const chunks = chunkText(text)
-        const ext = file.name.split('.').pop()?.toLowerCase() || file.mimeType
+        const ext    = file.name.split('.').pop()?.toLowerCase() || 'unknown'
 
-        // Remove chunks antigos deste arquivo
         await supabase.from('knowledge_base').delete().eq('file_id', file.id)
 
         const rows = chunks.map((content, i) => ({
@@ -255,6 +310,7 @@ serve(async (req) => {
 
         results.push({ file: file.name, status: 'ok', chunks: chunks.length })
         console.log(`✅ ${file.name} → ${chunks.length} chunk(s)`)
+
       } catch (err) {
         console.error(`❌ Erro em ${file.name}:`, err)
         results.push({ file: file.name, status: 'error', error: String(err) })
@@ -265,6 +321,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, processed: files.length, results }),
       { headers: { 'Content-Type': 'application/json' } }
     )
+
   } catch (err) {
     console.error('Erro geral:', err)
     return new Response(
