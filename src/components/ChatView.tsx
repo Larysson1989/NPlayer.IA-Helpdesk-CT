@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { parseGeminiError } from '../services/geminiService';
 import { submitCorrection } from '../services/correctionService';
 import { registrarMensagem, avaliarMensagem } from '../services/metricsService';
+import { searchKnowledge } from '../services/knowledgeService';
 import { HPP_KNOWLEDGE } from '../constants/knowledgeBase';
 import ReactMarkdown from 'react-markdown';
 
@@ -21,9 +22,7 @@ interface Message {
   role: 'user' | 'bot';
   text: string;
   time: string;
-  // ID do registro no chat_logs (apenas mensagens do bot)
   chatLogId?: string;
-  // avaliação já dada para esta mensagem (null = ainda não avaliou)
   satisfacao?: 1 | 3 | null;
 }
 
@@ -58,26 +57,6 @@ export default function ChatView({ user, initialQuery, onBack }: ChatViewProps) 
   const didSendInitial = useRef(false);
   const sessionId = useRef<string>(generateUUID());
 
-  const SYSTEM_PROMPT = `Você é o "Príncipe", o assistente de IA do NPlayer.IA para a equipe de captação do Hospital Pequeno Príncipe (HPP).
-
-O usuário atual é **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
-
-PERSONALIDADE E COMPORTAMENTO HUMANO:
-- Reatividade Natural: Responda diretamente ao que o usuário disse.
-- Conversa, não Discurso: Seja breve e atencioso. Não use textos longos.
-- Empatia e Acolhimento: Tom de colega de trabalho, não de robô de suporte.
-- Encantamento e Rapport: Valide o sentimento do usuário.
-
-DIRETRIZES DE ATENDIMENTO:
-1. Resposta Direta: Atenda ao contexto imediato da mensagem recebida.
-2. Sem Overload: Não ofereça todos os temas se não for solicitado.
-3. Evitar Alucinações: Use a base de conhecimento apenas para dúvidas técnicas.
-4. Validação: Pergunte se a dúvida foi sanada apenas após uma explicação técnica.
-5. NPS: Solicite nota (0-10) apenas quando o atendimento for claramente finalizado.
-
-BASE DE CONHECIMENTO:
-${HPP_KNOWLEDGE}`;
-
   const getTime = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -94,6 +73,32 @@ ${HPP_KNOWLEDGE}`;
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error('Chave de API não configurada.');
 
+      // Busca contexto relevante na base de conhecimento do Supabase
+      const knowledgeContext = await searchKnowledge(text.trim());
+
+      // Monta o SYSTEM_PROMPT com contexto dinâmico
+      const SYSTEM_PROMPT = `Você é o "Príncipe", o assistente de IA do NPlayer.IA para a equipe de captação do Hospital Pequeno Príncipe (HPP).
+
+O usuário atual é **${user.name}**. Sempre que se referir a ele, use markdown para deixar o nome em negrito.
+
+PERSONALIDADE E COMPORTAMENTO HUMANO:
+- Reatividade Natural: Responda diretamente ao que o usuário disse.
+- Conversa, não Discurso: Seja breve e atencioso. Não use textos longos.
+- Empatia e Acolhimento: Tom de colega de trabalho, não de robô de suporte.
+- Encantamento e Rapport: Valide o sentimento do usuário.
+
+DIRETRIZES DE ATENDIMENTO:
+1. Resposta Direta: Atenda ao contexto imediato da mensagem recebida.
+2. Sem Overload: Não ofereça todos os temas se não for solicitado.
+3. Evitar Alucinações: Use a base de conhecimento apenas para dúvidas técnicas.
+4. Validação: Pergunte se a dúvida foi sanada apenas após uma explicação técnica.
+5. NPS: Solicite nota (0-10) apenas quando o atendimento for claramente finalizado.
+6. IMPORTANTE: Se a resposta estiver na base de conhecimento abaixo, USE essas informações. Não diga que não tem acesso a sistemas — você tem acesso ao conteúdo fornecido aqui.
+
+BASE DE CONHECIMENTO INSTITUCIONAL:
+${HPP_KNOWLEDGE}
+${knowledgeContext ? `\n\nCONTEÚDO RELEVANTE DOS DOCUMENTOS INTERNOS:\n${knowledgeContext}` : ''}`;
+
       const ai = new GoogleGenAI({ apiKey });
 
       const result = await ai.models.generateContentStream({
@@ -102,7 +107,6 @@ ${HPP_KNOWLEDGE}`;
         config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.7 },
       });
 
-      // Adiciona mensagem do bot com texto vazio (será atualizado via streaming)
       const botMsg: Message = { role: 'bot', text: '', time: getTime(), chatLogId: undefined, satisfacao: null };
       setMessages(prev => [...prev, botMsg]);
       let fullResponse = '';
@@ -118,13 +122,11 @@ ${HPP_KNOWLEDGE}`;
         }
       }
 
-      // Grava no banco e captura o ID para uso na avaliação
       const chatLogId = await registrarMensagem(user.id, user.name, text.trim(), {
         resposta:   fullResponse,
         session_id: sessionId.current,
       }).catch(() => null);
 
-      // Salva o chatLogId na última mensagem do bot
       if (chatLogId) {
         setMessages(prev => {
           const updated = [...prev];
@@ -148,14 +150,12 @@ ${HPP_KNOWLEDGE}`;
     const msg = messages[msgIndex];
     if (!msg.chatLogId || msg.satisfacao !== null) return;
 
-    // Otimista: atualiza UI imediatamente
     setMessages(prev => {
       const updated = [...prev];
       updated[msgIndex] = { ...updated[msgIndex], satisfacao: nota };
       return updated;
     });
 
-    // Persiste no banco (fire-and-forget)
     avaliarMensagem(msg.chatLogId, nota).catch(() => {});
   };
 
@@ -352,7 +352,6 @@ ${HPP_KNOWLEDGE}`;
                     )}
                   </div>
 
-                  {/* Botões de satisfação — só em mensagens do bot com chatLogId */}
                   {msg.role === 'bot' && msg.chatLogId && (
                     <div className="flex items-center gap-1.5 px-1 mt-0.5">
                       {msg.satisfacao === null ? (
