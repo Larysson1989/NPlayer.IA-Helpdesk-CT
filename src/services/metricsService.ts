@@ -3,21 +3,17 @@ import type { UserRole } from '../App';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 export interface MetricsKPIs {
-  totalLogins:      number;
-  loginsHoje:       number;
-  logins7d:         number;
-  totalMensagens:   number;
-  mensagensHoje:    number;
-  mensagens7d:      number;
-  usuariosAtivos:   number;
-  usuariosTotal:    number;
-  usuariosInativos3d: number;
-  mediaMsgPorUsuario: number;
-  taxaRetorno7d:      number;
-  totalCorrecoes:     number;
-  taxaAcertoIA:       number;
-  mediaCaracteresPergunta: number;
-  mediaCorrecoesUsuario:   number;
+  total_users:       number;
+  total_logins:      number;
+  logins_7d:         number;
+  total_msgs:        number;
+  msgs_7d:           number;
+  unique_users_7d:   number;
+  inactive_users:    number;
+  total_corrections: number;
+  corrections_7d:    number;
+  ia_accuracy:       number;
+  ia_accuracy_7d:    number;
 }
 
 export interface LoginEntry {
@@ -44,8 +40,8 @@ export interface WordCount {
 }
 
 export interface DayCount {
-  label: string;
-  date:  string;
+  label:  string;
+  date:   string;
   logins: number;
   msgs:   number;
 }
@@ -57,13 +53,13 @@ export interface HourCount {
 }
 
 export interface UserActivity {
-  user_id:   string;
-  user_name: string;
-  role:      string;
-  dias_ativos: number;
-  total_msgs:  number;
+  user_id:      string;
+  user_name:    string;
+  role:         string;
+  dias_ativos:  number;
+  total_msgs:   number;
   ultimo_login: string;
-  inativo: boolean;
+  inativo:      boolean;
 }
 
 export interface RoleDistribution {
@@ -73,9 +69,9 @@ export interface RoleDistribution {
 }
 
 export interface WeekdayCount {
-  label: string;
+  label:  string;
   logins: number;
-  msgs: number;
+  msgs:   number;
 }
 
 export interface UserCorrectionRate {
@@ -93,10 +89,10 @@ export interface RoleTopWords {
 }
 
 export interface UserStreak {
-  user_id:   string;
-  user_name: string;
-  role:      string;
-  streak:    number;
+  user_id:    string;
+  user_name:  string;
+  role:       string;
+  streak:     number;
   max_streak: number;
 }
 
@@ -121,15 +117,11 @@ export async function registrarLogin(
 }
 
 // ─── Registrar mensagem ───────────────────────────────────────────────────────
-// Retorna o ID do registro inserido para permitir avaliação posterior
 export async function registrarMensagem(
   userId: string,
   userName: string,
   pergunta: string,
-  options?: {
-    resposta?:   string;
-    session_id?: string;
-  },
+  options?: { resposta?: string; session_id?: string },
 ): Promise<string | null> {
   const { data, error } = await supabase
     .from('chat_logs')
@@ -147,19 +139,13 @@ export async function registrarMensagem(
   return data.id as string;
 }
 
-// ─── Avaliar mensagem (satisfação) ────────────────────────────────────────────────
+// ─── Avaliar mensagem (satisfação) ────────────────────────────────────────────
 // nota: 1 = Ruim (👎) | 3 = Ótimo (👍)
-export async function avaliarMensagem(
-  chatLogId: string,
-  nota: 1 | 3,
-): Promise<void> {
-  await supabase
-    .from('chat_logs')
-    .update({ satisfacao: nota })
-    .eq('id', chatLogId);
+export async function avaliarMensagem(chatLogId: string, nota: 1 | 3): Promise<void> {
+  await supabase.from('chat_logs').update({ satisfacao: nota }).eq('id', chatLogId);
 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function isoDay(daysAgo = 0): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -169,86 +155,71 @@ function isoDay(daysAgo = 0): string {
 
 // ─── KPIs principais ─────────────────────────────────────────────────────────
 export async function fetchMetricsKPIs(): Promise<MetricsKPIs> {
-  const hoje = isoDay(0);
-  const d7   = isoDay(7);
-  const d3   = isoDay(3);
+  const d7 = isoDay(7);
 
-  const [loginsTotalR, loginsHojeR, logins7dR,
-         msgTotalR, msgHojeR, msg7dR,
-         profilesR, logins7dAllR, correcoesR, chatSampleR] =
-    await Promise.all([
-      supabase.from('login_logs').select('id',        { count: 'exact', head: true }),
-      supabase.from('login_logs').select('id',        { count: 'exact', head: true }).gte('created_at', hoje),
-      supabase.from('login_logs').select('id',        { count: 'exact', head: true }).gte('created_at', d7),
-      supabase.from('chat_logs' ).select('id',        { count: 'exact', head: true }),
-      supabase.from('chat_logs' ).select('id',        { count: 'exact', head: true }).gte('created_at', hoje),
-      supabase.from('chat_logs' ).select('id',        { count: 'exact', head: true }).gte('created_at', d7),
-      supabase.from('profiles'  ).select('id, active'),
-      supabase.from('login_logs').select('user_id, created_at').gte('created_at', d7),
-      supabase.from('system_logs').select('id, user', { count: 'exact' }).eq('type', 'correction_feedback'),
-      supabase.from('chat_logs').select('pergunta').order('created_at', { ascending: false }).limit(200),
-    ]);
+  const [
+    loginsTotalR, logins7dR,
+    msgTotalR, msg7dR,
+    profilesR, logins7dUsersR,
+    corrTotalR, corr7dR,
+    satisfacaoR, satisfacao7dR,
+  ] = await Promise.all([
+    supabase.from('login_logs'    ).select('id',        { count: 'exact', head: true }),
+    supabase.from('login_logs'    ).select('id',        { count: 'exact', head: true }).gte('created_at', d7),
+    supabase.from('chat_logs'     ).select('id',        { count: 'exact', head: true }),
+    supabase.from('chat_logs'     ).select('id',        { count: 'exact', head: true }).gte('created_at', d7),
+    supabase.from('profiles'      ).select('id, active'),
+    supabase.from('login_logs'    ).select('user_id'   ).gte('created_at', d7),
+    supabase.from('ai_corrections').select('id',        { count: 'exact', head: true }),
+    supabase.from('ai_corrections').select('id',        { count: 'exact', head: true }).gte('created_at', d7),
+    supabase.from('chat_logs'     ).select('satisfacao').not('satisfacao', 'is', null),
+    supabase.from('chat_logs'     ).select('satisfacao').not('satisfacao', 'is', null).gte('created_at', d7),
+  ]);
 
   const profiles   = profilesR.data ?? [];
-  const totalAtivos = profiles.filter((p: { active: boolean }) => p.active).length;
-  const totalTotal  = profiles.length;
+  const totalUsers = profiles.filter((p: { active: boolean }) => p.active).length;
 
-  const loginRecentes = new Set((logins7dAllR.data ?? []).map((r: { user_id: string }) => r.user_id));
-  const inativos3d = profiles.filter((p: { id: string; active: boolean }) =>
-    p.active && !loginRecentes.has(p.id)
+  // Usuários únicos nos últimos 7 dias
+  const userIds7d     = new Set((logins7dUsersR.data ?? []).map((r: { user_id: string }) => r.user_id));
+  const uniqueUsers7d = userIds7d.size;
+
+  // Usuários ativos que não logaram nos últimos 7 dias
+  const inactiveUsers = profiles.filter(
+    (p: { id: string; active: boolean }) => p.active && !userIds7d.has(p.id)
   ).length;
 
-  const diasPorUser = new Map<string, Set<string>>();
-  for (const r of (logins7dAllR.data ?? [])) {
-    if (!diasPorUser.has(r.user_id)) diasPorUser.set(r.user_id, new Set());
-    diasPorUser.get(r.user_id)!.add((r.created_at as string).slice(0, 10));
-  }
-  const recorrentes = [...diasPorUser.values()].filter(s => s.size >= 2).length;
-  const taxaRetorno = diasPorUser.size > 0 ? Math.round((recorrentes / diasPorUser.size) * 100) : 0;
+  // Correções da tabela ai_corrections
+  const totalCorrections = corrTotalR.count ?? 0;
+  const corrections7d    = corr7dR.count    ?? 0;
 
-  const mediaMsgPorUsuario = totalAtivos > 0
-    ? Math.round((msgTotalR.count ?? 0) / totalAtivos)
-    : 0;
-
-  const totalMsgs = msgTotalR.count ?? 0;
-  const totalCorr = correcoesR.count ?? 0;
-  const taxaAcertoIA = totalMsgs > 0
-    ? Math.round(((totalMsgs - totalCorr) / totalMsgs) * 100)
-    : 100;
-
-  const chatSample = chatSampleR.data ?? [];
-  const mediaCaracteres = chatSample.length > 0
-    ? Math.round(chatSample.reduce((acc: number, r: { pergunta: string }) => acc + (r.pergunta?.length ?? 0), 0) / chatSample.length)
-    : 0;
-
-  const mediaCorrecoesUsuario = totalAtivos > 0 && totalCorr > 0
-    ? Math.round((totalCorr / totalAtivos) * 10) / 10
-    : 0;
+  // Taxa de acerto baseada em chat_logs.satisfacao
+  const rated      = (satisfacaoR.data  ?? []) as { satisfacao: number }[];
+  const rated7d    = (satisfacao7dR.data ?? []) as { satisfacao: number }[];
+  const positive   = rated.filter(r => r.satisfacao === 3).length;
+  const positive7d = rated7d.filter(r => r.satisfacao === 3).length;
+  const iaAccuracy   = rated.length   > 0 ? Math.round((positive   / rated.length)   * 100) : 100;
+  const iaAccuracy7d = rated7d.length > 0 ? Math.round((positive7d / rated7d.length) * 100) : 100;
 
   return {
-    totalLogins:      loginsTotalR.count ?? 0,
-    loginsHoje:       loginsHojeR.count  ?? 0,
-    logins7d:         logins7dR.count    ?? 0,
-    totalMensagens:   totalMsgs,
-    mensagensHoje:    msgHojeR.count     ?? 0,
-    mensagens7d:      msg7dR.count       ?? 0,
-    usuariosAtivos:   totalAtivos,
-    usuariosTotal:    totalTotal,
-    usuariosInativos3d: inativos3d,
-    mediaMsgPorUsuario,
-    taxaRetorno7d:    taxaRetorno,
-    totalCorrecoes:   totalCorr,
-    taxaAcertoIA,
-    mediaCaracteresPergunta: mediaCaracteres,
-    mediaCorrecoesUsuario,
+    total_users:       totalUsers,
+    total_logins:      loginsTotalR.count ?? 0,
+    logins_7d:         logins7dR.count    ?? 0,
+    total_msgs:        msgTotalR.count    ?? 0,
+    msgs_7d:           msg7dR.count       ?? 0,
+    unique_users_7d:   uniqueUsers7d,
+    inactive_users:    inactiveUsers,
+    total_corrections: totalCorrections,
+    corrections_7d:    corrections7d,
+    ia_accuracy:       iaAccuracy,
+    ia_accuracy_7d:    iaAccuracy7d,
   };
 }
 
-// ─── Top usuários ────────────────────────────────────────────────────────────────
+// ─── Top usuários ─────────────────────────────────────────────────────────────
 export async function fetchTopUsers(): Promise<TopUser[]> {
   const [loginsR, msgsR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_name, user_role, created_at'),
-    supabase.from('chat_logs' ).select('user_id, created_at'),
+    supabase.from('chat_logs' ).select('user_id'),
   ]);
 
   const logins = loginsR.data ?? [];
@@ -303,7 +274,7 @@ export async function fetchWordCloud(): Promise<WordCount[]> {
     const words = (row.pergunta as string)
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
       .filter(w => w.length > 3 && !STOPWORDS.has(w));
@@ -316,7 +287,7 @@ export async function fetchWordCloud(): Promise<WordCount[]> {
     .slice(0, 60);
 }
 
-// ─── Série temporal 14 dias ────────────────────────────────────────────────────────
+// ─── Série temporal 14 dias ───────────────────────────────────────────────────
 export async function fetchTimeSeries(): Promise<DayCount[]> {
   const d14 = isoDay(13);
 
@@ -373,24 +344,28 @@ export async function fetchPeakHours(): Promise<HourCount[]> {
   }));
 }
 
-// ─── Atividade individual ──────────────────────────────────────────────────────────
+// ─── Atividade individual ─────────────────────────────────────────────────────
 export async function fetchUserActivity(): Promise<UserActivity[]> {
   const d3 = isoDay(3);
 
   const [loginsR, msgsR, profilesR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_name, user_role, created_at'),
-    supabase.from('chat_logs' ).select('user_id, created_at'),
+    supabase.from('chat_logs' ).select('user_id'),
     supabase.from('profiles'  ).select('id, active'),
   ]);
 
   const logins   = loginsR.data   ?? [];
   const msgs     = msgsR.data     ?? [];
   const profiles = profilesR.data ?? [];
-  const activeIds = new Set(profiles.filter((p: { active: boolean }) => p.active).map((p: { id: string }) => p.id));
+  const activeIds = new Set(
+    profiles.filter((p: { active: boolean }) => p.active).map((p: { id: string }) => p.id)
+  );
 
   const map = new Map<string, { name: string; role: string; dias: Set<string>; msgs: number; lastLogin: string }>();
   for (const r of logins) {
-    if (!map.has(r.user_id)) map.set(r.user_id, { name: r.user_name, role: r.user_role, dias: new Set(), msgs: 0, lastLogin: '' });
+    if (!map.has(r.user_id)) {
+      map.set(r.user_id, { name: r.user_name, role: r.user_role, dias: new Set(), msgs: 0, lastLogin: '' });
+    }
     const u = map.get(r.user_id)!;
     u.dias.add((r.created_at as string).slice(0, 10));
     if (r.created_at > u.lastLogin) u.lastLogin = r.created_at;
@@ -445,8 +420,9 @@ export async function fetchLoginsPerDay(): Promise<{ label: string; value: numbe
   return series.slice(-7).map(d => ({ label: d.label, value: d.logins }));
 }
 
+// ─── Distribuição por dia da semana ──────────────────────────────────────────
 export async function fetchWeekdayDistribution(): Promise<WeekdayCount[]> {
-  const d30 = isoDay(30);
+  const d30  = isoDay(30);
   const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   const [loginsR, msgsR] = await Promise.all([
@@ -456,46 +432,45 @@ export async function fetchWeekdayDistribution(): Promise<WeekdayCount[]> {
 
   const result: WeekdayCount[] = DIAS.map(label => ({ label, logins: 0, msgs: 0 }));
 
-  for (const r of (loginsR.data ?? [])) {
-    const dow = new Date(r.created_at).getDay();
-    result[dow].logins++;
-  }
-  for (const r of (msgsR.data ?? [])) {
-    const dow = new Date(r.created_at).getDay();
-    result[dow].msgs++;
-  }
+  for (const r of (loginsR.data ?? [])) result[new Date(r.created_at).getDay()].logins++;
+  for (const r of (msgsR.data   ?? [])) result[new Date(r.created_at).getDay()].msgs++;
 
   return result;
 }
 
+// ─── Taxas de correção por usuário ───────────────────────────────────────────
 export async function fetchUserCorrectionRates(): Promise<UserCorrectionRate[]> {
-  const [loginsR, msgsR, correcoesR] = await Promise.all([
-    supabase.from('login_logs').select('user_id, user_name, user_role'),
-    supabase.from('chat_logs' ).select('user_id'),
-    supabase.from('system_logs').select('user, metadata').eq('type', 'correction_feedback'),
+  const [loginsR, msgsR, correctionsR] = await Promise.all([
+    supabase.from('login_logs'    ).select('user_id, user_name, user_email, user_role'),
+    supabase.from('chat_logs'     ).select('user_id'),
+    supabase.from('ai_corrections').select('user_email'),
   ]);
 
-  const userMap = new Map<string, { name: string; role: string }>();
+  // Mapa de usuários a partir dos logins (deduplica por user_id)
+  const userMap = new Map<string, { name: string; role: string; email: string }>();
   for (const r of (loginsR.data ?? [])) {
-    if (!userMap.has(r.user_id)) userMap.set(r.user_id, { name: r.user_name, role: r.user_role });
+    if (!userMap.has(r.user_id)) {
+      userMap.set(r.user_id, { name: r.user_name, role: r.user_role, email: r.user_email });
+    }
   }
 
+  // Contagem de mensagens por user_id
   const msgCount = new Map<string, number>();
   for (const r of (msgsR.data ?? [])) {
     msgCount.set(r.user_id, (msgCount.get(r.user_id) ?? 0) + 1);
   }
 
-  const corrByName = new Map<string, number>();
-  for (const r of (correcoesR.data ?? [])) {
-    const name = (r.metadata as { user_name?: string })?.user_name ?? r.user ?? '';
-    corrByName.set(name, (corrByName.get(name) ?? 0) + 1);
+  // Contagem de correções por user_email (ai_corrections)
+  const corrByEmail = new Map<string, number>();
+  for (const r of (correctionsR.data ?? [])) {
+    corrByEmail.set(r.user_email, (corrByEmail.get(r.user_email) ?? 0) + 1);
   }
 
   return [...userMap.entries()]
     .map(([user_id, v]) => {
-      const msgs = msgCount.get(user_id) ?? 0;
-      const correcoes = corrByName.get(v.name) ?? 0;
-      const taxa = msgs > 0 ? Math.round((correcoes / msgs) * 1000) / 10 : 0;
+      const msgs      = msgCount.get(user_id) ?? 0;
+      const correcoes = corrByEmail.get(v.email) ?? 0;
+      const taxa      = msgs > 0 ? Math.round((correcoes / msgs) * 1000) / 10 : 0;
       return { user_id, user_name: v.name, role: v.role, correcoes, msgs, taxa };
     })
     .filter(u => u.msgs > 0)
@@ -503,6 +478,7 @@ export async function fetchUserCorrectionRates(): Promise<UserCorrectionRate[]> 
     .slice(0, 10);
 }
 
+// ─── Top palavras por role ────────────────────────────────────────────────────
 export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
   const [loginsR, chatR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_role'),
@@ -522,7 +498,7 @@ export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
     const words = (row.pergunta as string)
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
       .filter(w => w.length > 3 && !STOPWORDS.has(w));
@@ -538,16 +514,17 @@ export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
   }));
 }
 
+// ─── Streaks de atividade ─────────────────────────────────────────────────────
 export async function fetchUserStreaks(): Promise<UserStreak[]> {
-  const [loginsR] = await Promise.all([
-    supabase.from('login_logs').select('user_id, user_name, user_role, created_at'),
-  ]);
-
-  const logins = loginsR.data ?? [];
+  const { data: logins } = await supabase
+    .from('login_logs')
+    .select('user_id, user_name, user_role, created_at');
 
   const userDays = new Map<string, { name: string; role: string; days: Set<string> }>();
-  for (const r of logins) {
-    if (!userDays.has(r.user_id)) userDays.set(r.user_id, { name: r.user_name, role: r.user_role, days: new Set() });
+  for (const r of (logins ?? [])) {
+    if (!userDays.has(r.user_id)) {
+      userDays.set(r.user_id, { name: r.user_name, role: r.user_role, days: new Set() });
+    }
     userDays.get(r.user_id)!.days.add((r.created_at as string).slice(0, 10));
   }
 
@@ -558,7 +535,7 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
     const sorted = [...v.days].sort().reverse();
 
     let streak = 0;
-    let cursor = new Date(today);
+    const cursor = new Date(today);
     for (let i = 0; i < 365; i++) {
       const key = cursor.toISOString().slice(0, 10);
       if (v.days.has(key)) {
@@ -590,9 +567,12 @@ export async function fetchUserStreaks(): Promise<UserStreak[]> {
     maxStreak = Math.max(maxStreak, currentRun, streak);
 
     return { user_id, user_name: v.name, role: v.role, streak, max_streak: maxStreak };
-  }).sort((a, b) => b.streak - a.streak).slice(0, 10);
+  })
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, 10);
 }
 
+// ─── Tamanho médio de mensagem por role ──────────────────────────────────────
 export async function fetchMsgLengthByRole(): Promise<MsgLengthByRole[]> {
   const [loginsR, chatR] = await Promise.all([
     supabase.from('login_logs').select('user_id, user_role'),
@@ -609,10 +589,16 @@ export async function fetchMsgLengthByRole(): Promise<MsgLengthByRole[]> {
     roleData.get(role)!.push((row.pergunta as string)?.length ?? 0);
   }
 
-  const LABELS: Record<string, string> = { captador: 'Captador', supervisor: 'Supervisor', administrador: 'Admin' };
+  const LABELS: Record<string, string> = {
+    captador: 'Captador', supervisor: 'Supervisor', administrador: 'Admin',
+  };
 
-  return [...roleData.entries()].map(([role, lengths]) => ({
-    role: LABELS[role] ?? role,
-    media: lengths.length > 0 ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : 0,
-  })).sort((a, b) => b.media - a.media);
+  return [...roleData.entries()]
+    .map(([role, lengths]) => ({
+      role:  LABELS[role] ?? role,
+      media: lengths.length > 0
+        ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length)
+        : 0,
+    }))
+    .sort((a, b) => b.media - a.media);
 }
