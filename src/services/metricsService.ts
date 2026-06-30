@@ -271,7 +271,9 @@ export async function fetchWordCloud(): Promise<WordCount[]> {
 
   const freq = new Map<string, number>();
   for (const row of data) {
-    const words = (row.pergunta as string)
+    const text = (row.pergunta as string | null) ?? '';
+    if (!text) continue;
+    const words = text
       .toLowerCase()
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
@@ -495,7 +497,9 @@ export async function fetchTopWordsByRole(): Promise<RoleTopWords[]> {
     if (!roleFreq.has(role)) roleFreq.set(role, new Map());
     const freq = roleFreq.get(role)!;
 
-    const words = (row.pergunta as string)
+    const text = (row.pergunta as string | null) ?? '';
+    if (!text) continue;
+    const words = text
       .toLowerCase()
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')

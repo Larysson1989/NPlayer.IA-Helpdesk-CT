@@ -610,7 +610,7 @@ export function MetricsDashboardPage({
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [k, tu, wc, ts, ph, ua, rd, wd, cr, twr, us, ml] = await Promise.all([
+      const [kR, tuR, wcR, tsR, phR, uaR, rdR, wdR, crR, twrR, usR, mlR] = await Promise.allSettled([
         fetchMetricsKPIs(),
         fetchTopUsers(),
         fetchWordCloud(),
@@ -624,18 +624,18 @@ export function MetricsDashboardPage({
         fetchUserStreaks(),
         fetchMsgLengthByRole(),
       ]);
-      setKpis(k);
-      setTopUsers(tu);
-      setWordCloud(wc);
-      setTimeSeries(ts);
-      setPeakHours(ph);
-      setUserActivity(ua);
-      setRoleDistribution(rd);
-      setWeekdayDistribution(wd);
-      setCorrectionRates(cr);
-      setTopWordsByRole(twr);
-      setUserStreaks(us);
-      setMsgLengthByRole(ml);
+      if (kR.status   === 'fulfilled') setKpis(kR.value);
+      if (tuR.status  === 'fulfilled') setTopUsers(tuR.value);
+      if (wcR.status  === 'fulfilled') setWordCloud(wcR.value);
+      if (tsR.status  === 'fulfilled') setTimeSeries(tsR.value);
+      if (phR.status  === 'fulfilled') setPeakHours(phR.value);
+      if (uaR.status  === 'fulfilled') setUserActivity(uaR.value);
+      if (rdR.status  === 'fulfilled') setRoleDistribution(rdR.value);
+      if (wdR.status  === 'fulfilled') setWeekdayDistribution(wdR.value);
+      if (crR.status  === 'fulfilled') setCorrectionRates(crR.value);
+      if (twrR.status === 'fulfilled') setTopWordsByRole(twrR.value);
+      if (usR.status  === 'fulfilled') setUserStreaks(usR.value);
+      if (mlR.status  === 'fulfilled') setMsgLengthByRole(mlR.value);
       setLastUpdated(new Date());
     } finally {
       setLoading(false);
