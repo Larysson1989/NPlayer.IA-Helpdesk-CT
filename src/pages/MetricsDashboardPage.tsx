@@ -715,6 +715,11 @@ export function MetricsDashboardPage({
               {activeTab === 'visao' && (
                 <div className="space-y-8">
                   <section>
+                    <SectionTitle icon={<Activity size={16} />} title="Online Agora" subtitle="Usuários com sessão ativa em tempo real" />
+                    <OnlineUsersWidget onlineUsers={onlineUsers} onlineCount={onlineCount} />
+                  </section>
+
+                  <section>
                     <SectionTitle icon={<TrendingUp size={16} />} title="KPIs Principais" subtitle="Totais históricos acumulados" />
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                       <KpiCard label="Usuários ativos"   value={kpis?.total_users       ?? 0} icon={<Users size={18} />}        color="blue"   />
