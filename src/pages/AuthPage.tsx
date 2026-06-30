@@ -24,7 +24,7 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
     // Simula delay mínimo para UX
     await new Promise(r => setTimeout(r, 400));
 
-    const user = login(email, password);
+const user = await login(email, password);
     setLoading(false);
 
     if (!user) {
@@ -42,7 +42,7 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&display=swap" rel="stylesheet" />
 
-      <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col">
+      <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: '#002776' }}>
         <FloatingLetters />
 
         <div className="flex-1 flex items-center justify-center p-4 z-10 relative">
@@ -50,132 +50,143 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
 
             {/* HEADER */}
             <div className="text-center space-y-2">
-              <div className="inline-flex p-3 rounded-[24px] mb-1" style={{ background: 'rgba(16,100,174,0.08)' }}>
-                <Headphones size={28} style={{ color: '#1064AE' }} />
+              <div className="inline-flex p-3 rounded-[24px] mb-1" style={{ background: 'rgba(255,255,255,0.12)' }}>
+                <Headphones size={28} style={{ color: '#009C3B' }} />
               </div>
               <h1
                 className="text-5xl font-black uppercase tracking-tighter leading-none"
                 style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                <span style={{ color: '#1064AE' }}>NPlayer</span>
-                <span style={{ color: '#FBDB14', textShadow: '0 0 20px rgba(251,219,20,0.5)' }}>.IA</span>
+                <span style={{ color: '#ffffff' }}>NPlayer</span>
+                <span style={{ color: '#FFDF00', textShadow: '0 0 20px rgba(255,223,0,0.5)' }}>.IA</span>
               </h1>
-              <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.18em]">
-                Apoio operacional · Captação por Telefone
+              <p className="text-[12px] font-black uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                🇧🇷 Apoio Operacional · CT
               </p>
             </div>
 
             {/* CARD */}
             <div
-              className="bg-white/90 backdrop-blur-2xl p-7 sm:p-9 rounded-[28px] sm:rounded-[40px] border border-slate-200"
-              style={{ boxShadow: '0 8px 40px rgba(16,100,174,0.10), 0 2px 8px rgba(0,0,0,0.06)' }}
+              className="bg-white overflow-hidden"
+              style={{
+                borderRadius: '24px',
+                boxShadow: '0 8px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.15)',
+              }}
             >
-              <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-6">
-                Acesso Restrito
-              </p>
+              {/* Faixa tricolor */}
+              <div style={{
+                height: '6px',
+                background: 'linear-gradient(90deg, #009C3B 0%, #009C3B 33%, #FFDF00 33%, #FFDF00 66%, #002776 66%, #002776 100%)',
+              }} />
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="p-7 sm:p-9">
+                <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-6">
+                  Acesso Restrito
+                </p>
 
-                {/* Erro */}
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2"
-                    >
-                      <ShieldAlert size={15} className="text-red-500 shrink-0 mt-0.5" />
-                      <p className="text-xs font-bold text-red-600">{error}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <form onSubmit={handleSubmit} className="space-y-5">
 
-                {/* Bloqueio */}
-                <AnimatePresence>
-                  {isBlocked && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-4 bg-amber-50 border border-amber-200 rounded-2xl"
-                    >
-                      <p className="text-xs font-black text-amber-700 uppercase tracking-wider">
-                        🔒 Muitas tentativas. Recarregue a página.
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  {/* Erro */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2"
+                      >
+                        <ShieldAlert size={15} className="text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-xs font-bold text-red-600">{error}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                {/* E-mail */}
-                <div className="space-y-1.5">
-                  <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    E-mail
-                  </label>
-                  <div className="relative">
-                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="seu@email.com"
-                      required
-                      className="w-full pl-11 pr-4 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
-                      onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)'}
-                      onBlur={e => e.currentTarget.style.boxShadow = ''}
-                    />
+                  {/* Bloqueio */}
+                  <AnimatePresence>
+                    {isBlocked && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 bg-amber-50 border border-amber-200 rounded-2xl"
+                      >
+                        <p className="text-xs font-black text-amber-700 uppercase tracking-wider">
+                          🔒 Muitas tentativas. Recarregue a página.
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* E-mail */}
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      E-mail
+                    </label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        required
+                        className="w-full pl-11 pr-4 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
+                        onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,156,59,0.14)'}
+                        onBlur={e => e.currentTarget.style.boxShadow = ''}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Senha */}
-                <div className="space-y-1.5">
-                  <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    Senha
-                  </label>
-                  <div className="relative">
-                    <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="w-full pl-11 pr-12 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
-                      onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16,100,174,0.10)'}
-                      onBlur={e => e.currentTarget.style.boxShadow = ''}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-300 hover:text-slate-500 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                  {/* Senha */}
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Senha
+                    </label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full pl-11 pr-12 py-[15px] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 bg-white placeholder:text-slate-300 outline-none transition-all"
+                        onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,156,59,0.14)'}
+                        onBlur={e => e.currentTarget.style.boxShadow = ''}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-300 hover:text-slate-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Botão */}
-                <button
-                  type="submit"
-                  disabled={loading || isBlocked}
-                  className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                  style={{ background: '#1064AE', boxShadow: '0 4px 20px rgba(16,100,174,0.30)' }}
-                  onMouseEnter={e => !loading && !isBlocked && (e.currentTarget.style.background = '#0d52a0')}
-                  onMouseLeave={e => (e.currentTarget.style.background = '#1064AE')}
-                >
-                  {loading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <> Entrar no Portal <ArrowRight size={16} /> </>
-                  )}
-                </button>
+                  {/* Botão */}
+                  <button
+                    type="submit"
+                    disabled={loading || isBlocked}
+                    className="w-full py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                    style={{ background: '#009C3B', boxShadow: '0 4px 20px rgba(0,156,59,0.35)' }}
+                    onMouseEnter={e => !loading && !isBlocked && (e.currentTarget.style.background = '#007a2f')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#009C3B')}
+                  >
+                    {loading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <> Entrar no Portal <ArrowRight size={16} /> </>
+                    )}
+                  </button>
 
-              </form>
+                </form>
+              </div>
             </div>
           </div>
         </div>
 
         <footer className="py-8 text-center z-10 relative">
-          <p className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-300">
+          <p className="text-[12px] font-black uppercase tracking-[0.4em]" style={{ color: 'rgba(255,255,255,0.25)' }}>
             Hospital Pequeno Príncipe © 2026
           </p>
         </footer>
@@ -187,18 +198,19 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
 // ─── FloatingLetters ────────────────────────────────────────
 import { useMemo } from 'react';
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const FLOAT_COLORS = ['#009C3B', '#FFDF00', '#ffffff'];
 
 function FloatingLetters() {
-  const items = useMemo(() => Array.from({ length: 80 }, (_, i) => ({
+  const items = useMemo(() => Array.from({ length: 55 }, (_, i) => ({
     id: i,
     char: CHARS[Math.floor(Math.random() * CHARS.length)],
-    size: Math.floor(Math.random() * 60) + 14,
+    size: Math.floor(Math.random() * 53) + 13,       // 13–65 px
     top: Math.random() * 100,
     left: Math.random() * 100,
-    opacity: Math.random() * 0.10 + 0.15,
-    color: Math.random() > 0.5 ? '#1064AE' : '#FBDB14',
-    duration: Math.random() * 25 + 15,
-    delay: Math.random() * -30,
+    opacity: Math.random() * 0.20 + 0.14,            // 0.14–0.34
+    color: FLOAT_COLORS[Math.floor(Math.random() * FLOAT_COLORS.length)],
+    duration: Math.random() * 22 + 12,               // 12–34 s
+    delay: -(Math.random() * 34),                    // delay negativo para dessincronizar
   })), []);
 
   return (
