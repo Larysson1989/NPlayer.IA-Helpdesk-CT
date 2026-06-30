@@ -1,110 +1,202 @@
-﻿import type { UserRole, User } from '../App';
+import type { UserRole, User } from '../App';
+import { supabase } from './supabase';
+import { registrarLogin } from '../services/metricsService';
 
-interface UserRecord {
+export type { User };
+
+// ─── Login via Supabase Auth ────────────────────────────────────────────────
+
+export async function login(email: string, password: string): Promise<User | null> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email:    email.trim().toLowerCase(),
+    password: password,
+  });
+
+  if (error || !data.user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, email, name, role, matricula, active')
+    .eq('id', data.user.id)
+    .single();
+
+  if (!profile) return null;
+
+  const user: User = {
+    id:        profile.id,
+    email:     profile.email,
+    name:      profile.name,
+    role:      profile.role as UserRole,
+    active:    profile.active ?? true,
+    matricula: profile.matricula ?? '',
+  };
+
+  // Registra login nas métricas (fire-and-forget)
+  registrarLogin(user.id, user.name, user.email, user.role).catch(() => {});
+
+  return user;
+}
+
+export async function logout(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+export async function getStoredSession(): Promise<User | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, email, name, role, matricula, active')
+    .eq('id', session.user.id)
+    .single();
+
+  if (!profile) return null;
+
+  return {
+    id:        profile.id,
+    email:     profile.email,
+    name:      profile.name,
+    role:      profile.role as UserRole,
+    active:    profile.active ?? true,
+    matricula: profile.matricula ?? '',
+  };
+}
+
+// ─── Admin: listar todos os usuários ───────────────────────────────────────────────
+
+export async function getAllUsers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, name, role, matricula, active')
+    .order('name');
+
+  if (error || !data) return [];
+
+  return data.map(p => ({
+    id:        p.id,
+    email:     p.email,
+    name:      p.name,
+    role:      p.role as UserRole,
+    active:    p.active ?? true,
+    matricula: p.matricula ?? '',
+  }));
+}
+
+// ─── Admin: ativar/desativar usuário ────────────────────────────────────────────────
+
+export async function updateUserActive(id: string, active: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ active })
+    .eq('id', id);
+
+  return !error;
+}
+
+// ─── Admin/Supervisor: criar novo usuário ────────────────────────────────────────────
+// Usa signUp padrão. O projeto Supabase deve ter "Confirm email" DESABILITADO
+// (Authentication → Settings → Email → Enable email confirmations = OFF)
+// para que o usuário seja criado e ativado imediatamente sem e-mail de confirmação.
+// O perfil é inserido manualmente na tabela profiles após o signUp.
+
+export interface CreateUserPayload {
   email:     string;
   password:  string;
   name:      string;
   role:      UserRole;
-  matricula: string;
-  avatar_url?: string;
+  matricula?: string;
 }
 
-const USERS: UserRecord[] = [
-  // â”€â”€ Administrador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { email: 'admin@lary.ia.br',                      password: 'admin',       name: 'Administrador',                            role: 'administrador', matricula: '' },
-
-  // â”€â”€ Supervisores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { email: 'eduardo.bueno@hpp.org.br',              password: '21424@2026',  name: 'Eduardo Vinicius Bueno',                   role: 'supervisor',    matricula: '21424' },
-  { email: 'renata.andrade@hpp.org.br',             password: '15258@2026',  name: 'Renata Fortunato de Andrade',              role: 'supervisor',    matricula: '15258' },
-  { email: 'marlete.zanetti@hpp.org.br',            password: '18150@2026',  name: 'Marlete do Nascimento Zanetti',            role: 'supervisor',    matricula: '18150' },
-  { email: 'joao.kinol@hpp.org.br',                 password: '19242@2026',  name: 'JoÃ£o Ã‰der Kinol',                          role: 'supervisor',    matricula: '19242' },
-  { email: 'luciano.santos@hpp.org.br',             password: '20467@2026',  name: 'Luciano JosÃ© dos Santos',                  role: 'supervisor',    matricula: '20467' },
-  { email: 'camila.rosario@hpp.org.br',             password: '22028@2026',  name: 'Camila Dayane Olexciw do RosÃ¡rio',         role: 'supervisor',    matricula: '22028' },
-
-  // â”€â”€ Captadores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { email: 'alessandra.silva@cthpp.org.br',         password: '18538@2026',  name: 'Alessandra Batista da Silva',              role: 'captador',      matricula: '18538' },
-  { email: 'alessandra.oliveira@cthpp.org.br',      password: '19456@2026',  name: 'Alessandra Veiga Oliveira',                role: 'captador',      matricula: '19456' },
-  { email: 'aline.santos@cthpp.org.br',             password: '18355@2026',  name: 'Aline Regina dos Santos',                  role: 'captador',      matricula: '18355' },
-  { email: 'amanda.lima@cthpp.org.br',              password: '21640@2026',  name: 'Amanda Cristina de Lima',                  role: 'captador',      matricula: '21640' },
-  { email: 'ariane.melo@cthpp.org.br',              password: '18719@2026',  name: 'Ariane Lara de Melo',                      role: 'captador',      matricula: '18719' },
-  { email: 'elisangela.melo@cthpp.org.br',          password: '18969@2026',  name: 'ElisÃ¢ngela Ferreira de Melo',              role: 'captador',      matricula: '18969' },
-  { email: 'ilda.cruz@cthpp.org.br',                password: '16139@2026',  name: 'Ilda da Cruz Noronha',                     role: 'captador',      matricula: '16139' },
-  { email: 'joelma.carvalho@cthpp.org.br',          password: '21987@2026',  name: 'Joelma Maia Carvalho',                     role: 'captador',      matricula: '21987' },
-  { email: 'karina.lima@cthpp.org.br',              password: '21991@2026',  name: 'Karina Soares Siqueira Lima',              role: 'captador',      matricula: '21991' },
-  { email: 'marcela.santos@cthpp.org.br',           password: '20418@2026',  name: 'Marcela Andressa Santos',                  role: 'captador',      matricula: '20418' },
-  { email: 'meri.santos@cthpp.org.br',              password: '18335@2026',  name: 'Meri Suelen de Oliveira Santos',           role: 'captador',      matricula: '18335' },
-  { email: 'ana.souza@cthpp.org.br',                password: '21372@2026',  name: 'Ana Carla Pereira de Souza',               role: 'captador',      matricula: '21372' },
-  { email: 'heloise.rodrigues@cthpp.org.br',        password: '21983@2026',  name: 'Heloise Regina da Silva Rodrigues',        role: 'captador',      matricula: '21983' },
-  { email: 'julia.lima@cthpp.org.br',               password: '21989@2026',  name: 'Julia LetÃ­cia de Lima',                    role: 'captador',      matricula: '21989' },
-  { email: 'maise.evangelista@cthpp.org.br',        password: '21969@2026',  name: 'MaÃ­se Furtado de Brito Santana Evangelista', role: 'captador',   matricula: '21969' },
-  { email: 'nathally.neres@cthpp.org.br',           password: '21635@2026',  name: 'Nathally Stefanne De Souza Neres',         role: 'captador',      matricula: '21635' },
-  { email: 'paola.gomes@cthpp.org.br',              password: '21375@2026',  name: 'Paola Alexia Domingues Gomes',             role: 'captador',      matricula: '21375' },
-  { email: 'stephany.melo@cthpp.org.br',            password: '21377@2026',  name: 'Stephany Gabriele de Souza Melo',          role: 'captador',      matricula: '21377' },
-  { email: 'adenilda.santos@cthpp.org.br',          password: '20892@2026',  name: 'Adenilda da Silva dos Santos',             role: 'captador',      matricula: '20892' },
-  { email: 'santos.aline@cthpp.org.br',             password: '21971@2026',  name: 'Aline Teodoro dos Santos',                 role: 'captador',      matricula: '21971' },
-  { email: 'jessica.santos@cthpp.org.br',           password: '21985@2026',  name: 'JÃ©ssica Monteiro dos Santos',              role: 'captador',      matricula: '21985' },
-  { email: 'magali.pimentel@cthpp.org.br',          password: '16840@2026',  name: 'Magali de Fatima dos Santos Pimentel',     role: 'captador',      matricula: '16840' },
-  { email: 'marcia.cardoso@cthpp.org.br',           password: '16496@2026',  name: 'Marcia de Fatima Ferreira Cardoso',        role: 'captador',      matricula: '16496' },
-  { email: 'maria.silva@cthpp.org.br',              password: '18906@2026',  name: 'Maria Anedina Bonifacio da Silva',         role: 'captador',      matricula: '18906' },
-  { email: 'maria.godoy@cthpp.org.br',              password: '21650@2026',  name: 'Maria Cristina Medino de Oliveira Godoy',  role: 'captador',      matricula: '21650' },
-  { email: 'stefanie.casturino@cthpp.org.br',       password: '21652@2026',  name: 'Stefanie de Santana Casturino',            role: 'captador',      matricula: '21652' },
-  { email: 'tassila.camargo@cthpp.org.br',          password: '21992@2026',  name: 'Tassila Georgia Cardoso Camargo',          role: 'captador',      matricula: '21992' },
-];
-
-const SESSION_KEY = 'nplayer-session';
-
-export type { User };
-
-/** Retorna cÃ³pia de todos os usuÃ¡rios (sem expor o array original) */
-export function getAllUsers(): UserRecord[] {
-  return USERS.map(u => ({ ...u }));
+export interface CreateUserResult {
+  ok:    boolean;
+  error?: string;
 }
 
-/** Atualiza campos de um usuÃ¡rio pelo e-mail */
-export function updateUser(email: string, data: Partial<UserRecord>): boolean {
-  const idx = USERS.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-  if (idx === -1) return false;
-  Object.assign(USERS[idx], data);
-  return true;
-}
+export async function createUser(payload: CreateUserPayload): Promise<CreateUserResult> {
+  const email = payload.email.trim().toLowerCase();
 
-export function login(email: string, password: string): User | null {
-  const found = USERS.find(
-    u =>
-      u.email.toLowerCase() === email.trim().toLowerCase() &&
-      u.password === password
-  );
-  if (!found) return null;
+  // 1. Verifica se o e-mail já existe na tabela profiles
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
 
-  const user: User = {
-    id:        found.email,
-    email:     found.email,
-    name:      found.name,
-    role:      found.role,
-    active:    true,
-    matricula: found.matricula,
-  };
-
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch { /* silencia */ }
-  return user;
-}
-
-export function logout(): void {
-  try { localStorage.removeItem(SESSION_KEY); } catch { /* silencia */ }
-}
-
-export function getStoredSession(): User | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
+  if (existing) {
+    return { ok: false, error: 'Este e-mail já está cadastrado.' };
   }
+
+  // 2. Cria o usuário no Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password: payload.password,
+    options: {
+      // Não redireciona para confirmação de e-mail
+      emailRedirectTo: undefined,
+      data: {
+        name: payload.name,
+        role: payload.role,
+      },
+    },
+  });
+
+  if (authError || !authData.user) {
+    const msg = authError?.message ?? 'Erro ao criar usuário.';
+    // Mensagens comuns do Supabase traduzidas
+    if (msg.includes('already registered')) return { ok: false, error: 'Este e-mail já está cadastrado.' };
+    if (msg.includes('password')) return { ok: false, error: 'Senha inválida (mínimo 6 caracteres).' };
+    return { ok: false, error: msg };
+  }
+
+  // 3. Insere/atualiza o perfil na tabela profiles
+  //    (upsert cobre o caso de um trigger já ter criado o registro)
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id:        authData.user.id,
+      email,
+      name:      payload.name,
+      role:      payload.role,
+      matricula: payload.matricula?.trim() || null,
+      active:    true,
+    }, { onConflict: 'id' });
+
+  if (profileError) {
+    return { ok: false, error: 'Usuário criado no Auth, mas erro ao salvar perfil: ' + profileError.message };
+  }
+
+  return { ok: true };
 }
 
-// â”€â”€â”€ Helpers de permissÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Usuário: atualizar nome e/ou senha ───────────────────────────────────────────────
 
+export async function updateUser(
+  _email: string,
+  updates: { name?: string; password?: string }
+): Promise<boolean> {
+  let ok = true;
+
+  if (updates.name) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ name: updates.name })
+        .eq('id', user.id);
+      if (error) ok = false;
+    }
+  }
+
+  if (updates.password) {
+    const { error } = await supabase.auth.updateUser({ password: updates.password });
+    if (error) ok = false;
+  }
+
+  return ok;
+}
+
+// ─── Helpers de permissão ────────────────────────────────────────────────────────────────
 export function canAccessChat(role: UserRole | null): boolean {
   return role === 'captador' || role === 'supervisor' || role === 'administrador';
 }
@@ -117,13 +209,9 @@ export function canAccessAbout(role: UserRole | null): boolean {
 export function canAccessSettings(role: UserRole | null): boolean {
   return role === 'captador' || role === 'supervisor' || role === 'administrador';
 }
-
-/** Equipe & MÃ©tricas â€” supervisor e administrador */
 export function canAccessMetrics(role: UserRole | null): boolean {
   return role === 'supervisor' || role === 'administrador';
 }
-
-/** Painel Administrativo â€” supervisor e administrador */
 export function canAccessAdmin(role: UserRole | null): boolean {
   return role === 'supervisor' || role === 'administrador';
 }
