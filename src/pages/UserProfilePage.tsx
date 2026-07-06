@@ -177,7 +177,9 @@ export function UserProfilePage({
   // Aba 1 — enviar e-mail de redefinição
   const handleResetSenha = async () => {
     setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/`,
+    });
     setSaving(false);
     if (error) {
       console.error('[resetPassword]', error);
@@ -204,8 +206,18 @@ export function UserProfilePage({
         body: { userId: user.id, password: novaSenha },
       });
       setSaving(false);
-      if (fnError || !data?.ok) {
-        const msg = data?.error ?? fnError?.message ?? 'Erro ao definir senha.';
+      if (fnError) {
+        let msg = fnError.message;
+        try {
+          const body = await (fnError as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {}
+        console.error('[definirSenha]', msg);
+        showToast(`Erro: ${msg}`, 'error');
+        return;
+      }
+      if (!data?.ok) {
+        const msg = data?.error ?? 'Erro ao definir senha.';
         console.error('[definirSenha]', msg);
         showToast(`Erro: ${msg}`, 'error');
         return;
