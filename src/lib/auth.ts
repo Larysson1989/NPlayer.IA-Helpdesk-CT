@@ -16,19 +16,20 @@ export async function login(email: string, password: string): Promise<User | nul
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, email, name, role, matricula, active')
+    .select('id, email, name, role, matricula, active, force_password_change')
     .eq('id', data.user.id)
     .single();
 
   if (!profile) return null;
 
   const user: User = {
-    id:        profile.id,
-    email:     profile.email,
-    name:      profile.name,
-    role:      profile.role as UserRole,
-    active:    profile.active ?? true,
-    matricula: profile.matricula ?? '',
+    id:                    profile.id,
+    email:                 profile.email,
+    name:                  profile.name,
+    role:                  profile.role as UserRole,
+    active:                profile.active ?? true,
+    matricula:             profile.matricula ?? '',
+    force_password_change: profile.force_password_change ?? false,
   };
 
   // Registra login nas métricas (fire-and-forget)
@@ -47,19 +48,20 @@ export async function getStoredSession(): Promise<User | null> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, email, name, role, matricula, active')
+    .select('id, email, name, role, matricula, active, force_password_change')
     .eq('id', session.user.id)
     .single();
 
   if (!profile) return null;
 
   return {
-    id:        profile.id,
-    email:     profile.email,
-    name:      profile.name,
-    role:      profile.role as UserRole,
-    active:    profile.active ?? true,
-    matricula: profile.matricula ?? '',
+    id:                    profile.id,
+    email:                 profile.email,
+    name:                  profile.name,
+    role:                  profile.role as UserRole,
+    active:                profile.active ?? true,
+    matricula:             profile.matricula ?? '',
+    force_password_change: profile.force_password_change ?? false,
   };
 }
 

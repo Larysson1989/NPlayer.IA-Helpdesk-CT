@@ -6,6 +6,7 @@ export interface Profile {
   name: string | null;
   role: UserRole | null;
   active: boolean;
+  force_password_change: boolean;
   created_at: string;
   updated_at: string;
 }

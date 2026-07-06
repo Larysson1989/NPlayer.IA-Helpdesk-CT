@@ -11,6 +11,7 @@ import { UserModals } from './components/UserModals';
 import { UnderConstruction } from './components/UnderConstruction';
 import type { ProfilePage } from './components/UnderConstruction';
 import ChatView from './components/ChatView';
+import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { getAvatarUrl } from './services/avatarService';
 import { useOnlineUsers } from './hooks/useOnlineUsers';
 import { PresenceDebugBadge } from './components/PresenceDebugBadge';
@@ -28,6 +29,7 @@ export interface User {
   avatar_url?: string;
   telefone?: string;
   avatar?: string;
+  force_password_change?: boolean;
 }
 
 // --- Constantes ---
@@ -177,6 +179,14 @@ export default function App() {
 
   if (!user) {
     return <AuthPage onSuccess={handleLogin} />;
+  }
+
+  if (user.force_password_change) {
+    return (
+      <ForcePasswordChange
+        onDone={() => setUser(u => u ? { ...u, force_password_change: false } : u)}
+      />
+    );
   }
 
   const badge      = getRoleBadge(user.role);
