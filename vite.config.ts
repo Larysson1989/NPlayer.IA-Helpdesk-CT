@@ -38,6 +38,7 @@ export default defineConfig(({ mode }) => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
+    base: '/nplayerct/',
     build: {
       rollupOptions: {
         output: {
