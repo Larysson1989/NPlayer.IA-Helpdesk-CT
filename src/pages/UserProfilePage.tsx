@@ -28,7 +28,7 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
 };
 
 const CARGO_BY_ROLE: Record<UserRole, string> = {
-  captador:      'Captador Pleno',
+  captador:      'Captador de recursos',
   supervisor:    'Supervisor de Equipe',
   administrador: 'Administrador do Sistema',
 };
