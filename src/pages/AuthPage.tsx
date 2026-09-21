@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { login } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import type { User } from '../App';
-import { ShieldAlert, Eye, EyeOff, Loader2, Headphones, Mail, Lock, ArrowRight } from 'lucide-react';
+import { ShieldAlert, Eye, EyeOff, Loader2, Headphones, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 // ─── AuthPage principal ──────────────────────────────────────
 export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
@@ -12,6 +13,10 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [attempts, setAttempts]         = useState(0);
+
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent]       = useState(false);
+  const [forgotError, setForgotError]     = useState<string | null>(null);
 
   const isBlocked = attempts >= 5;
 
@@ -34,6 +39,29 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
     }
 
     onSuccess(user);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setForgotError('Digite seu e-mail no campo acima primeiro.');
+      return;
+    }
+    setForgotError(null);
+    setForgotLoading(true);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}${window.location.pathname}` }
+    );
+
+    setForgotLoading(false);
+
+    if (resetError) {
+      setForgotError('Não foi possível enviar o e-mail. Tente novamente.');
+      return;
+    }
+
+    setForgotSent(true);
   };
 
   return (
@@ -161,7 +189,45 @@ export function AuthPage({ onSuccess }: { onSuccess: (user: User) => void }) {
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        disabled={forgotLoading || forgotSent}
+                        className="text-[11px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-60"
+                      >
+                        {forgotLoading ? 'Enviando…' : 'Esqueci minha senha'}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Feedback de recuperação de senha */}
+                  <AnimatePresence>
+                    {forgotSent && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2"
+                      >
+                        <CheckCircle2 size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <p className="text-xs font-bold text-emerald-700">
+                          Enviamos um link de redefinição para o seu e-mail.
+                        </p>
+                      </motion.div>
+                    )}
+                    {forgotError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2"
+                      >
+                        <ShieldAlert size={15} className="text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-xs font-bold text-red-600">{forgotError}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Botão */}
                   <button
