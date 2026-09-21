@@ -18,6 +18,8 @@ const STATUS_CONFIG: Record<PresenceStatus, { color: string; label: string }> = 
 const STATUS_FALLBACK = { color: 'bg-slate-300', label: 'Desconhecido' };
 
 export function PresenceDebugBadge({ status, users }: Props) {
+  if (!import.meta.env.DEV) return null;
+
   const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
   return (
     <div className="fixed bottom-4 right-4 z-50 bg-white border border-slate-200 shadow-xl rounded-2xl p-3 text-xs font-mono w-64">
